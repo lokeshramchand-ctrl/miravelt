@@ -5,8 +5,8 @@ logger = logging.getLogger(__name__)
 
 OLLAMA_HOSTS = [
     #"http://10.10.10.100:11434",
-    "https://ollama.splsystems.in",
-    #"http://localhost:11434"
+    #"https://ollama.splsystems.in",
+    "http://localhost:11434"
 ]
 
 def resolve_ollama_host(hosts: list[str]) -> str:

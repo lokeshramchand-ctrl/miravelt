@@ -102,7 +102,7 @@ async def health_check():
     try:
         # Quick 2-second timeout so the health check doesn't hang forever
         async with httpx.AsyncClient(timeout=2.0) as client:
-            resp = await client.get("https://ollama.splsystems.in/")
+            resp = await client.get("http://localhost:11434")
             if resp.status_code == 200:
                 ollama_status = "connected"
                 details["ollama"] = "Ollama engine is responding."
