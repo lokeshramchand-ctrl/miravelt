@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 # Middleware & Security
@@ -82,6 +83,22 @@ if settings.ENFORCE_HTTPS and settings.ENVIRONMENT == "production":
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.MAX_REQUEST_BODY_BYTES)
 app.add_middleware(RequestIDMiddleware)
+
+# CORS - added last so it's outermost (last-added = outermost, see comment
+# above), letting it answer preflight OPTIONS requests and attach headers to
+# every response, including one rejected by an inner middleware. Was a
+# config-only field until now (docs/17-senior-architect-review.md §6);
+# real once a browser-based client - the admin dashboard - started calling
+# this API directly. No origins configured means no CORSMiddleware at all,
+# same "closed by default" posture as ADMIN_API_KEY above.
+if settings.CORS_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Prometheus Metrics
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
