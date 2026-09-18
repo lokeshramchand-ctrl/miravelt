@@ -8,6 +8,17 @@ class CoreModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
 
+class UserRole(str, Enum):
+    """Authorization role, not identity. Only "admin" changes anything today
+    (routers/auth.py grants the JWT "admin" scope to it) - there is
+    deliberately no self-serve API to set this on your own account; the
+    first admin is bootstrapped with scripts/create_admin.py, and every
+    admin after that is promoted by an existing one via
+    PATCH /admin/users/{user_id}/role."""
+    USER = "user"
+    ADMIN = "admin"
+
+
 class DeviceSession(BaseModel):
     """Per-device session tracking for per-user/device authorization."""
     device_id: str = Field(description="Unique device identifier (hashed)")
@@ -30,6 +41,7 @@ class User(CoreModel):
     hashed_password: str
     full_name: str | None = None
     is_active: bool = True
+    role: UserRole = UserRole.USER
     devices: list[DeviceSession] = Field(default_factory=list, description="Tracked devices")
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
