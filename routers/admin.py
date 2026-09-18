@@ -13,8 +13,17 @@ from models.schemas import AppPlatform, JobStatus, StatementStatus, UserRole
 
 logger = logging.getLogger(__name__)
 
-# Admin API router - separate from public API, stricter rate limits, requires admin scope
-# Can be mounted on a separate port/host in production (see app.py for conditional mounting)
+# Admin API router - separate from public API, stricter rate limits, requires admin scope.
+# Can be mounted on a separate port/host in production (see app.py for conditional mounting).
+#
+# Per-route limits below are sized for the admin dashboard (admin-dashboard/),
+# a BFF that proxies every admin's traffic through one server - core/rate_limiter.py
+# keys on source IP (slowapi's get_remote_address), so every admin using the
+# dashboard shares one IP as seen by this API. A limit sized for one direct
+# caller (the original 5/minute) starts 429ing a whole admin team almost
+# immediately; these are wider accordingly, while still well under the
+# global default (100/minute) and noticeably tighter on the two genuinely
+# destructive routes (delete, retention cleanup).
 router = APIRouter(
     prefix="/admin",
     tags=["Admin"],
@@ -29,7 +38,7 @@ async def admin_health():
 
 
 @router.get("/users", status_code=status.HTTP_200_OK)
-@limiter.limit("5/minute")
+@limiter.limit("30/minute")
 async def list_all_users(
     request: Request,
     payload = Depends(require_scope("admin")),
@@ -57,7 +66,7 @@ async def list_all_users(
 
 
 @router.get("/users/{user_id}", status_code=status.HTTP_200_OK)
-@limiter.limit("10/minute")
+@limiter.limit("30/minute")
 async def get_user_details(
     request: Request,
     user_id: str,
@@ -99,7 +108,7 @@ async def get_user_details(
 
 
 @router.patch("/users/{user_id}/active", status_code=status.HTTP_200_OK)
-@limiter.limit("5/minute")
+@limiter.limit("60/minute")
 async def toggle_user_active(
     request: Request,
     user_id: str,
@@ -133,7 +142,7 @@ class UpdateRoleRequest(BaseModel):
 
 
 @router.patch("/users/{user_id}/role", status_code=status.HTTP_200_OK)
-@limiter.limit("5/minute")
+@limiter.limit("60/minute")
 async def update_user_role(
     request: Request,
     user_id: str,
@@ -163,7 +172,7 @@ async def update_user_role(
 
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-@limiter.limit("5/minute")
+@limiter.limit("10/minute")
 async def delete_user(
     request: Request,
     user_id: str,
@@ -226,7 +235,7 @@ async def trigger_retention_cleanup(
 
 
 @router.get("/overview", status_code=status.HTTP_200_OK)
-@limiter.limit("20/minute")
+@limiter.limit("60/minute")
 async def get_overview(
     request: Request,
     payload = Depends(require_scope("admin")),
@@ -266,7 +275,7 @@ async def get_overview(
 
 
 @router.get("/jobs", status_code=status.HTTP_200_OK)
-@limiter.limit("20/minute")
+@limiter.limit("60/minute")
 async def list_all_jobs(
     request: Request,
     pagination: PaginationParams = Depends(),
@@ -305,7 +314,7 @@ async def list_all_jobs(
 
 
 @router.get("/statements", status_code=status.HTTP_200_OK)
-@limiter.limit("20/minute")
+@limiter.limit("60/minute")
 async def list_all_statements(
     request: Request,
     pagination: PaginationParams = Depends(),
@@ -350,7 +359,7 @@ async def list_all_statements(
 
 
 @router.get("/releases", status_code=status.HTTP_200_OK)
-@limiter.limit("20/minute")
+@limiter.limit("60/minute")
 async def list_all_releases(
     request: Request,
     platform: AppPlatform | None = Query(None),
