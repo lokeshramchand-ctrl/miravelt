@@ -150,5 +150,39 @@ class StatementRepository:
     async def delete(self, statement_id: str) -> None:
         await db.statements.delete_one({"_id": ObjectId(statement_id)})
 
+    async def list_all(
+        self,
+        page: int,
+        page_size: int,
+        status_filter: StatementStatus | None = None,
+        user_id_filter: str | None = None,
+    ) -> tuple[list[Statement], int]:
+        """Admin-only, cross-user statement listing - routers/statements.py's
+        list_statements() is intentionally scoped to the caller instead."""
+        query: dict = {}
+        if status_filter is not None:
+            query["processing_status"] = status_filter.value
+        if user_id_filter is not None:
+            query["user_id"] = user_id_filter
+
+        total = await db.statements.count_documents(query)
+        cursor = (
+            db.statements.find(query)
+            .sort("uploaded_at", -1)
+            .skip((page - 1) * page_size)
+            .limit(page_size)
+        )
+        items = []
+        async for doc in cursor:
+            doc["_id"] = str(doc["_id"])
+            items.append(Statement(**doc))
+        return items, total
+
+    async def count_by_status(self) -> dict[str, int]:
+        counts = {status.value: 0 for status in StatementStatus}
+        async for doc in db.statements.aggregate([{"$group": {"_id": "$processing_status", "count": {"$sum": 1}}}]):
+            counts[doc["_id"]] = doc["count"]
+        return counts
+
 
 statement_repo = StatementRepository()

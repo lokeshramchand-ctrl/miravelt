@@ -154,6 +154,13 @@ class MongoDB:
             await cls.statements.create_index([("user_id", 1), ("processing_status", 1)], background=True)
             await cls.jobs.create_index("user_id", background=True)
             await cls.jobs.create_index("resource_id", background=True)
+            # Admin dashboard's cross-user job/statement listing
+            # (repositories/job_repository.py::list_all,
+            # repositories/statement_repository.py::list_all) filters by
+            # status with no user_id, unlike every other query on these
+            # collections above.
+            await cls.jobs.create_index("status", background=True)
+            await cls.statements.create_index("processing_status", background=True)
 
             # App updater (routers/app_updates.py). version_code is unique so
             # two releases can never collide; platform+is_latest is what
