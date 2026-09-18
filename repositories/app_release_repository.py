@@ -47,6 +47,15 @@ class AppReleaseRepository:
         doc["_id"] = str(doc["_id"])
         return AppRelease(**doc)
 
+    async def list_all(self, platform: AppPlatform | None = None) -> list[AppRelease]:
+        query = {"platform": platform.value} if platform is not None else {}
+        cursor = db.app_releases.find(query).sort("uploaded_at", -1)
+        items = []
+        async for doc in cursor:
+            doc["_id"] = str(doc["_id"])
+            items.append(AppRelease(**doc))
+        return items
+
     async def open_download_stream(self, gridfs_file_id: str) -> AsyncIterator[bytes]:
         try:
             oid = ObjectId(gridfs_file_id)
