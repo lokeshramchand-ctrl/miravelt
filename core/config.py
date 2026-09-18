@@ -34,7 +34,15 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "production"  # "production" | "development"
     LOG_LEVEL: str = "INFO"  # DEBUG is opt-in, never the default - DEBUG logs full DB command payloads
     ENFORCE_HTTPS: bool = True  # Reject HTTP requests in production
-    CORS_ORIGINS: str = "https://app.velar.local"  # Comma-separated list of allowed origins
+    # Comma-separated list of allowed origins. Currently a config surface
+    # only - app.py registers no CORSMiddleware, so this isn't enforced yet
+    # (see docs/17-senior-architect-review.md §6; only relevant once/if a
+    # browser-based client calls this API directly, since the shipped
+    # client is the Flutter mobile app in frontend/, which CORS doesn't
+    # apply to). Kept unset by default rather than a fake placeholder
+    # domain - set to your real web origin(s) plus a localhost dev port if
+    # you ever wire CORSMiddleware up.
+    CORS_ORIGINS: str = ""
     # Raised from the original 1 MB (fine when every request was a JSON body)
     # to accommodate multipart PDF statement uploads - see POST /statements/upload -
     # and, since routers/app_updates.py, Android release APK uploads (also
