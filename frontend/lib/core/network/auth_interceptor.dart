@@ -12,9 +12,10 @@ import '../storage/token_storage.dart';
 /// session and calls [onSessionExpired] so the app can drop back to login.
 class AuthInterceptor extends Interceptor {
   AuthInterceptor({
+    required String baseUrl,
     required this._tokenStorage,
     required this._onSessionExpired,
-  })  : _refreshDio = Dio(BaseOptions(baseUrl: AppConfig.apiBaseUrl))
+  })  : _refreshDio = Dio(BaseOptions(baseUrl: baseUrl))
           ..options.headers['X-Velar-API-Key'] = AppConfig.apiKey;
 
   final TokenStorage _tokenStorage;
