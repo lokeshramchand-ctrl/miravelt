@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 # Middleware & Security
@@ -38,6 +39,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# Shared client for outbound health-check calls to Ollama. Built once at
+# startup and reused for the app's lifetime - constructing a fresh
+# httpx.AsyncClient() per /health request (its own connection pool + TLS
+# context) serializes badly under concurrent load, observed as 10s+ p50
+# latency and read timeouts during a 50-concurrent stress test.
+_ollama_health_client: httpx.AsyncClient | None = None
+
+
 # Lifespan
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -51,11 +60,15 @@ async def lifespan(app: FastAPI):
     vector_db.connect(uri=settings.MILVUS_URI)
     vector_store.ensure_collections()
 
+    global _ollama_health_client
+    _ollama_health_client = httpx.AsyncClient(timeout=2.0)
+
     yield
 
     logger.info("Tearing down application lifespan...")
     await db.disconnect()
     vector_db.disconnect()
+    await _ollama_health_client.aclose()
 
 
 # FastAPI App
@@ -82,6 +95,22 @@ if settings.ENFORCE_HTTPS and settings.ENVIRONMENT == "production":
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.MAX_REQUEST_BODY_BYTES)
 app.add_middleware(RequestIDMiddleware)
+
+# CORS - added last so it's outermost (last-added = outermost, see comment
+# above), letting it answer preflight OPTIONS requests and attach headers to
+# every response, including one rejected by an inner middleware. Was a
+# config-only field until now (docs/17-senior-architect-review.md §6);
+# real once a browser-based client - the admin dashboard - started calling
+# this API directly. No origins configured means no CORSMiddleware at all,
+# same "closed by default" posture as ADMIN_API_KEY above.
+if settings.CORS_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Prometheus Metrics
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
@@ -170,14 +199,13 @@ async def _check_dependencies() -> tuple[str, dict, dict]:
         details["milvus"] = "Milvus health check failed - see server logs."
 
     try:
-        async with httpx.AsyncClient(timeout=2.0) as client:
-            resp = await client.get(get_ollama_host())
-            if resp.status_code == 200:
-                services["ollama"] = "connected"
-                details["ollama"] = "Ollama engine responding."
-            else:
-                services["ollama"] = "degraded"
-                details["ollama"] = f"Status code: {resp.status_code}"
+        resp = await _ollama_health_client.get(get_ollama_host())
+        if resp.status_code == 200:
+            services["ollama"] = "connected"
+            details["ollama"] = "Ollama engine responding."
+        else:
+            services["ollama"] = "degraded"
+            details["ollama"] = f"Status code: {resp.status_code}"
     except Exception:
         logger.exception("Dependency check: Ollama check failed")
         services["ollama"] = "error"

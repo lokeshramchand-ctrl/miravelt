@@ -18,7 +18,7 @@ void main() {
     FlutterSecureStoragePlatform.instance = FakeSecureStoragePlatform();
     adapter = FakeHttpClientAdapter();
     tokenStorage = TokenStorage();
-    final apiClient = ApiClient(tokenStorage: tokenStorage, onSessionExpired: () async {});
+    final apiClient = ApiClient(baseUrl: 'https://test.invalid/', tokenStorage: tokenStorage, onSessionExpired: () async {});
     apiClient.dio.httpClientAdapter = adapter;
     repository = AuthRepository(apiClient: apiClient, tokenStorage: tokenStorage);
   });
@@ -56,7 +56,8 @@ void main() {
     test('persists tokens even when the follow-up /users/me 404s', () async {
       // Mirrors what velar.deploy.lokeshrc.me actually does today:
       // /auth/login succeeds and issues real tokens, but /users/me isn't
-      // mounted there (see AppConfig.apiBaseUrl for the full writeup).
+      // mounted there (see ApiEnvironment.production in
+      // lib/core/config/api_environment.dart for the full writeup).
       adapter.queue('POST', '/auth/login', tokenResponse(suffix: '2'));
       adapter.queue(
         'GET',

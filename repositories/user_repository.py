@@ -83,4 +83,13 @@ class UserRepository:
             users.append(User(**doc))
         return users
 
+    async def count_all(self) -> int:
+        return await db.users.count_documents({})
+
+    async def count_active(self) -> int:
+        return await db.users.count_documents({"is_active": True})
+
+    async def count_admins(self) -> int:
+        return await db.users.count_documents({"role": "admin"})
+
 user_repo = UserRepository()

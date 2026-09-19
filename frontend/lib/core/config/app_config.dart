@@ -1,21 +1,13 @@
 /// Runtime config, supplied via --dart-define (see frontend/README.md).
 ///
+/// The API base URL itself is NOT here - see api_environment.dart's
+/// [ApiEnvironment], which is the single source of truth for both backend
+/// targets (deployed vs. localhost) and is switchable at runtime.
+///
 /// VELAR_API_KEY has no client-facing issuance endpoint (see
 /// docs/API_REFERENCE.md §0) - it's a static value the app ships/configures
 /// with, the same way the backend operator holds it.
 abstract final class AppConfig {
-  static const String apiBaseUrl = String.fromEnvironment(
-    'VELAR_API_BASE_URL',
-    // Verified 2026-08-13: the deployed host only serves /auth/*, /memory/*,
-    // and health/metrics - /users/me, /statements, /jobs, /analytics/* etc.
-    // all 404 there (stale build; redeploy is a Coolify action outside this
-    // repo, see docs/14-deployment-operations.md). Login/register work
-    // end-to-end; every screen past login does not. Override with
-    // --dart-define=VELAR_API_BASE_URL=http://localhost:9850/ to develop
-    // against a backend that has the full route set.
-    defaultValue: 'https://velar.deploy.lokeshrc.me/',
-  );
-
   static const String apiKey = String.fromEnvironment(
     'VELAR_API_KEY',
     defaultValue:

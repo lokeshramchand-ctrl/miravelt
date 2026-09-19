@@ -69,5 +69,31 @@ class JobRepository:
         result = await db.jobs.delete_many({"resource_id": resource_id})
         return result.deleted_count
 
+    async def list_all(
+        self,
+        page: int,
+        page_size: int,
+        status_filter: JobStatus | None = None,
+    ) -> tuple[list[Job], int]:
+        """Admin-only, cross-user job listing - routers/jobs.py's GET
+        /jobs/{id} is intentionally ownership-scoped instead."""
+        query: dict = {}
+        if status_filter is not None:
+            query["status"] = status_filter.value
+
+        total = await db.jobs.count_documents(query)
+        cursor = db.jobs.find(query).sort("created_at", -1).skip((page - 1) * page_size).limit(page_size)
+        items = []
+        async for doc in cursor:
+            doc["_id"] = str(doc["_id"])
+            items.append(Job(**doc))
+        return items, total
+
+    async def count_by_status(self) -> dict[str, int]:
+        counts = {status.value: 0 for status in JobStatus}
+        async for doc in db.jobs.aggregate([{"$group": {"_id": "$status", "count": {"$sum": 1}}}]):
+            counts[doc["_id"]] = doc["count"]
+        return counts
+
 
 job_repo = JobRepository()

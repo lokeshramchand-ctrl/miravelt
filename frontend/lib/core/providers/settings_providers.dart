@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/api_environment.dart';
+
 /// Overridden in main() once SharedPreferences.getInstance() resolves -
 /// every provider below depends on it, so nothing reads prefs before the
 /// override is in place.
@@ -59,3 +61,27 @@ final notifyAnalysisFinishedProvider = NotifierProvider<BoolPreferenceController
 final notifyUnusualSpendProvider = NotifierProvider<BoolPreferenceController, bool>(
   () => BoolPreferenceController('velar.notify_unusual_spend', false),
 );
+
+/// Which of the two backends (see [ApiEnvironment]) the app talks to.
+/// Persisted so a developer's choice survives app restarts; always starts
+/// from [ApiEnvironment.production] on a fresh install/unrecognized value -
+/// never silently defaults to a developer's local machine.
+class ApiEnvironmentController extends Notifier<ApiEnvironment> {
+  static const _key = 'velar.api_environment';
+
+  @override
+  ApiEnvironment build() {
+    final stored = ref.watch(sharedPreferencesProvider).getString(_key);
+    return switch (stored) {
+      'local' => ApiEnvironment.local,
+      _ => ApiEnvironment.production,
+    };
+  }
+
+  void set(ApiEnvironment environment) {
+    state = environment;
+    ref.read(sharedPreferencesProvider).setString(_key, environment.name);
+  }
+}
+
+final apiEnvironmentProvider = NotifierProvider<ApiEnvironmentController, ApiEnvironment>(ApiEnvironmentController.new);
