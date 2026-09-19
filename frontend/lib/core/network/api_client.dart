@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
-import '../config/app_config.dart';
 import '../storage/token_storage.dart';
 import 'api_exception.dart';
 import 'auth_interceptor.dart';
@@ -13,17 +12,18 @@ import 'auth_interceptor.dart';
 /// touches Dio directly.
 class ApiClient {
   ApiClient({
+    required String baseUrl,
     required TokenStorage tokenStorage,
     required Future<void> Function() onSessionExpired,
   }) : dio = Dio(
           BaseOptions(
-            baseUrl: AppConfig.apiBaseUrl,
+            baseUrl: baseUrl,
             connectTimeout: const Duration(seconds: 15),
             receiveTimeout: const Duration(seconds: 20),
             sendTimeout: const Duration(seconds: 30),
           ),
         ) {
-    dio.interceptors.add(AuthInterceptor(tokenStorage: tokenStorage, onSessionExpired: onSessionExpired));
+    dio.interceptors.add(AuthInterceptor(baseUrl: baseUrl, tokenStorage: tokenStorage, onSessionExpired: onSessionExpired));
     if (kDebugMode) {
       dio.interceptors.add(PrettyDioLogger(requestBody: true, responseBody: true, compact: true));
     }

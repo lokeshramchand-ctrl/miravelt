@@ -10,7 +10,7 @@ from core.device_attestation import device_attestation_verifier
 from core.jwt_auth import create_access_token, generate_refresh_token
 from core.rate_limiter import limiter
 from core.security import hash_password, verify_password
-from models.schemas import LoginRequest, LogoutRequest, RefreshRequest, RegisterRequest, TokenResponse, UserPublic
+from models.schemas import LoginRequest, LogoutRequest, RefreshRequest, RegisterRequest, TokenResponse, UserPublic, UserRole
 from repositories.refresh_token_repository import refresh_token_repo
 from repositories.user_repository import user_repo
 
@@ -25,6 +25,19 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 def _hash_refresh_token(raw_token: str) -> str:
     return hashlib.sha256(raw_token.encode()).hexdigest()
+
+
+def _scopes_for(user) -> list[str]:
+    """Every authenticated user gets "user"; role == admin (routers/admin.py's
+    role-management endpoint, or scripts/create_admin.py for the first one)
+    additionally gets "admin" - checked by core.jwt_auth.require_scope on
+    every /admin/* route. Recomputed fresh on every login *and* refresh
+    (not just login) so a role change takes effect the next time the
+    client's access token is renewed, without needing to force a re-login."""
+    scopes = ["user"]
+    if user.role == UserRole.ADMIN:
+        scopes.append("admin")
+    return scopes
 
 
 async def _issue_token_pair(
@@ -144,15 +157,13 @@ async def login(request: Request, payload: LoginRequest):
 
         await user_repo.update_user(user.id, {"devices": [d.model_dump() for d in user.devices]})
 
-    # Issue token pair with basic "user" scope
-    # (additional scopes can be granted through separate authorization flows)
     return await _issue_token_pair(
         user.id,
         device_id=payload.device_id,
         device_name=payload.device_name or "Unknown Device",
         user_agent=payload.user_agent,
         ip_address=payload.ip_address,
-        scopes=["user"]
+        scopes=_scopes_for(user),
     )
 
 
@@ -187,9 +198,7 @@ async def refresh(request: Request, payload: RefreshRequest):
     # its replacement so it can never be redeemed a second time.
     await refresh_token_repo.revoke(token_hash)
 
-    # Preserve scopes from the refresh token (if stored) or use default
-    # For now, always issue with "user" scope; scope escalation requires explicit flows
-    return await _issue_token_pair(user.id, scopes=["user"])
+    return await _issue_token_pair(user.id, scopes=_scopes_for(user))
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

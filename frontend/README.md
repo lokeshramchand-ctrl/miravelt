@@ -10,14 +10,18 @@ A financial analyst in your pocket - a Flutter mobile client for the Velar backe
 
 ## Configuration
 
-The app takes two required values via `--dart-define`, read in `lib/core/config/app_config.dart`:
+The app only ever points at one of exactly two backends - see `ApiEnvironment` in `lib/core/config/api_environment.dart`:
 
-| Flag | Purpose | Default if omitted |
+| Environment | Default base URL | Override (`--dart-define`) |
 |---|---|---|
-| `VELAR_API_BASE_URL` | Base URL of the Velar backend | `http://10.0.2.2:8000` (the Android emulator's alias for the host machine - i.e. "backend running locally on your dev machine") |
-| `VELAR_API_KEY` | The `X-Velar-API-Key` header value sent on every request | empty string (every request will be rejected) |
+| `ApiEnvironment.production` (release default) | `https://velar.deploy.lokeshrc.me/` | `VELAR_API_BASE_URL` |
+| `ApiEnvironment.local` | `http://10.0.2.2:9850/` on the Android emulator, `http://localhost:9850/` elsewhere (matches `docker-compose_local.yaml`'s published port) | `VELAR_LOCAL_API_BASE_URL` |
 
-`VELAR_API_KEY` has no usable default - you must always pass it. `VELAR_API_BASE_URL`'s default only works for an Android emulator talking to a backend on `localhost`; override it for a physical device, iOS simulator (use `http://localhost:8000` or `http://127.0.0.1:8000`), or any non-local backend.
+Which one is active is a **runtime** choice, not just a build-time one: it's persisted on-device and, in debug builds, switchable from Profile > Developer > "API server" (switching signs you out, since a session token from one backend isn't valid on the other). A fresh install always starts on `production`; the toggle itself is compiled out of release builds.
+
+Override the defaults above for a physical device, a different local port (e.g. a bare `uvicorn app:app --reload` on 8000 instead of the full Docker stack on 9850), or a different production host.
+
+The one value that's still build-time only, via `--dart-define=VELAR_API_KEY=...`, is the `X-Velar-API-Key` header sent on every request - it has no usable default and must always be passed (falls back to a `velar_test_key_123` placeholder otherwise; see `lib/core/config/app_config.dart`).
 
 Local HTTP (not HTTPS) traffic to `10.0.2.2`, `localhost`, and `127.0.0.1` is explicitly allowlisted for this reason (Android's network security config and iOS's App Transport Security both block cleartext traffic by default otherwise) - every other host is still required to be HTTPS.
 
@@ -25,10 +29,10 @@ Local HTTP (not HTTPS) traffic to `10.0.2.2`, `localhost`, and `127.0.0.1` is ex
 
 ```
 flutter pub get
-flutter run \
-  --dart-define=VELAR_API_BASE_URL=http://10.0.2.2:8000 \
-  --dart-define=VELAR_API_KEY=your-api-key-here
+flutter run --dart-define=VELAR_API_KEY=your-api-key-here
 ```
+
+Defaults to the deployed backend; switch to Profile > Developer > "API server" > Localhost once the app is running to target a backend on your own machine instead.
 
 ## Building a release APK
 

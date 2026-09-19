@@ -1,5 +1,8 @@
 node_modules
 package-lock.json
+# admin-dashboard is a real Next.js app (unlike the rest of this repo) -
+# its lockfile is committed on purpose for reproducible installs.
+!admin-dashboard/package-lock.json
 .env
 # Ignore version control
 .git

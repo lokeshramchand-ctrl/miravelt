@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/config/api_environment.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/providers/feature_providers.dart';
 import '../../../core/providers/settings_providers.dart';
@@ -135,6 +137,32 @@ class ProfileScreen extends ConsumerWidget {
                 }),
               ],
             ),
+            if (kDebugMode) ...[
+              const SizedBox(height: 22),
+              const _SectionLabel('DEVELOPER'),
+              const SizedBox(height: 10),
+              _Card(
+                children: [
+                  Consumer(builder: (context, ref, _) {
+                    final env = ref.watch(apiEnvironmentProvider);
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('API server', style: AppTypography.rowLabel14.copyWith(color: AppColors.onDark)),
+                          VelarSegmentedControl<ApiEnvironment>(
+                            value: env,
+                            options: [for (final e in ApiEnvironment.values) (e, e.label)],
+                            onChanged: (next) => _switchApiEnvironment(context, ref, next),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ],
             const SizedBox(height: 22),
             const _SectionLabel('LEGAL'),
             const SizedBox(height: 10),
@@ -228,6 +256,34 @@ class ProfileScreen extends ConsumerWidget {
       if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
       messenger.showSnackBar(SnackBar(content: Text(e.message), backgroundColor: AppColors.rose));
     }
+  }
+
+  /// Debug-only (see the DEVELOPER section's kDebugMode guard above).
+  /// Sessions are per-backend - a token from one environment won't
+  /// authenticate against the other's JWT_SECRET_KEY - so this signs the
+  /// user out rather than leaving them on a confusing 401 loop.
+  Future<void> _switchApiEnvironment(BuildContext context, WidgetRef ref, ApiEnvironment next) async {
+    final current = ref.read(apiEnvironmentProvider);
+    if (next == current) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.ink850,
+        title: Text('Switch to ${next.label}?', style: AppTypography.rowLabel14.copyWith(color: AppColors.onDark)),
+        content: Text(
+          "This points the app at a different backend and signs you out - sessions aren't valid across the two.",
+          style: AppTypography.footnote12.copyWith(color: AppColors.onDarkMuted),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text('Cancel', style: TextStyle(color: AppColors.onDarkMuted))),
+          TextButton(onPressed: () => Navigator.of(context).pop(true), child: Text('Switch', style: TextStyle(color: AppColors.accent))),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    ref.read(apiEnvironmentProvider.notifier).set(next);
+    await ref.read(authControllerProvider.notifier).logout();
+    if (context.mounted) context.go('/login');
   }
 
   Future<void> _confirmDeleteAccount(BuildContext context, WidgetRef ref) async {

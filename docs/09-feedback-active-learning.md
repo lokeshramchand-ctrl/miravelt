@@ -1,6 +1,6 @@
 # 09 · Feedback & Active Learning (Phase 10)
 
-> ✅ **FIXED — this subsystem is now mounted and reachable over HTTP.** `app.py` imports `feedback.router` and calls `app.include_router(feedback_router, dependencies=[Depends(validate_api_key)])`. Additionally, `process_feedback` now resolves and stores a real `merchant_name` field (by looking up the transaction via `transaction_id`), fixing the `feedback.prediction`-holds-a-category bug described in [18 · Database Analysis §2.2](./18-database-analysis.md#22-the-feedbackprediction-field-mismatch--a-real-previously-undocumented-bug) — `rag/retriever.py` and `graphs/graph_builder.py` now both query/match on `merchant_name`. See [Known Issues §16.2–16.3](./16-known-issues-tech-debt.md).
+> ✅ **FIXED — this subsystem is now mounted and reachable over HTTP.** `app.py` imports `feedback.router` and calls `app.include_router(feedback_router, dependencies=[Depends(validate_api_key)])`. Additionally, `process_feedback` now resolves and stores a real `merchant_name` field (by looking up the transaction via `transaction_id`), fixing the `feedback.prediction`-holds-a-category bug — `rag/retriever.py` and `graphs/graph_builder.py` now both query/match on `merchant_name`. See [Known Issues §16.2–16.3](./16-known-issues-tech-debt.md).
 
 ## 9.1 Intended request flow
 
