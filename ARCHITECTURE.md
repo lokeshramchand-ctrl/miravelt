@@ -1,6 +1,6 @@
 # Architecture
 
-This is the one-level-up map. For line-level detail, see `docs/` (`01-architecture.md` for full request-flow diagrams, `17-senior-architect-review.md` for the honest cross-cutting critique, `16-known-issues-tech-debt.md` for what's fixed vs. still open, `22-authentication.md` for the auth model). This file exists so an agent doesn't have to re-derive intent from scratch or "fix" a decision that was made on purpose.
+This is the one-level-up map. For line-level detail, see `docs/` (`01-architecture.md` for full request-flow diagrams, `16-known-issues-tech-debt.md` for what's fixed vs. still open, `22-authentication.md` for the auth model). This file exists so an agent doesn't have to re-derive intent from scratch or "fix" a decision that was made on purpose.
 
 ## 1. What's in the system
 
@@ -45,7 +45,7 @@ Each of these has exactly one home. If you find yourself duplicating merchant re
 - **Liveness vs. readiness are split** so a hung Mongo/Milvus/Ollama dependency never fails liveness and triggers a restart-loop that won't fix anything. Only MongoDB gates `/ready`; Milvus/Ollama don't, because those features are designed to degrade, not crash the app.
 - **`/v1/explain` refuses to call Ollama with no retrieved context** (`rag/retriever.py` → `"NO_CONTEXT_AVAILABLE"` short-circuit). This is the system's core hallucination-prevention guarantee — never route around it by letting the generator run on empty context "just to return something."
 - **Batch pipelines (`behaviour`, `clustering`, `memory/decay_engine`, `graphs`) are manually triggered via `/v1/pipelines/*`, not scheduled.** There is no Celery/cron in this repo. That's a deliberate gap, not an oversight — see `docs/16-known-issues-tech-debt.md` §16.5. Don't silently add a scheduler as a side effect of an unrelated task.
-- **Only one real repository exists** (`repositories/profile_repository.py`); everything else talks to `database.mongo.db.<collection>` directly. This is documented tech debt (`docs/17-senior-architect-review.md` §12), not the intended end state — new persistent-state work should follow the repository pattern, not the direct-access one, even though it's currently the minority pattern.
+- **Only one real repository exists** (`repositories/profile_repository.py`); everything else talks to `database.mongo.db.<collection>` directly. This is documented tech debt, not the intended end state — new persistent-state work should follow the repository pattern, not the direct-access one, even though it's currently the minority pattern.
 - **The admin dashboard never holds `VELAR_API_KEY`, `VELAR_ADMIN_KEY`, or a raw access token in the browser.** Every credential lives server-side in `admin-dashboard/src/lib/backend.ts`/`session.ts` (`"server-only"` guard at the top of both). This is the entire reason the BFF exists instead of the dashboard calling the backend straight from client components.
 
 ## 4. What's allowed to touch what
@@ -92,7 +92,7 @@ Full sequence diagrams for these and every other endpoint: `docs/01-architecture
 - **The API-key layer runs before any handler, unconditionally.** Every router except `/health`, `/live`, `/ready`, `/metrics` requires `X-Velar-API-Key` at the router level, regardless of what a specific handler additionally requires.
 - **`/v1/explain` never hallucinates on empty context.** See §3.
 - **Every domain responsibility has one home** (§2). Don't create a second merchant-resolution path, a second state-machine, or a second error-response shape.
-- **Error responses go through `core/error_handlers.py`'s registered handlers**, not ad-hoc `JSONResponse`/raw dict shapes in a new handler — the codebase already has real inconsistency here (`docs/17-senior-architect-review.md` §14, §17); don't add a fourth shape.
+- **Error responses go through `core/error_handlers.py`'s registered handlers**, not ad-hoc `JSONResponse`/raw dict shapes in a new handler — the codebase already has real inconsistency here; don't add a fourth shape.
 - **No credential or connection string gets committed to a compose file or source** — use `${VAR:?required}` substitution (`docker-compose_production.yaml` is the reference pattern).
 - **Boundaries in §4 don't get quietly crossed** to save a round trip. If a task seems to require crossing one, that's a signal to stop (§8), not a green light.
 
@@ -120,8 +120,7 @@ Stop and name the conflict, show what it affects, and propose the smallest fix t
 ## Related documents
 
 - `docs/01-architecture.md` — full request/sequence diagrams per endpoint
-- `docs/17-senior-architect-review.md` — honest cross-cutting critique (DI, error handling, caching, indexes)
 - `docs/16-known-issues-tech-debt.md` — what's fixed vs. intentionally still open
 - `docs/22-authentication.md` — full auth/token lifecycle
 - `docs/23-statements-pipeline.md` — statement ingestion pipeline detail
-- `admin-dashboard/README.md`, `admin-dashboard/AGENTS.md` — dashboard-specific conventions
+- `admin-dashboard/README.md` — dashboard-specific conventions
