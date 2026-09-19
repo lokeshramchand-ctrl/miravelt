@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -46,6 +47,26 @@ logger = logging.getLogger(__name__)
 # latency and read timeouts during a 50-concurrent stress test.
 _ollama_health_client: httpx.AsyncClient | None = None
 
+# Background task that keeps retrying the Milvus connection after startup.
+# vector_db.connect() only gets a handful of retries (~15s total) so a
+# slow-starting Milvus container - its Docker healthcheck has a 90s
+# start_period - doesn't block app startup. Without this, a backend that
+# wins that race permanently reports "milvus": "disconnected" until someone
+# manually restarts it, even once Milvus itself becomes healthy.
+_milvus_reconnect_task: asyncio.Task | None = None
+
+
+async def _milvus_reconnect_loop(uri: str, interval: int = 15):
+    while vector_db.client is None:
+        await asyncio.sleep(interval)
+        logger.info("Retrying Milvus connection in background...")
+        # connect() blocks on network I/O + time.sleep - run it off the event
+        # loop so it can't stall request handling while it retries.
+        await asyncio.to_thread(vector_db.connect, uri, 1, 0)
+        if vector_db.client is not None:
+            vector_store.ensure_collections()
+            logger.info("Milvus reconnected successfully in background.")
+
 
 # Lifespan
 @asynccontextmanager
@@ -60,12 +81,19 @@ async def lifespan(app: FastAPI):
     vector_db.connect(uri=settings.MILVUS_URI)
     vector_store.ensure_collections()
 
+    global _milvus_reconnect_task
+    if vector_db.client is None:
+        logger.warning("Milvus unreachable at startup; will keep retrying in the background.")
+        _milvus_reconnect_task = asyncio.create_task(_milvus_reconnect_loop(settings.MILVUS_URI))
+
     global _ollama_health_client
     _ollama_health_client = httpx.AsyncClient(timeout=2.0)
 
     yield
 
     logger.info("Tearing down application lifespan...")
+    if _milvus_reconnect_task is not None:
+        _milvus_reconnect_task.cancel()
     await db.disconnect()
     vector_db.disconnect()
     await _ollama_health_client.aclose()
