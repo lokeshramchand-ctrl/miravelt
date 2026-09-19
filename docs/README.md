@@ -30,21 +30,9 @@ The codebase is organized as a series of **numbered "Phases"** — this isn't a 
 | [14 · Deployment & Operations](./14-deployment-operations.md) | Build, configure, and run Velar locally or in production |
 | [15 · Testing](./15-testing.md) | Understand the automated test suite and manual E2E script |
 | [16 · Known Issues & Tech Debt](./16-known-issues-tech-debt.md) | Understand which parts of the system are broken, disconnected, or mocked |
-| [17 · Senior Architect Review](./17-senior-architect-review.md) | Get a cross-cutting analysis of startup, DI, auth/authz, error handling, caching, bottlenecks, security, and scalability |
-| [18 · Database Analysis](./18-database-analysis.md) | Understand schema, ER diagrams, relationships, indexes, constraints, normalization, transactions, and scalability across MongoDB and Milvus |
-| [19 · System Design Interview Walkthrough](./19-system-design-walkthrough.md) | Walk the full request lifecycle end-to-end (auth → API → controller → service → database → response) with sequence diagrams, as you would in a system design interview |
-| [Interview Question Bank (204 questions)](./interview/README.md) | Practice or run a senior-engineer interview using 204 codebase-specific questions across 13 categories, each with difficulty, expected/excellent/poor answers, follow-ups, and red flags |
-| [20 · Design Decisions Deep Dive](./20-design-decisions-deep-dive.md) | For each of the 13 major architectural decisions: why it was chosen, alternatives, pros/cons, tradeoffs, why it fits this project, failure modes, FAANG-style improvements, and how to scale it to 1M users |
-| [21 · Production Hardening & Security Audit](./21-production-hardening-audit.md) | The full pre-production security/reliability/operability audit: every finding, every fix, exact CVEs patched, Docker/CI/CD work, and what's verified vs. still open |
 | [22 · Authentication](./22-authentication.md) | Understand the two-layer API-key + JWT auth model: token lifecycle, password hashing, refresh rotation, per-endpoint protection, and configuration |
 | [23 · Statement Ingestion Pipeline](./23-statements-pipeline.md) | Understand the Google Pay PDF → Transactions → Analytics → AI Insights product surface: the real statement format, async job processing, and how it reuses the existing engines |
-| [Database Security](./DATABASE_SECURITY.md) | Configure MongoDB TLS/auth, encryption at rest, secret management, and backup/disaster recovery |
-| [CI/CD Security Scanning](./CI_SECURITY.md) | Understand what Gitleaks, CodeQL, Semgrep, Trivy, and pip-audit check in `.github/workflows/`, and how to read their output |
-| [Backup & Retention](./BACKUP_AND_RETENTION.md) | Run/restore encrypted MongoDB backups and configure the automated data-retention cleanup job |
-| [Mobile Security Requirements](./MOBILE_SECURITY_REQUIREMENTS.md) | What the Flutter client must implement (cert pinning, biometric lock, device attestation, request signing) to match this backend's security model |
-| [Folder-by-Folder Reference](./folders/README.md) | Get a deep dive on one specific folder — purpose, classes, dependency/call graphs, interview questions, common mistakes, and blast radius if it disappeared |
-| [File-by-File Reference](./files/README.md) | Get a deep dive on one specific file — every import, every function explained in plain English, side effects, performance notes, and interview questions |
-| [Complete API Reference (per-endpoint)](./api/README.md) | Get the full contract for one specific endpoint — headers, validation, exact DB queries, execution flow diagram, examples, and interview questions |
+| [Complete API Reference (per-endpoint)](./api/README.md) | Get the full contract for one specific endpoint — headers, validation, exact DB queries, execution flow diagram, and examples |
 
 ## System snapshot
 
