@@ -31,7 +31,11 @@ class Settings(BaseSettings):
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
     # Operational settings (all have safe production-appropriate defaults)
-    ENVIRONMENT: str = "production"  # "production" | "development"
+    # "production" | "staging" | "development" — staging is a real,
+    # internet-reachable deployment (see docs/24-team-workflow-and-environments.md)
+    # and must get the same HTTPS enforcement as production; only
+    # "development" is exempt. See app.py's HTTPSEnforcementMiddleware wiring.
+    ENVIRONMENT: str = "production"
     LOG_LEVEL: str = "INFO"  # DEBUG is opt-in, never the default - DEBUG logs full DB command payloads
     ENFORCE_HTTPS: bool = True  # Reject HTTP requests in production
     # Comma-separated list of allowed origins. Currently a config surface
