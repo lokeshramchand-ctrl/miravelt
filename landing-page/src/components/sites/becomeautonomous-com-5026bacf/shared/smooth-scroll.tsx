@@ -15,6 +15,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -29,6 +30,10 @@ export const ARROW_SCROLL_DELTA = 100;
 export const PAGE_SCROLL_FACTOR = 0.8;
 export const SUBPIXEL_PRECISION = 100;
 export const MOBILE_BREAKPOINT_PX = 768;
+// Also copied verbatim from the site's `139` chunk: the rate every
+// scroll-linked parallax layer (hero artwork, secondary image blocks)
+// moves relative to the raw scroll delta.
+export const PARALLAX_SPEED = 0.18;
 
 export interface ScrollState {
   current: number;
@@ -45,6 +50,20 @@ const SmoothScrollContext = createContext<SmoothScrollContextValue | null>(null)
 
 export function useScrollState() {
   return useContext(SmoothScrollContext);
+}
+
+/**
+ * Scroll position in the same coordinate space regardless of whether the
+ * virtual scroll is driving the page (desktop) or the browser is (touch /
+ * reduced motion) — matches the site's own `tu()` helper, which reads its
+ * lerped `current` while active and falls back to native `scrollY`.
+ */
+export function useScrollGetter() {
+  const ctx = useScrollState();
+  return useCallback(() => {
+    if (ctx?.isActive) return ctx.scrollState.current.current;
+    return window.scrollY || window.pageYOffset || 0;
+  }, [ctx]);
 }
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
