@@ -1,0 +1,40 @@
+# Auto-requests review on PRs touching these paths. Everything currently
+# routes to one owner - replace the handle per line as domain ownership
+# actually splits across a growing team, using CLAUDE.md's package table as
+# the map of what boundary each path represents. Order matters: later
+# patterns win, so keep the default catch-all first.
+
+*                                   @lokeshramchand-ctrl
+
+# --- Backend domain packages (see CLAUDE.md's package table) ---
+/routers/                          @lokeshramchand-ctrl
+/statements/                       @lokeshramchand-ctrl
+/engines/                          @lokeshramchand-ctrl
+/services/merchant_resolver.py     @lokeshramchand-ctrl
+/memory/                           @lokeshramchand-ctrl
+/behaviour/                        @lokeshramchand-ctrl
+/features/                         @lokeshramchand-ctrl
+/clustering/                       @lokeshramchand-ctrl
+/analytics/                        @lokeshramchand-ctrl
+/rag/                              @lokeshramchand-ctrl
+/feedback/                         @lokeshramchand-ctrl
+/database/                         @lokeshramchand-ctrl
+/repositories/                     @lokeshramchand-ctrl
+/milvus/                           @lokeshramchand-ctrl
+/embeddings/                       @lokeshramchand-ctrl
+/core/                             @lokeshramchand-ctrl
+
+# --- Auth (both layers - see CLAUDE.md's auth section) ---
+/core/security.py                  @lokeshramchand-ctrl
+/core/jwt_auth.py                  @lokeshramchand-ctrl
+/routers/auth.py                   @lokeshramchand-ctrl
+
+# --- Infra / environments / CI ---
+/.github/                          @lokeshramchand-ctrl
+/docker-compose*.yaml              @lokeshramchand-ctrl
+/Dockerfile                        @lokeshramchand-ctrl
+/tasks/                            @lokeshramchand-ctrl
+
+# --- Other deployables ---
+/admin-dashboard/                  @lokeshramchand-ctrl
+/frontend/                         @lokeshramchand-ctrl

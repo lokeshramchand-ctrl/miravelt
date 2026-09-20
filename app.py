@@ -126,7 +126,7 @@ setup_rate_limiting(app)
 # Defensive middleware. Added in this order so that, relative to the ASGI
 # stack (last-added = outermost), RequestIDMiddleware wraps everything else -
 # even a request rejected by the body-size limiter gets a correlation id back.
-if settings.ENFORCE_HTTPS and settings.ENVIRONMENT == "production":
+if settings.ENFORCE_HTTPS and settings.ENVIRONMENT != "development":
     app.add_middleware(HTTPSEnforcementMiddleware, enabled_for_environment=settings.ENVIRONMENT)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.MAX_REQUEST_BODY_BYTES)
