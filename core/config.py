@@ -79,6 +79,31 @@ class Settings(BaseSettings):
     REQUEST_SIGNING_REQUIRED: bool = False  # Require HMAC signatures on sensitive endpoints
     REQUEST_SIGNATURE_MAX_AGE_SECONDS: int = 60  # Maximum age of request timestamp
 
+    # Task queue / scheduler / cache (Redis + Celery - core/cache.py,
+    # tasks/celery_app.py). Optional: the FastAPI process never hard-depends
+    # on Redis for anything - an unset REDIS_URI just means response caching
+    # and distributed rate-limit storage silently no-op (core/cache.py,
+    # core/rate_limiter.py) and the batch pipelines in routers/pipelines.py
+    # stay manual-trigger-only, same as before this existed. Run
+    # `celery -A tasks.celery_app worker` / `... beat` as separate processes
+    # against this same URI to actually get scheduling + the retraining
+    # queue executor - see docs/16-known-issues-tech-debt.md §16.5.
+    REDIS_URI: str | None = None
+    CACHE_ENABLED: bool = True
+    CACHE_DEFAULT_TTL_SECONDS: int = 300
+
+    # Beat schedule intervals for routers/pipelines.py's batch jobs, applied
+    # once a `celery beat` process is actually running against REDIS_URI
+    # (tasks/celery_app.py). Deliberately conservative: these are full-
+    # collection-scan/O(all merchants) jobs, not per-request work, so they're
+    # scheduled in hours, not minutes.
+    PIPELINE_BEHAVIOR_INTERVAL_MINUTES: int = 360  # 6h
+    PIPELINE_EMBEDDINGS_INTERVAL_MINUTES: int = 360  # 6h
+    PIPELINE_DECAY_INTERVAL_MINUTES: int = 1440  # 24h
+    PIPELINE_GRAPH_INTERVAL_MINUTES: int = 720  # 12h
+    PIPELINE_CLUSTERING_INTERVAL_MINUTES: int = 1440  # 24h
+    RETRAINING_CHECK_INTERVAL_MINUTES: int = 30
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     @field_validator("JWT_SECRET_KEY")

@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 
 # Settings
+from core.cache import cache
 from core.config import settings
 from core.error_handlers import register_exception_handlers
 from core.middleware import BodySizeLimitMiddleware, HTTPSEnforcementMiddleware, RequestIDMiddleware, SecurityHeadersMiddleware
@@ -89,6 +90,12 @@ async def lifespan(app: FastAPI):
     global _ollama_health_client
     _ollama_health_client = httpx.AsyncClient(timeout=2.0)
 
+    # Redis (core/cache.py) - response caching for routers/analytics.py and
+    # shared rate-limit storage (core/rate_limiter.py). Optional: an unset
+    # REDIS_URI leaves cache.connect() a no-op, same degrade-not-crash
+    # posture as Milvus/Ollama above.
+    cache.connect()
+
     yield
 
     logger.info("Tearing down application lifespan...")
@@ -97,6 +104,7 @@ async def lifespan(app: FastAPI):
     await db.disconnect()
     vector_db.disconnect()
     await _ollama_health_client.aclose()
+    await cache.disconnect()
 
 
 # FastAPI App
@@ -239,7 +247,20 @@ async def _check_dependencies() -> tuple[str, dict, dict]:
         services["ollama"] = "error"
         details["ollama"] = "Ollama health check failed - see server logs."
 
-    overall_status = "healthy" if all(v == "connected" for v in services.values()) else "degraded"
+    # Informational only, like Milvus/Ollama above - caching and the
+    # scheduler/task queue (tasks/celery_app.py) both degrade to "disabled"
+    # rather than the app failing, so Redis never gates /ready either.
+    if not settings.REDIS_URI:
+        services["redis"] = "not_configured"
+        details["redis"] = "REDIS_URI unset - caching, distributed rate limiting, and the Celery task queue/scheduler are disabled."
+    elif cache.is_connected:
+        services["redis"] = "connected"
+        details["redis"] = "Cache client configured."
+    else:
+        services["redis"] = "error"
+        details["redis"] = "REDIS_URI set but client failed to initialize - see server logs."
+
+    overall_status = "healthy" if all(v in ("connected", "not_configured") for v in services.values()) else "degraded"
     return overall_status, services, details
 
 

@@ -38,8 +38,10 @@ def verify_password(password: str, hashed_password: str) -> bool:
 
 async def validate_api_key(api_key_header: str = Security(api_key_header)) -> str:
     """
-    Validates the incoming API key.
-    In production, this routes through Redis for sub-millisecond validation.
+    Validates the incoming API key via a constant-time comparison against
+    the single configured VELAR_API_KEY. This is already O(1) with no
+    lookup - there's exactly one valid value, not a set of per-client keys -
+    so it has no need of Redis or any other cache in front of it.
     """
     if not api_key_header:
         raise HTTPException(

@@ -24,6 +24,14 @@ services:
       - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
       - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-15}
       - JWT_REFRESH_TOKEN_EXPIRE_DAYS=${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-30}
+      # Optional, same as every other dependency in this file - an empty
+      # value just leaves caching/distributed rate limiting disabled (see
+      # core/config.py). Required for the velar-celery-worker/-beat services
+      # below to do anything; point it at a managed/self-hosted Redis, same
+      # pattern as MONGODB_URI/MILVUS_URI above (no Redis container is
+      # started by this file - production points at externally managed
+      # infrastructure, not a compose-local one, same as Mongo/Milvus/Ollama).
+      - REDIS_URI=${REDIS_URI:-}
     ports:
       - "9850:8000"
     restart: always
@@ -62,6 +70,88 @@ services:
         reservations:
           cpus: "0.5"
           memory: 512m
+
+  # ---- Celery worker + beat (tasks/celery_app.py) ----
+  # Same image as velar-backend, different command - these run the
+  # scheduled batch pipelines (routers/pipelines.py) and the retraining
+  # executor (feedback/retraining_queue.py) instead of serving HTTP. Both
+  # are no-ops if REDIS_URI is left unset: `celery beat` will idle with an
+  # unreachable broker and `celery worker` will just never receive a task,
+  # neither crash-loops the deployment, but nothing runs either - this is
+  # meaningful infrastructure to actually get automatic scheduling, not a
+  # decoration. Omit these two services entirely if you don't want a
+  # scheduler running yet.
+  velar-celery-worker:
+    build: .
+    container_name: velar-celery-worker
+    command: celery -A tasks.celery_app worker --loglevel=info --concurrency=2
+    environment:
+      - MONGODB_URI=${MONGODB_URI:?MONGODB_URI must be set}
+      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-velar}
+      - MILVUS_URI=${MILVUS_URI:?MILVUS_URI must be set}
+      - OLLAMA_URI=${OLLAMA_URI:-}
+      - OLLAMA_HOSTS=${OLLAMA_HOSTS:-}
+      - EMBED_MODEL=${EMBED_MODEL:?EMBED_MODEL must be set}
+      - LLM_MODEL=${LLM_MODEL:?LLM_MODEL must be set}
+      - VELAR_API_KEY=${VELAR_API_KEY:?VELAR_API_KEY must be set}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
+      - REDIS_URI=${REDIS_URI:?REDIS_URI must be set to run the Celery worker/beat services}
+    restart: always
+    networks:
+      - coolify
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
+      - /run
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
+        reservations:
+          cpus: "0.25"
+          memory: 256m
+
+  velar-celery-beat:
+    build: .
+    container_name: velar-celery-beat
+    command: celery -A tasks.celery_app beat --loglevel=info
+    environment:
+      - MONGODB_URI=${MONGODB_URI:?MONGODB_URI must be set}
+      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-velar}
+      - MILVUS_URI=${MILVUS_URI:?MILVUS_URI must be set}
+      - EMBED_MODEL=${EMBED_MODEL:?EMBED_MODEL must be set}
+      - LLM_MODEL=${LLM_MODEL:?LLM_MODEL must be set}
+      - VELAR_API_KEY=${VELAR_API_KEY:?VELAR_API_KEY must be set}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
+      - REDIS_URI=${REDIS_URI:?REDIS_URI must be set to run the Celery worker/beat services}
+    restart: always
+    networks:
+      - coolify
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
+      - /run
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # beat itself just schedules - it never touches Mongo/Milvus directly
+    # (the worker does), so it gets the smallest reservation of the three.
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256m
+        reservations:
+          cpus: "0.1"
+          memory: 128m
 
 networks:
   coolify:
