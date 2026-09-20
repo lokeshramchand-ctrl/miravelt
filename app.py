@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -10,6 +11,7 @@ from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 
 # Settings
+from core.cache import cache
 from core.config import settings
 from core.error_handlers import register_exception_handlers
 from core.middleware import BodySizeLimitMiddleware, HTTPSEnforcementMiddleware, RequestIDMiddleware, SecurityHeadersMiddleware
@@ -46,6 +48,26 @@ logger = logging.getLogger(__name__)
 # latency and read timeouts during a 50-concurrent stress test.
 _ollama_health_client: httpx.AsyncClient | None = None
 
+# Background task that keeps retrying the Milvus connection after startup.
+# vector_db.connect() only gets a handful of retries (~15s total) so a
+# slow-starting Milvus container - its Docker healthcheck has a 90s
+# start_period - doesn't block app startup. Without this, a backend that
+# wins that race permanently reports "milvus": "disconnected" until someone
+# manually restarts it, even once Milvus itself becomes healthy.
+_milvus_reconnect_task: asyncio.Task | None = None
+
+
+async def _milvus_reconnect_loop(uri: str, interval: int = 15):
+    while vector_db.client is None:
+        await asyncio.sleep(interval)
+        logger.info("Retrying Milvus connection in background...")
+        # connect() blocks on network I/O + time.sleep - run it off the event
+        # loop so it can't stall request handling while it retries.
+        await asyncio.to_thread(vector_db.connect, uri, 1, 0)
+        if vector_db.client is not None:
+            vector_store.ensure_collections()
+            logger.info("Milvus reconnected successfully in background.")
+
 
 # Lifespan
 @asynccontextmanager
@@ -60,15 +82,29 @@ async def lifespan(app: FastAPI):
     vector_db.connect(uri=settings.MILVUS_URI)
     vector_store.ensure_collections()
 
+    global _milvus_reconnect_task
+    if vector_db.client is None:
+        logger.warning("Milvus unreachable at startup; will keep retrying in the background.")
+        _milvus_reconnect_task = asyncio.create_task(_milvus_reconnect_loop(settings.MILVUS_URI))
+
     global _ollama_health_client
     _ollama_health_client = httpx.AsyncClient(timeout=2.0)
+
+    # Redis (core/cache.py) - response caching for routers/analytics.py and
+    # shared rate-limit storage (core/rate_limiter.py). Optional: an unset
+    # REDIS_URI leaves cache.connect() a no-op, same degrade-not-crash
+    # posture as Milvus/Ollama above.
+    cache.connect()
 
     yield
 
     logger.info("Tearing down application lifespan...")
+    if _milvus_reconnect_task is not None:
+        _milvus_reconnect_task.cancel()
     await db.disconnect()
     vector_db.disconnect()
     await _ollama_health_client.aclose()
+    await cache.disconnect()
 
 
 # FastAPI App
@@ -90,7 +126,7 @@ setup_rate_limiting(app)
 # Defensive middleware. Added in this order so that, relative to the ASGI
 # stack (last-added = outermost), RequestIDMiddleware wraps everything else -
 # even a request rejected by the body-size limiter gets a correlation id back.
-if settings.ENFORCE_HTTPS and settings.ENVIRONMENT == "production":
+if settings.ENFORCE_HTTPS and settings.ENVIRONMENT != "development":
     app.add_middleware(HTTPSEnforcementMiddleware, enabled_for_environment=settings.ENVIRONMENT)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.MAX_REQUEST_BODY_BYTES)
@@ -211,7 +247,20 @@ async def _check_dependencies() -> tuple[str, dict, dict]:
         services["ollama"] = "error"
         details["ollama"] = "Ollama health check failed - see server logs."
 
-    overall_status = "healthy" if all(v == "connected" for v in services.values()) else "degraded"
+    # Informational only, like Milvus/Ollama above - caching and the
+    # scheduler/task queue (tasks/celery_app.py) both degrade to "disabled"
+    # rather than the app failing, so Redis never gates /ready either.
+    if not settings.REDIS_URI:
+        services["redis"] = "not_configured"
+        details["redis"] = "REDIS_URI unset - caching, distributed rate limiting, and the Celery task queue/scheduler are disabled."
+    elif cache.is_connected:
+        services["redis"] = "connected"
+        details["redis"] = "Cache client configured."
+    else:
+        services["redis"] = "error"
+        details["redis"] = "REDIS_URI set but client failed to initialize - see server logs."
+
+    overall_status = "healthy" if all(v in ("connected", "not_configured") for v in services.values()) else "degraded"
     return overall_status, services, details
 
 
