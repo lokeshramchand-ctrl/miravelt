@@ -32,6 +32,7 @@ The codebase is organized as a series of **numbered "Phases"** — this isn't a 
 | [16 · Known Issues & Tech Debt](./16-known-issues-tech-debt.md) | Understand which parts of the system are broken, disconnected, or mocked |
 | [22 · Authentication](./22-authentication.md) | Understand the two-layer API-key + JWT auth model: token lifecycle, password hashing, refresh rotation, per-endpoint protection, and configuration |
 | [23 · Statement Ingestion Pipeline](./23-statements-pipeline.md) | Understand the Google Pay PDF → Transactions → Analytics → AI Insights product surface: the real statement format, async job processing, and how it reuses the existing engines |
+| [Legal & Compliance Readiness Checklist](./legal-review-checklist.md) | Understand what's implemented vs. what's still a business/legal decision (contact info, jurisdiction, entity, lawyer review) before public launch |
 | [Complete API Reference (per-endpoint)](./api/README.md) | Get the full contract for one specific endpoint — headers, validation, exact DB queries, execution flow diagram, and examples |
 
 ## System snapshot

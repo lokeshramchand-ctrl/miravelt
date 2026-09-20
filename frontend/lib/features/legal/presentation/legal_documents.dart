@@ -20,7 +20,7 @@ class LegalDocument {
 
 const privacyPolicyDocument = LegalDocument(
   title: 'Privacy Policy',
-  lastUpdated: '2026-08-14',
+  lastUpdated: '2026-09-20',
   intro:
       'Status: draft, not yet reviewed by a lawyer. Velar is not currently '
       'published on any app store. This describes what the app and its '
@@ -94,6 +94,14 @@ const privacyPolicyDocument = LegalDocument(
           'individual developer doesn\'t carry the guarantees of a large '
           'regulated institution - use your judgment about what you '
           'upload.',
+    ),
+    LegalSection(
+      'Data breach notification',
+      'If we discover a security incident that compromises your account '
+          'or statement data, we will investigate promptly, take '
+          'reasonable steps to contain and remediate it, and notify '
+          'affected users without undue delay once the scope of impact '
+          'is understood, consistent with applicable law.',
     ),
     LegalSection(
       'Your rights',
