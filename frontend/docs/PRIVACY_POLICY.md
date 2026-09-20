@@ -7,7 +7,7 @@ factual, not aspirational - but it has not received formal legal review
 and should get one before Velar is submitted to the Play Store, the App
 Store, or otherwise made available to the public.
 
-**Last updated:** 2026-08-14
+**Last updated:** 2026-09-20
 
 ## Who this is
 
@@ -123,6 +123,13 @@ No system is perfectly secure, and self-hosted infrastructure run by an
 individual developer does not carry the same operational guarantees as a
 large regulated financial institution. Use your judgment about what
 statements you upload.
+
+## Data breach notification
+
+If we discover a security incident that compromises your account or
+statement data, we will investigate promptly, take reasonable steps to
+contain and remediate it, and notify affected users without undue delay
+once the scope of impact is understood, consistent with applicable law.
 
 ## Your rights
 

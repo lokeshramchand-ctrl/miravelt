@@ -88,6 +88,19 @@ scikit-learn==1.5.2
 umap-learn==0.5.7
 networkx==3.4.2
 
+# Task queue / scheduler / cache (tasks/celery_app.py, core/cache.py).
+# Powers automatic execution of routers/pipelines.py's batch jobs and the
+# feedback/retraining_queue.py executor (previously manual-trigger-only /
+# a TODO - see docs/16-known-issues-tech-debt.md §16.5), plus response
+# caching and distributed rate-limit storage (core/rate_limiter.py). The
+# live FastAPI process only needs the `redis` client (for caching/rate
+# limiting); `celery` itself is only actually exercised by the separate
+# `celery worker`/`celery beat` processes, but it's kept in this file
+# rather than split out since tasks/celery_app.py is imported by
+# feedback/retraining_queue.py's lazy dispatch path too.
+celery==5.4.0
+redis==5.2.1
+
 # Testing
 # 8.3.4 has a known advisory (PYSEC-2026-1845) fixed starting in 9.0.3.
 pytest==9.1.1

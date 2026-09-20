@@ -112,6 +112,26 @@ services:
     #           count: all
     #           capabilities: [gpu]
 
+  # ---- Redis (cache + Celery broker/backend) ----
+  # Backs core/cache.py's response caching, core/rate_limiter.py's
+  # distributed rate-limit storage, and tasks/celery_app.py's broker.
+  # Optional at the app level (REDIS_URI unset just disables those - see
+  # core/config.py), but required for celery-worker/celery-beat below to do
+  # anything.
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   velar-backend:
     build:
       context: .
@@ -135,9 +155,69 @@ services:
         condition: service_healthy
       ollama:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: always
     # Temporary filesystem for logs, cache, and temp files (local dev only;
     # production uses read-only fs with tmpfs in docker-compose_production.yaml)
+    tmpfs:
+      - /tmp
+      - /var/tmp
+      - /run
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # ---- Celery worker + beat (tasks/celery_app.py) ----
+  # Same image as velar-backend, different entrypoint - these run the
+  # scheduled batch pipelines (routers/pipelines.py) and the retraining
+  # executor (feedback/retraining_queue.py) instead of serving HTTP.
+  # Requires REDIS_URI (set in .env, pointing at redis:6379 on this network)
+  # - see .env.example.
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: velar-celery-worker
+    working_dir: /app
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    command: celery -A tasks.celery_app worker --loglevel=info --concurrency=2
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      milvus:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+    tmpfs:
+      - /tmp
+      - /var/tmp
+      - /run
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: velar-celery-beat
+    working_dir: /app
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    command: celery -A tasks.celery_app beat --loglevel=info
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
     tmpfs:
       - /tmp
       - /var/tmp
@@ -153,3 +233,4 @@ volumes:
   minio_data:
   milvus_data:
   ollama_data:
+  redis_data:

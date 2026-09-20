@@ -4,6 +4,12 @@ package-lock.json
 # its lockfile is committed on purpose for reproducible installs.
 !admin-dashboard/package-lock.json
 .env
+# Any per-environment env file (.env.staging, .env.production, etc.) with
+# real secrets filled in - but keep the checked-in *.example templates.
+.env.*
+!.env.example
+!.env.staging.example
+!.env.production.example
 # Ignore version control
 .git
 

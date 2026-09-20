@@ -43,8 +43,25 @@ class RetrainingQueueManager:
             {"$set": {"status": "processing", "processing_started_at": datetime.now(UTC)}}
         )
 
-        # 2. Trigger your training pipeline (from Phase 9)
-        # TODO: Launch `BaselineTrainer().run_benchmarks()` via Celery asynchronously here.
+        # 2. Launch the training pipeline (Phase 9) on a Celery worker -
+        # never in-process here, which would block the event loop for every
+        # other concurrent request for the duration of a full model-training
+        # run. Imported lazily so this module (and every caller of
+        # trigger_retraining_if_needed - notably feedback/api_router.py on
+        # every single correction) doesn't hard-depend on Celery/Redis being
+        # configured; if REDIS_URI is unset, .delay() raises a connection
+        # error, which is logged and swallowed rather than surfaced to the
+        # user who happened to submit the correction that crossed the
+        # threshold.
+        try:
+            from tasks.retraining_tasks import run_baseline_training
+            run_baseline_training.delay()
+        except Exception:
+            logger.exception(
+                "Failed to dispatch retraining task to Celery - is REDIS_URI "
+                "configured and a worker running? Records stay 'processing' "
+                "until manually requeued."
+            )
 
         return True
 
