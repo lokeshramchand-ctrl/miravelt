@@ -1,6 +1,96 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { ArrowRightIcon } from "@/components/sites/becomeautonomous-com-5026bacf/shared/icons";
+
+/**
+ * Reverse-engineered from becomeautonomous.com's production bundle
+ * (chunk app/page-a88d8cd2371bed13.js, function `k`): the card track isn't
+ * a plain horizontally-scrollable row. On non-touch devices the wrapper
+ * stays scroll-hidden and a rAF loop translates the track horizontally as
+ * a function of the *vertical* scroll position — the wrapper's
+ * bounding-rect top drives how far the track has drifted left, at a fixed
+ * 0.55px of drift per px of vertical scroll, with a small head start so
+ * the drift begins slightly before the section is fully in view. Touch
+ * devices get real native horizontal scrolling instead (the site falls
+ * back to a CSS `animation-timeline: view()` track there; native swipe is
+ * the equivalent user experience without reimplementing that CSS path).
+ */
+const DRIFT_SPEED = 0.55;
+const DRIFT_LOOKAHEAD = 0.1;
+const IO_ROOT_MARGIN = "100% 0px";
+
+function useGalleryDrift(
+  wrapperRef: React.RefObject<HTMLDivElement | null>,
+  trackRef: React.RefObject<HTMLDivElement | null>
+) {
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    const track = trackRef.current;
+    if (!wrapper || !track) return;
+
+    const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (isTouch || prefersReducedMotion) return;
+
+    let maxDrift = 0;
+    let current = -1;
+    let rafId = 0;
+    let running = false;
+
+    const measure = () => {
+      maxDrift = Math.max(0, track.scrollWidth - wrapper.clientWidth);
+    };
+    measure();
+    const resizeObserver = new ResizeObserver(measure);
+    resizeObserver.observe(track);
+    resizeObserver.observe(wrapper);
+    window.addEventListener("resize", measure);
+
+    const tick = () => {
+      if (!running) return;
+      const rect = wrapper.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const drift = Math.min(
+        Math.max((viewportHeight - rect.top + DRIFT_LOOKAHEAD * viewportHeight) * DRIFT_SPEED, 0),
+        maxDrift
+      );
+      if (drift !== current) {
+        current = drift;
+        track.style.transform = `translate3d(${-drift}px, 0, 0)`;
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !running) {
+          running = true;
+          rafId = requestAnimationFrame(tick);
+        } else if (!entry.isIntersecting && running) {
+          running = false;
+          cancelAnimationFrame(rafId);
+        }
+      },
+      { rootMargin: IO_ROOT_MARGIN }
+    );
+    observer.observe(wrapper);
+
+    wrapper.style.overflow = "hidden";
+    track.style.willChange = "transform";
+
+    return () => {
+      running = false;
+      cancelAnimationFrame(rafId);
+      observer.disconnect();
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", measure);
+      wrapper.style.overflow = "";
+      track.style.willChange = "";
+      track.style.transform = "";
+    };
+  }, [wrapperRef, trackRef]);
+}
 
 type GalleryCard = {
   label: string;
@@ -125,62 +215,71 @@ function DonutChart() {
 }
 
 export function CardGallery() {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  useGalleryDrift(wrapperRef, trackRef);
+
   return (
     <div className="py-6 md:py-10">
-      <div className="flex gap-4 overflow-x-auto px-4 pb-4 [scrollbar-width:none] md:gap-6 md:px-8 [&::-webkit-scrollbar]:hidden">
-        {CARDS.map((card) => (
-          <div
-            key={card.label + card.time}
-            className="flex h-[420px] w-[320px] shrink-0 flex-col justify-between rounded-[28px] bg-[#020203] p-7 md:h-[400px] md:w-[360px] md:rounded-[32px] md:p-8"
-          >
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-wide text-[#707785]">
-                {card.label} · {card.time}
-              </p>
-              <p className="mt-4 text-[17px] leading-snug text-[#e8e9eb] md:text-[18px]">
-                {card.body}
-              </p>
-            </div>
-
-            {card.kind === "chart" && <DonutChart />}
-
-            {card.kind === "stat" && (
+      <div
+        ref={wrapperRef}
+        className="overflow-x-auto px-4 pb-4 [scrollbar-width:none] md:px-8 [&::-webkit-scrollbar]:hidden"
+      >
+        <div ref={trackRef} className="flex gap-4 md:gap-6">
+          {CARDS.map((card) => (
+            <div
+              key={card.label + card.time}
+              className="flex h-[420px] w-[320px] shrink-0 flex-col justify-between rounded-[28px] bg-[#020203] p-7 md:h-[400px] md:w-[360px] md:rounded-[32px] md:p-8"
+            >
               <div>
                 <p className="font-mono text-[11px] uppercase tracking-wide text-[#707785]">
-                  {card.statLabel}
+                  {card.label} · {card.time}
                 </p>
-                <p className="mt-1 text-[30px] text-[#fcfcfd]">{card.statValue}</p>
-                <button className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#fcfcfd] py-3.5 text-[15px] font-medium text-[#020203] transition-transform hover:scale-[1.02]">
-                  {card.cta}
-                  <ArrowRightIcon className="h-4 w-4" />
-                </button>
+                <p className="mt-4 text-[17px] leading-snug text-[#e8e9eb] md:text-[18px]">
+                  {card.body}
+                </p>
               </div>
-            )}
 
-            {card.kind === "stat2" && (
-              <div>
-                <div className="flex gap-6">
-                  <div>
-                    <p className="font-mono text-[11px] uppercase tracking-wide text-[#707785]">
-                      {card.statLabel}
-                    </p>
-                    <p className="mt-1 text-[24px] text-[#fcfcfd]">{card.statValue}</p>
-                  </div>
-                  <div>
-                    <p className="font-mono text-[11px] uppercase tracking-wide text-[#707785]">
-                      {card.statLabel2}
-                    </p>
-                    <p className="mt-1 text-[24px] text-[#fcfcfd]">{card.statValue2}</p>
-                  </div>
+              {card.kind === "chart" && <DonutChart />}
+
+              {card.kind === "stat" && (
+                <div>
+                  <p className="font-mono text-[11px] uppercase tracking-wide text-[#707785]">
+                    {card.statLabel}
+                  </p>
+                  <p className="mt-1 text-[30px] text-[#fcfcfd]">{card.statValue}</p>
+                  <button className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#fcfcfd] py-3.5 text-[15px] font-medium text-[#020203] transition-transform hover:scale-[1.02]">
+                    {card.cta}
+                    <ArrowRightIcon className="h-4 w-4" />
+                  </button>
                 </div>
-                <button className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#fcfcfd] py-3.5 text-[15px] font-medium text-[#020203] transition-transform hover:scale-[1.02]">
-                  {card.cta}
-                  <ArrowRightIcon className="h-4 w-4" />
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+
+              {card.kind === "stat2" && (
+                <div>
+                  <div className="flex gap-6">
+                    <div>
+                      <p className="font-mono text-[11px] uppercase tracking-wide text-[#707785]">
+                        {card.statLabel}
+                      </p>
+                      <p className="mt-1 text-[24px] text-[#fcfcfd]">{card.statValue}</p>
+                    </div>
+                    <div>
+                      <p className="font-mono text-[11px] uppercase tracking-wide text-[#707785]">
+                        {card.statLabel2}
+                      </p>
+                      <p className="mt-1 text-[24px] text-[#fcfcfd]">{card.statValue2}</p>
+                    </div>
+                  </div>
+                  <button className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#fcfcfd] py-3.5 text-[15px] font-medium text-[#020203] transition-transform hover:scale-[1.02]">
+                    {card.cta}
+                    <ArrowRightIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
