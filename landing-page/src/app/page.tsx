@@ -25,8 +25,8 @@ export default function Home() {
       />
 
       <HeroImageBlock
-        src="/sites/becomeautonomous-com-5026bacf/root-8a5edab2/images/autonomous-ui-2.jpg"
-        alt="Autonomous App Portfolio View"
+        src="/images/app-mockups/onboarding_screen.png"
+        alt="Velar Onboarding Screen"
       />
 
       <HeadlineSection>
@@ -41,8 +41,8 @@ export default function Home() {
       />
 
       <HeroImageBlock
-        src="/sites/becomeautonomous-com-5026bacf/root-8a5edab2/images/autonomous-ui-3.jpg"
-        alt="Autonomous App Mockups"
+        src="/images/app-mockups/dashboard_screen.png"
+        alt="Velar Dashboard Screen"
       />
 
       <WhySection />

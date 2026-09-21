@@ -117,8 +117,8 @@ export function Hero() {
       >
         <div ref={artworkRef} className="h-full w-full" style={{ willChange: "transform" }}>
           <Image
-            src="/sites/becomeautonomous-com-5026bacf/root-8a5edab2/images/autonomous-ui-1.jpg"
-            alt="Autonomous App Interface"
+            src="/images/app-mockups/dashboard_screen.png"
+            alt="Velar Dashboard Screen"
             width={1920}
             height={1920}
             priority
