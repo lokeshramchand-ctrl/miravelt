@@ -8,17 +8,16 @@ export function WhySection() {
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-12">
             <p className="text-[21px] font-medium tracking-tight text-[#020203]">Why</p>
             <p className="text-[26px] font-normal leading-[1.2] text-[#020203] md:text-[36px]">
-              Autonomous is science-backed financial intelligence, built on three
-              commitments: to understand markets, to understand you, and to
-              communicate what it knows in the form each moment demands.
+              Built on three commitments: read every transaction correctly,
+              understand the person behind them, and only ever explain what the
+              data actually supports.
             </p>
             <p className="hidden md:block" />
             <p className="text-[26px] font-normal leading-[1.2] text-[#020203] md:text-[36px]">
-              It reads the forces moving markets, holds your complete picture
-              against your goals, and optimizes as your life changes. The aim is
-              autonomy: to handle the complexity so completely that engaging with
-              it becomes a choice, made in full confidence that Autonomous is
-              always at work on your behalf.
+              Merchant names get cleaned up, spending gets clustered into
+              patterns, and subscriptions and anomalies get caught as they
+              happen. Every correction you make teaches it directly, so what
+              you&rsquo;re using next month is sharper than what you started with.
             </p>
           </div>
         </div>
