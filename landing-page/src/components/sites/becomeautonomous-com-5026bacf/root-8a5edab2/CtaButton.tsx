@@ -28,7 +28,7 @@ export function CtaButton({ className, dark = false }: { className?: string; dar
       )}
     >
       {!expanded && (
-        <p className="text-[16px] font-medium whitespace-nowrap">Request an invitation</p>
+        <p className="text-[16px] font-medium whitespace-nowrap">Get early access</p>
       )}
       {expanded && (
         <div className="flex w-full items-center gap-2 pl-4">
