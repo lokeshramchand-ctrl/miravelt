@@ -15,19 +15,19 @@ function clampPin(scroll: number, pinStart: number, pinEnd: number) {
 
 const TABS = [
   {
-    label: "Real estate",
-    user: "I want to buy in SF. What can I actually afford before this liquidity event?",
-    ai: "Most of your wealth is still locked-up stock, so I sized the purchase against the cash you can reach today and the after-tax number coming later, cash versus a loan against your position.",
+    label: "Subscriptions",
+    user: "Wait, when did I start paying for this?",
+    ai: "This charge first appeared four months ago under a different merchant name. It's been billed monthly since — there was only just enough history to confirm it's recurring.",
   },
   {
-    label: "Tax",
-    user: "What will I actually owe when this vests, and is any of it tax-free?",
-    ai: "I checked each grant for QSBS. Part of your position qualifies, which could make that share federally tax-free. Here's your dated estimate and a draft for your accountant.",
+    label: "Spending",
+    user: "Why does it feel like I'm spending more this month?",
+    ai: "You are. Dining is up 40% over your three-month average, concentrated in the last two weeks. Everything else is roughly flat.",
   },
   {
-    label: "Concentration",
-    user: "My whole net worth is one stock that's about to go public. What now?",
-    ai: "Let's plan your deconcentration strategy. I'd stage sales sized against your tax picture, and in the meantime we can layer in downside protection. If you need liquidity now, a portfolio line of credit gets you there without selling.",
+    label: "Categorization",
+    user: "Why is this filed under bills instead of shopping?",
+    ai: "It's billed the same amount on the same day for five straight months, which is what a bill looks like. Happy to move it if that's wrong.",
   },
 ];
 
@@ -111,7 +111,7 @@ export function ThinkingSection() {
 
           <div className="relative mt-14 md:mt-20">
             <p className="text-center text-[15px] text-white/50 md:text-[16px]">
-              Get immediate answers and explore trade-offs
+              Ask about any transaction and get an answer grounded in your own data
             </p>
 
             <div key={active} className="mx-auto mt-10 max-w-[720px] animate-[fade-in_0.5s_ease] space-y-6">

@@ -7,24 +7,24 @@ import { Reveal } from "@/components/sites/becomeautonomous-com-5026bacf/shared/
 
 const FAQS = [
   {
-    q: "How do I get access?",
-    a: "By invitation. You can request an invitation or be referred by an existing member. We open Autonomous to a small group at a time and review every request individually.",
+    q: "How do I get started?",
+    a: "Connect a statement or forward a PDF and categorization starts within minutes. No chart of accounts to build first, no manual tagging to get through before it's useful.",
   },
   {
-    q: "Who is Autonomous for?",
-    a: "Autonomous is for people who want their entire financial life understood and managed in one place. Autonomous is built to handle complex situations with many moving parts: investments held across institutions, private assets, targeted exposure, equity compensation, real estate, taxes, and decisions which cut across all of it.",
+    q: "Who is this for?",
+    a: "Anyone who wants an accurate, honest picture of where their money actually goes — without spending an evening reconciling bank descriptions in a spreadsheet by hand.",
   },
   {
-    q: "What happens after I join?",
-    a: "We start by building a complete picture of your financial life: what you own, what you owe, what matters to you, and what's already underway. From there, Autonomous continuously tracks changes, identifies what needs attention, and coordinates action across investments, taxes, planning, and execution. Autonomous meets you where you are. Whether you want every decision explained in plain language or you'd rather go deep on the mechanics, it calibrates to your financial fluency. Check in as often as you like. Autonomous will reach out when something genuinely needs your attention, and stay quiet when it doesn't. Your financial life is being handled, even when you are not thinking about it.",
+    q: "What happens after I connect an account?",
+    a: "Every transaction gets read, matched to a real merchant, and sorted into a category. Recurring charges and subscriptions are tracked automatically, unusual spikes get flagged, and any correction you make is remembered so the same mistake doesn't repeat. The more it sees, the more confident it gets — a merchant it's guessed at a few times eventually becomes one it's sure of.",
   },
   {
-    q: "How are my assets protected?",
-    a: "Autonomous Wealth Management LLC is an SEC registered investment advisor. We operate under a strict fiduciary duty to act in your best interests at all times. Managed assets are held with Apex, one of the largest independent custodians with $200+ billion in client assets across 22+ million accounts. Apex is a broker-dealer and SIPC member, which means securities in your account are protected up to $500,000 in the unlikely event that Apex becomes insolvent.",
+    q: "How accurate are the explanations?",
+    a: "Every explanation is built only from your own transaction history — nothing is invented to fill a gap. If there isn't enough data to answer confidently, it says so instead of guessing.",
   },
   {
-    q: "Who is behind Autonomous?",
-    a: "Autonomous is built by Autonomous Technologies Group, an applied AI research lab in New York City and San Francisco. ATG's founders built and sold their last company, then couldn't find a wealth manager they'd actually use. So they built one. Today, our team of engineers, researchers, financial professionals, and operators is building a regulated, full-stack wealth manager from the ground up. We're hiring.",
+    q: "Who's behind it?",
+    a: "A small team building the categorization and behavioral-intelligence layer personal finance tools have always needed but rarely gotten right.",
   },
 ];
 
