@@ -44,6 +44,7 @@ export interface ScrollState {
 interface SmoothScrollContextValue {
   scrollState: MutableRefObject<ScrollState>;
   isActive: boolean;
+  setTarget: (value: number) => void;
 }
 
 const SmoothScrollContext = createContext<SmoothScrollContextValue | null>(null);
@@ -73,6 +74,9 @@ export function SmoothScrollProvider({ children }: { children: React.ReactNode }
   const wrapperRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [isActive, setIsActive] = useState(false);
+  const setTarget = useCallback((value: number) => {
+    scrollState.current.target = value;
+  }, []);
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
@@ -231,7 +235,7 @@ export function SmoothScrollProvider({ children }: { children: React.ReactNode }
   }, []);
 
   return (
-    <SmoothScrollContext.Provider value={{ scrollState, isActive }}>
+    <SmoothScrollContext.Provider value={{ scrollState, isActive, setTarget }}>
       <div ref={wrapperRef} className={isActive ? "fixed inset-0 overflow-hidden" : undefined}>
         <div ref={contentRef}>{children}</div>
       </div>

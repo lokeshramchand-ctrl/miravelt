@@ -16,33 +16,33 @@ export default function Home() {
       <Header />
       <Hero />
 
-      <HeadlineSection>Superintelligence that manages your financial life.</HeadlineSection>
+      <HeadlineSection>A second set of eyes on every transaction you make.</HeadlineSection>
       <CardsRow
         cards={[
-          { number: "01", text: "The foundation is a secure financial vault that monitors your assets." },
-          { number: "02", text: "Autonomous builds an understanding of you, your family and goals." },
+          { number: "01", text: "Every transaction is read, cleaned up and categorized the moment it lands — no manual tagging." },
+          { number: "02", text: "It builds an understanding of how you actually spend, and gets more confident the longer it watches." },
         ]}
       />
 
       <HeroImageBlock
-        src="/sites/becomeautonomous-com-5026bacf/root-8a5edab2/images/autonomous-ui-2.jpg"
-        alt="Autonomous App Portfolio View"
+        src="/images/app-mockups/onboarding_screen.png"
+        alt="Statement import and onboarding screen"
       />
 
       <HeadlineSection>
-        Autonomous surfaces what needs your attention and proactively takes the next step.
+        It flags what changed, explains why, and never guesses.
       </HeadlineSection>
       <CardGallery />
       <CardsRow
         cards={[
-          { number: "03", text: "Investments, taxes, planning, execution. All coordinated in one system." },
-          { number: "04", text: "Ideas are reasoned through together. Aligned decisions are executed instantly." },
+          { number: "03", text: "Recurring charges, one-off spikes and slow drifts in behavior are all caught automatically." },
+          { number: "04", text: "Every explanation is grounded in your own transaction history — if the data can't support an answer, none is given." },
         ]}
       />
 
       <HeroImageBlock
-        src="/sites/becomeautonomous-com-5026bacf/root-8a5edab2/images/autonomous-ui-3.jpg"
-        alt="Autonomous App Mockups"
+        src="/images/app-mockups/signals_screen.png"
+        alt="Spending insights and category breakdown screen"
       />
 
       <WhySection />

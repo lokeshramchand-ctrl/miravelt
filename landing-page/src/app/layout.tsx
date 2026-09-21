@@ -56,8 +56,8 @@ const diatypeMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Autonomous — Superintelligence that manages your financial life.",
-  description: "Smarter, faster and 0% advisory fees",
+  title: "Velar — Clarity on every transaction.",
+  description: "Automatic categorization, merchant cleanup and explanations grounded in your own spending data.",
 };
 
 export default function RootLayout({
