@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Velar Admin",
-  description: "Admin dashboard for the Velar backend.",
+  title: "Auvren Admin",
+  description: "Admin dashboard for the Auvren backend.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

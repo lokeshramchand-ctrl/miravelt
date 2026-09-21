@@ -1,6 +1,6 @@
-# Velar Admin Dashboard
+# Auvren Admin Dashboard
 
-A Next.js admin dashboard for [velar-backend](../README.md): user management, job/statement
+A Next.js admin dashboard for [auvren-backend](../README.md): user management, job/statement
 monitoring, and Android release publishing.
 
 ## Architecture
@@ -8,9 +8,9 @@ monitoring, and Android release publishing.
 This is a **backend-for-frontend (BFF)**, not a plain SPA calling the API from the browser:
 
 - The browser only ever holds an **httpOnly, encrypted session cookie** (`iron-session`). It
-  never sees `VELAR_API_KEY`, `VELAR_ADMIN_KEY`, or either JWT directly.
-- Every call to velar-backend goes through `src/lib/backend.ts`, on the server, which attaches
-  `X-Velar-API-Key` / `X-Velar-Admin-Key` / `Authorization: Bearer <token>` itself.
+  never sees `AUVREN_API_KEY`, `AUVREN_ADMIN_KEY`, or either JWT directly.
+- Every call to auvren-backend goes through `src/lib/backend.ts`, on the server, which attaches
+  `X-Auvren-API-Key` / `X-Auvren-Admin-Key` / `Authorization: Bearer <token>` itself.
 - `src/proxy.ts` (Next 16's renamed `middleware.ts`) proactively refreshes the access token
   before it expires, so pages don't have to think about token lifetime. `src/lib/dal.ts`'s
   `requireAdminSession()` is the actual per-request auth check every page/action calls.
@@ -20,15 +20,15 @@ This is a **backend-for-frontend (BFF)**, not a plain SPA calling the API from t
 
 ## Setup
 
-1. Make sure velar-backend itself is running with `ADMIN_API_KEY` set (see `../.env.example`) -
+1. Make sure auvren-backend itself is running with `ADMIN_API_KEY` set (see `../.env.example`) -
    `/admin/*` 503s otherwise.
 2. Bootstrap your first admin account: register normally through the mobile app or
    `POST /auth/register`, then from the **backend** directory run:
    ```
    python scripts/create_admin.py you@example.com
    ```
-3. Copy this app's env file and fill in the values (`BACKEND_URL`, `VELAR_API_KEY`,
-   `VELAR_ADMIN_KEY` must match the backend's own `.env`; generate a fresh `SESSION_SECRET` with
+3. Copy this app's env file and fill in the values (`BACKEND_URL`, `AUVREN_API_KEY`,
+   `AUVREN_ADMIN_KEY` must match the backend's own `.env`; generate a fresh `SESSION_SECRET` with
    `openssl rand -hex 32`):
    ```
    cp .env.example .env.local

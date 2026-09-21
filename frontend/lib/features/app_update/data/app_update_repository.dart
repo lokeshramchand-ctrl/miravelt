@@ -39,7 +39,7 @@ class AppUpdateRepository {
     ProgressCallback? onReceiveProgress,
   }) async {
     final dir = await getApplicationDocumentsDirectory();
-    final savePath = '${dir.path}/velar-update-${info.versionCode}.apk';
+    final savePath = '${dir.path}/auvren-update-${info.versionCode}.apk';
     try {
       await _apiClient.dio.download(
         info.downloadUrl,

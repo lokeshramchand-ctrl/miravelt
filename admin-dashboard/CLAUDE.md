@@ -17,7 +17,7 @@ npm run lint      # eslint
 ```
 
 Setup: backend must be running with `ADMIN_API_KEY` set; `cp .env.example .env.local` and fill in
-`BACKEND_URL`/`VELAR_API_KEY`/`VELAR_ADMIN_KEY` to match the backend's own `.env`, plus a fresh
+`BACKEND_URL`/`AUVREN_API_KEY`/`AUVREN_ADMIN_KEY` to match the backend's own `.env`, plus a fresh
 `SESSION_SECRET` (`openssl rand -hex 32`). Bootstrap the first admin from the **backend** directory
 with `python scripts/create_admin.py you@example.com` - further admins are promoted from the
 dashboard's own Users page (`PATCH /admin/users/{id}/role`); there's deliberately no self-serve
@@ -28,10 +28,10 @@ No automated test suite exists in this app yet.
 ## Architecture
 
 - The browser only ever holds an **httpOnly, encrypted session cookie** (`iron-session`). It never
-  sees `VELAR_API_KEY`, `VELAR_ADMIN_KEY`, or either JWT directly - client components must never
+  sees `AUVREN_API_KEY`, `AUVREN_ADMIN_KEY`, or either JWT directly - client components must never
   fetch the backend directly or hold a credential.
-- `src/lib/backend.ts` (`"server-only"`) is the single place that calls velar-backend; its
-  `adminBackendFetch`/`adminBackendJson` attach `X-Velar-API-Key` / `X-Velar-Admin-Key` /
+- `src/lib/backend.ts` (`"server-only"`) is the single place that calls auvren-backend; its
+  `adminBackendFetch`/`adminBackendJson` attach `X-Auvren-API-Key` / `X-Auvren-Admin-Key` /
   `Authorization: Bearer <token>` server-side. New backend calls go through here, not a new fetch
   call scattered in a page/action.
 - `src/lib/session.ts` / `src/lib/session-shared.ts` (`"server-only"`) hold the iron-session

@@ -10,12 +10,12 @@
 Returns a user's most-visited merchants, ranked by transaction count, across their entire transaction history (no time window).
 
 ## Authentication
-**Required.** `X-Velar-API-Key: velar_test_key_123`.
+**Required.** `X-Auvren-API-Key: auvren_test_key_123`.
 
 ## Headers
 | Header | Required | Value |
 |---|---|---|
-| `X-Velar-API-Key` | Yes | `velar_test_key_123` |
+| `X-Auvren-API-Key` | Yes | `auvren_test_key_123` |
 
 ## Request body
 None.
@@ -75,7 +75,7 @@ Unlike the category-breakdown endpoint, there's no `timestamp` filter at all her
 ## Example request
 ```bash
 curl -s "http://localhost:8000/v1/analytics/patterns/merchants?limit=3" \
-  -H "X-Velar-API-Key: velar_test_key_123"
+  -H "X-Auvren-API-Key: auvren_test_key_123"
 ```
 
 ## Example response

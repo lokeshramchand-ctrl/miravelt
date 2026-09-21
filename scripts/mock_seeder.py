@@ -7,7 +7,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 # Connect directly to the local MongoDB instance
 MONGO_URI = "mongodb://localhost:27017"
-DB_NAME = "velar"
+DB_NAME = "auvren"
 
 async def seed():
     client = AsyncIOMotorClient(MONGO_URI)

@@ -10,12 +10,12 @@
 Real-time check of whether a given transaction amount is statistically unusual for a specific merchant, based on that merchant's precomputed historical average and standard deviation.
 
 ## Authentication
-**Required.** `X-Velar-API-Key: velar_test_key_123`.
+**Required.** `X-Auvren-API-Key: auvren_test_key_123`.
 
 ## Headers
 | Header | Required | Value |
 |---|---|---|
-| `X-Velar-API-Key` | Yes | `velar_test_key_123` |
+| `X-Auvren-API-Key` | Yes | `auvren_test_key_123` |
 
 ## Request body
 **None** — despite being a `POST`, this endpoint takes its two parameters (`merchant: str`, `amount: float`) as **query string parameters**, not a JSON body. This is an inconsistency with every other `POST` endpoint in the codebase.
@@ -82,7 +82,7 @@ sequenceDiagram
 ## Example request
 ```bash
 curl -s -X POST "http://localhost:8000/v1/analytics/anomaly/check?merchant=Uber&amount=99999" \
-  -H "X-Velar-API-Key: velar_test_key_123"
+  -H "X-Auvren-API-Key: auvren_test_key_123"
 ```
 
 ## Example response

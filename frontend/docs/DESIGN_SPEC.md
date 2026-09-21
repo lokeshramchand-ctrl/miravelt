@@ -1,6 +1,6 @@
-# Velar Mobile App v2 — Implementation Spec (from Claude Design source)
+# Auvren Mobile App v2 — Implementation Spec (from Claude Design source)
 
-Source: Claude Design project `6f29813d-e9c1-48a3-bd73-8d1567258312`, file `Velar Mobile App v2.dc.html` (all 12 screens + design-system section), device chrome cross-checked against `android-frame.jsx`. `Velar Mobile App.dc.html` (v1) intentionally superseded — see §7.
+Source: Claude Design project `6f29813d-e9c1-48a3-bd73-8d1567258312`, file `Auvren Mobile App v2.dc.html` (all 12 screens + design-system section), device chrome cross-checked against `android-frame.jsx`. `Auvren Mobile App.dc.html` (v1) intentionally superseded — see §7.
 
 ## 0. Product framing (verbatim from source intro copy)
 
@@ -159,7 +159,7 @@ Anomaly banner (amber-tint): "18× higher than your typical ₹250 spend here �
 Details table: Category → Personal Care [EDIT link]; UPI transaction ID → 116512346960; Paid by → HDFC BANK ···5488; Period → Jan – Jun 2026.
 AI explanation card (dark ink900 embedded in light sheet): "✦ WHY THIS CATEGORY" / "HIGH CONFIDENCE" — "Matched to a salon you've paid 6 times, always between ₹200–₹300 on weekends. Grounded in your own history — never guessed."
 Feedback row: "Looks right" / "Wrong category" buttons → **POST /v1/feedback/**.
-Footer: "Your correction trains Velar's merchant memory."
+Footer: "Your correction trains Auvren's merchant memory."
 
 ### 06 · Signals — dark, full screen
 Header: "Signals" (24px) / "JAN–JUN 2026".
@@ -170,7 +170,7 @@ Signal cards (ink850, radius 18):
 2. GOOD/TREND: "Food spend fell 18% versus your previous statement, saving about ₹3,600."
 3. WATCH/RECURRING: "Two subscriptions bill ₹698 every month — 1.3% of your outflow." → tap → **Recurring (07)**.
 4. CONTEXT: "Uber was your most frequent merchant — 34 rides at ₹150 average."
-Footer: "Signals are written from your computed analytics only. If a figure isn't in your statement, Velar won't claim it."
+Footer: "Signals are written from your computed analytics only. If a figure isn't in your statement, Auvren won't claim it."
 Note: header count (All 5/Watch 2/Good 2) is a mock placeholder inconsistency (only 4 cards shown) — build the list dynamically counted from real signal data, don't hardcode counts.
 
 ### 07 · Recurring — dark header / light body
@@ -188,10 +188,10 @@ Stat tiles (3, equal width): PERIODS 3 / TXNS ANALYSED 571 / CORRECTIONS 7.
 "Sign out" button (outline pill). "Delete account and all data" (rose text link).
 
 ### 09 · First run (empty state / onboarding) — dark, flex column
-Logo row: "V" mark + "Velar" wordmark.
+Logo row: "V" mark + "Auvren" wordmark.
 Illustration: 7-bar mini chart, 2 highlighted bars.
 Headline: "Six months of spending, explained in a minute." (32/1.2).
-Subcopy: "Add one Google Pay statement. Velar reads every transaction, names the merchants, finds the patterns and tells you what changed."
+Subcopy: "Add one Google Pay statement. Auvren reads every transaction, names the merchants, finds the patterns and tells you what changed."
 3 numbered steps: (1) "Open Google Pay → Transaction statement" (2) "Pick any date range and export the PDF" (3) "Add it here — analysis takes under a minute".
 Primary CTA: "Add your first statement" (full-width accent pill) → native file picker → **Uploading (10)**.
 Footer: "Stays on your account. Never shared, never sold."
@@ -218,7 +218,7 @@ This is the visual state for an in-progress period (polls **GET /jobs/{id}**).
 Nav: back "‹" / "Add statement" title.
 Error icon (rose-tint, "!"). Headline: "This PDF isn't a Google Pay statement" (26/1.25).
 Body: "We look for the "Transaction statement" header and UPI transaction IDs. This file has neither — it may be a bank statement or an invoice."
-Instructional card "HOW TO GET THE RIGHT FILE": (1) "Google Pay → profile → Transaction statement" (2) "Choose a date range, tap Get statement" (3) "Share the PDF straight into Velar".
+Instructional card "HOW TO GET THE RIGHT FILE": (1) "Google Pay → profile → Transaction statement" (2) "Choose a date range, tap Get statement" (3) "Share the PDF straight into Auvren".
 Reassurance: "Nothing was saved. Your other periods are untouched."
 Buttons: "Choose a different file" (primary) → reopens file picker (10). "Open Google Pay" (secondary) → deep link to Google Pay app.
 

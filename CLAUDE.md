@@ -27,7 +27,7 @@ python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\act
 pip install -r requirements.txt                      # runtime deps only
 pip install -r requirements-training.txt              # add only if running training/finetune.py or training/train.py
 
-cp .env.example .env                                  # fill in VELAR_API_KEY, JWT_SECRET_KEY, EMBED_MODEL, LLM_MODEL, MONGODB_URI, MILVUS_URI
+cp .env.example .env                                  # fill in AUVREN_API_KEY, JWT_SECRET_KEY, EMBED_MODEL, LLM_MODEL, MONGODB_URI, MILVUS_URI
 
 uvicorn app:app --reload --host 0.0.0.0 --port 8000   # run locally (needs Mongo reachable; Milvus/Ollama degrade gracefully if absent)
 
@@ -58,7 +58,7 @@ npm run lint      # eslint
 ```
 
 Needs the backend running with `ADMIN_API_KEY` set, and its own `.env.local` (`cp .env.example
-.env.local`) with `BACKEND_URL`/`VELAR_API_KEY`/`VELAR_ADMIN_KEY` matching the backend's `.env`
+.env.local`) with `BACKEND_URL`/`AUVREN_API_KEY`/`AUVREN_ADMIN_KEY` matching the backend's `.env`
 plus a fresh `SESSION_SECRET`. Bootstrap the first admin with `python scripts/create_admin.py
 you@example.com` from the repo root - further admins are promoted from the dashboard's Users page.
 
@@ -66,15 +66,15 @@ you@example.com` from the repo root - further admins are promoted from the dashb
 
 ```bash
 flutter pub get
-flutter run --dart-define=VELAR_API_KEY=your-api-key-here
+flutter run --dart-define=AUVREN_API_KEY=your-api-key-here
 flutter analyze
 flutter test
 flutter test test/some_test_file.dart   # single test file
 ```
 
 `ApiEnvironment` (`lib/core/config/api_environment.dart`) picks `production` vs `local` at
-runtime, not build time; override with `--dart-define=VELAR_API_BASE_URL=...` /
-`VELAR_LOCAL_API_BASE_URL=...`. `VELAR_API_KEY` is build-time only via `--dart-define` and has no
+runtime, not build time; override with `--dart-define=AUVREN_API_BASE_URL=...` /
+`AUVREN_LOCAL_API_BASE_URL=...`. `AUVREN_API_KEY` is build-time only via `--dart-define` and has no
 safe default.
 
 ### CI (`.github/workflows/ci.yml`)
@@ -109,10 +109,10 @@ should stay thin (parse → delegate to a service/engine → return); business l
 **Auth is two independent layers, both enforced on nearly every router** (`app.py`'s
 `include_router` calls above show which; `/health`, `/live`, `/ready`, `/metrics` are the only
 exceptions):
-- `X-Velar-API-Key` (`core/security.py::validate_api_key`) - identifies "this is the real client
+- `X-Auvren-API-Key` (`core/security.py::validate_api_key`) - identifies "this is the real client
   app." Ships inside every client binary, trivially extractable - never let it gate an
   admin/operator-only endpoint.
-- `X-Velar-Admin-Key` (`core/security.py::validate_admin_key`) - gates `routers/pipelines.py` and
+- `X-Auvren-Admin-Key` (`core/security.py::validate_admin_key`) - gates `routers/pipelines.py` and
   `routers/admin.py`. Must never fall back to the client key.
 - JWT access/refresh tokens (`core/jwt_auth.py`, `routers/auth.py`) identify the *end user* on top
   of the API key, independently checked.
@@ -127,7 +127,7 @@ seems to require crossing one):
 - Batch pipelines (`behaviour`, `clustering`, `memory/decay_engine`, `graphs`) are manually
   triggered via `/v1/pipelines/*` (admin-key gated) - there is no scheduler in this repo; don't add
   one as a side effect of an unrelated task.
-- Secrets (`VELAR_API_KEY`, `VELAR_ADMIN_KEY`, `JWT_SECRET_KEY`, user tokens) never reach the
+- Secrets (`AUVREN_API_KEY`, `AUVREN_ADMIN_KEY`, `JWT_SECRET_KEY`, user tokens) never reach the
   admin-dashboard browser - enforced by that app's `"server-only"` files (`src/lib/backend.ts`,
   `src/lib/session.ts`).
 

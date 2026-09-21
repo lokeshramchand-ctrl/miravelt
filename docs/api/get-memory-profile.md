@@ -10,12 +10,12 @@
 Fetches the complete stored memory profile for a named entity — its trust level, seen-count, aliases, and timestamps.
 
 ## Authentication
-**Required.** `X-Velar-API-Key: velar_test_key_123`.
+**Required.** `X-Auvren-API-Key: auvren_test_key_123`.
 
 ## Headers
 | Header | Required | Value |
 |---|---|---|
-| `X-Velar-API-Key` | Yes | `velar_test_key_123` |
+| `X-Auvren-API-Key` | Yes | `auvren_test_key_123` |
 
 ## Request body
 None — bodiless `GET`.
@@ -68,7 +68,7 @@ No separate service layer here — the controller calls the repository directly,
 ## Example request
 ```bash
 curl -s http://localhost:8000/memory/profile/Zomato \
-  -H "X-Velar-API-Key: velar_test_key_123"
+  -H "X-Auvren-API-Key: auvren_test_key_123"
 ```
 
 ## Example response

@@ -7,8 +7,8 @@ import 'micro_badge.dart';
 
 /// Generic row: avatar + 2-line text block + trailing amount + optional
 /// badge. Backs merchant rows, transaction rows, and subscription headers.
-class VelarListRow extends StatelessWidget {
-  const VelarListRow({
+class AuvrenListRow extends StatelessWidget {
+  const AuvrenListRow({
     super.key,
     required this.avatarInitials,
     required this.avatarTint,

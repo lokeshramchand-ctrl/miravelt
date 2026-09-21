@@ -6,7 +6,7 @@ This system authenticates two different things, checked independently:
 
 | Layer | Proves | Mechanism | Where enforced |
 |---|---|---|---|
-| API key | Which **application** is calling | `X-Velar-API-Key` header, compared against `settings.VELAR_API_KEY` via `secrets.compare_digest` (`core/security.py::validate_api_key`) | `dependencies=[Depends(validate_api_key)]` on every `include_router(...)` call in `app.py` — unchanged from before this feature existed |
+| API key | Which **application** is calling | `X-Auvren-API-Key` header, compared against `settings.AUVREN_API_KEY` via `secrets.compare_digest` (`core/security.py::validate_api_key`) | `dependencies=[Depends(validate_api_key)]` on every `include_router(...)` call in `app.py` — unchanged from before this feature existed |
 | JWT | Which **end user** is calling, within that application | `Authorization: Bearer <access token>` header, verified against `settings.JWT_SECRET_KEY` (`core/jwt_auth.py::get_current_user`) | `current_user: User = Depends(get_current_user)` bound explicitly as a handler parameter, only where the resolved identity is actually used |
 
 These compose, not substitute for each other. A router-mounted API-key dependency runs for *every* request to that router regardless of what an individual handler additionally declares — so a genuine, unexpired JWT presented without the API key is rejected before any handler body runs, and a valid API key alone is never sufficient on a handler that also requires `get_current_user`. See `test_categorize_and_analytics_reject_jwt_without_api_key` and `test_security_valid_key_missing_jwt` in `test_api.py`.
@@ -47,7 +47,7 @@ The API-key dependency is attached via `dependencies=[...]` (its return value is
 
 | Setting | Default | Notes |
 |---|---|---|
-| `JWT_SECRET_KEY` | *(required)* | No default — `core/config.py` fails app startup if missing **or** shorter than 32 characters, the same "fail fast on a bad mandatory secret" posture as `VELAR_API_KEY`/`MONGODB_URI`, extended to also reject a present-but-weak value |
+| `JWT_SECRET_KEY` | *(required)* | No default — `core/config.py` fails app startup if missing **or** shorter than 32 characters, the same "fail fast on a bad mandatory secret" posture as `AUVREN_API_KEY`/`MONGODB_URI`, extended to also reject a present-but-weak value |
 | `JWT_ALGORITHM` | `HS256` | |
 | `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | `15` | |
 | `JWT_REFRESH_TOKEN_EXPIRE_DAYS` | `30` | |
@@ -62,4 +62,4 @@ See [03 · Data Model §3.1](./03-data-model.md#31-schema-reference) for the `Us
 
 ## 22.8 OpenAPI / Swagger
 
-Both schemes are registered automatically (FastAPI introspects the `Security()`-based dependencies used across the app) and appear together in Swagger's "Authorize" dialog at `/docs`: `APIKeyHeader` (`X-Velar-API-Key`) and `JWT` (HTTP Bearer). Authorizing with both lets `/docs` exercise every endpoint, including the ones that require both layers.
+Both schemes are registered automatically (FastAPI introspects the `Security()`-based dependencies used across the app) and appear together in Swagger's "Authorize" dialog at `/docs`: `APIKeyHeader` (`X-Auvren-API-Key`) and `JWT` (HTTP Bearer). Authorizing with both lets `/docs` exercise every endpoint, including the ones that require both layers.

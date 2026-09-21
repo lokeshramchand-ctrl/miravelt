@@ -18,7 +18,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/dashbo
       <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-6">
-            <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Velar Admin</span>
+            <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Auvren Admin</span>
             <nav className="flex items-center gap-1">
               {NAV_ITEMS.map((item) => (
                 <NavLink key={item.href} href={item.href}>

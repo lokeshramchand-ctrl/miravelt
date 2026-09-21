@@ -1,10 +1,10 @@
-# Velar API — Complete Endpoint Reference
+# Auvren API — Complete Endpoint Reference
 
 Every HTTP endpoint the codebase defines, one page each, with full request/response contracts, internal execution flow, and the exact controller/service/database chain each request travels through. This is the ground-truth companion to [02 · API Reference](../02-api-reference.md) (which covers the API as a whole) — this section drills into each individual endpoint at maximum depth.
 
 **Base URL**: depends on how the server was started — `http://localhost:8000` (Dockerfile/dev default), `http://localhost:9850` (`docker-compose_local.yaml`'s exposed port), or `http://localhost:8080` (README's manual instructions and `scripts/test_pipeline.sh`'s default). There is no single canonical value in this codebase — confirm which one applies to your running instance.
 
-**Authentication**: unless marked otherwise, every endpoint requires the header `X-Velar-API-Key`, checked against `settings.VELAR_API_KEY` (`.env`) using a constant-time comparison — previously this compared against a hardcoded literal regardless of configuration, fixed, see [16 · Known Issues](../16-known-issues-tech-debt.md).
+**Authentication**: unless marked otherwise, every endpoint requires the header `X-Auvren-API-Key`, checked against `settings.AUVREN_API_KEY` (`.env`) using a constant-time comparison — previously this compared against a hardcoded literal regardless of configuration, fixed, see [16 · Known Issues](../16-known-issues-tech-debt.md).
 
 > **Note on currency**: the individual endpoint pages below were written against an earlier snapshot of the codebase and may still describe bugs that have since been fixed (e.g. `POST /v1/categorize` failing, `POST /v1/feedback/` being unreachable). [`docs/16-known-issues-tech-debt.md`](../16-known-issues-tech-debt.md) is the current source of truth; the new `/v1/pipelines/*` endpoints (see [02 · API Reference §2.9](../02-api-reference.md#29-batch-pipelines-routerspipelinespy-prefix-v1pipelines)) don't have individual pages here yet.
 

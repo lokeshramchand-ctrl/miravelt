@@ -4,7 +4,7 @@ import 'package:flutter_secure_storage_platform_interface/flutter_secure_storage
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'package:velar/features/auth/presentation/login_screen.dart';
+import 'package:auvren/features/auth/presentation/login_screen.dart';
 
 import '../../support/fake_secure_storage_platform.dart';
 
@@ -57,7 +57,7 @@ void main() {
   testWidgets('rejects an empty password', (tester) async {
     await pumpLogin(tester);
 
-    await tester.enterText(find.byType(TextFormField).first, 'test@velar.dev');
+    await tester.enterText(find.byType(TextFormField).first, 'test@auvren.dev');
     await tester.enterText(find.byType(TextFormField).last, '');
     await tapSignIn(tester);
 

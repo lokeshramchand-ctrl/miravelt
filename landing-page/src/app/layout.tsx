@@ -56,7 +56,7 @@ const diatypeMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Velar — Clarity on every transaction.",
+  title: "Auvren — Clarity on every transaction.",
   description: "Automatic categorization, merchant cleanup and explanations grounded in your own spending data.",
 };
 

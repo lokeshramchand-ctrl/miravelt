@@ -1,7 +1,7 @@
 services:
-  velar-backend:
+  auvren-backend:
     build: .
-    container_name: velar-backend
+    container_name: auvren-backend
     # No bind mount here (unlike docker-compose_local.yaml): production must
     # run exactly what was built into the image, not whatever happens to be
     # on the host filesystem at deploy time - a bind mount here would have
@@ -13,20 +13,20 @@ services:
       # host/CI secret store at deploy time - never hardcode credentials here.
       # Variable names must match core/config.py's Settings fields exactly.
       - MONGODB_URI=${MONGODB_URI:?MONGODB_URI must be set}
-      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-velar}
+      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-auvren}
       - MILVUS_URI=${MILVUS_URI:?MILVUS_URI must be set}
       - OLLAMA_URI=${OLLAMA_URI:-}
       - OLLAMA_HOSTS=${OLLAMA_HOSTS:-}
       - EMBED_MODEL=${EMBED_MODEL:?EMBED_MODEL must be set}
       - LLM_MODEL=${LLM_MODEL:?LLM_MODEL must be set}
-      - VELAR_API_KEY=${VELAR_API_KEY:?VELAR_API_KEY must be set}
+      - AUVREN_API_KEY=${AUVREN_API_KEY:?AUVREN_API_KEY must be set}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
       - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
       - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-15}
       - JWT_REFRESH_TOKEN_EXPIRE_DAYS=${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-30}
       # Optional, same as every other dependency in this file - an empty
       # value just leaves caching/distributed rate limiting disabled (see
-      # core/config.py). Required for the velar-celery-worker/-beat services
+      # core/config.py). Required for the auvren-celery-worker/-beat services
       # below to do anything; point it at a managed/self-hosted Redis, same
       # pattern as MONGODB_URI/MILVUS_URI above (no Redis container is
       # started by this file - production points at externally managed
@@ -72,7 +72,7 @@ services:
           memory: 512m
 
   # ---- Celery worker + beat (tasks/celery_app.py) ----
-  # Same image as velar-backend, different command - these run the
+  # Same image as auvren-backend, different command - these run the
   # scheduled batch pipelines (routers/pipelines.py) and the retraining
   # executor (feedback/retraining_queue.py) instead of serving HTTP. Both
   # are no-ops if REDIS_URI is left unset: `celery beat` will idle with an
@@ -81,19 +81,19 @@ services:
   # meaningful infrastructure to actually get automatic scheduling, not a
   # decoration. Omit these two services entirely if you don't want a
   # scheduler running yet.
-  velar-celery-worker:
+  auvren-celery-worker:
     build: .
-    container_name: velar-celery-worker
+    container_name: auvren-celery-worker
     command: celery -A tasks.celery_app worker --loglevel=info --concurrency=2
     environment:
       - MONGODB_URI=${MONGODB_URI:?MONGODB_URI must be set}
-      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-velar}
+      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-auvren}
       - MILVUS_URI=${MILVUS_URI:?MILVUS_URI must be set}
       - OLLAMA_URI=${OLLAMA_URI:-}
       - OLLAMA_HOSTS=${OLLAMA_HOSTS:-}
       - EMBED_MODEL=${EMBED_MODEL:?EMBED_MODEL must be set}
       - LLM_MODEL=${LLM_MODEL:?LLM_MODEL must be set}
-      - VELAR_API_KEY=${VELAR_API_KEY:?VELAR_API_KEY must be set}
+      - AUVREN_API_KEY=${AUVREN_API_KEY:?AUVREN_API_KEY must be set}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
       - REDIS_URI=${REDIS_URI:?REDIS_URI must be set to run the Celery worker/beat services}
     restart: always
@@ -117,17 +117,17 @@ services:
           cpus: "0.25"
           memory: 256m
 
-  velar-celery-beat:
+  auvren-celery-beat:
     build: .
-    container_name: velar-celery-beat
+    container_name: auvren-celery-beat
     command: celery -A tasks.celery_app beat --loglevel=info
     environment:
       - MONGODB_URI=${MONGODB_URI:?MONGODB_URI must be set}
-      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-velar}
+      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-auvren}
       - MILVUS_URI=${MILVUS_URI:?MILVUS_URI must be set}
       - EMBED_MODEL=${EMBED_MODEL:?EMBED_MODEL must be set}
       - LLM_MODEL=${LLM_MODEL:?LLM_MODEL must be set}
-      - VELAR_API_KEY=${VELAR_API_KEY:?VELAR_API_KEY must be set}
+      - AUVREN_API_KEY=${AUVREN_API_KEY:?AUVREN_API_KEY must be set}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
       - REDIS_URI=${REDIS_URI:?REDIS_URI must be set to run the Celery worker/beat services}
     restart: always

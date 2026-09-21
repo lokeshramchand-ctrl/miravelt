@@ -2,7 +2,7 @@ import 'dart:ui';
 
 import 'oklch.dart';
 
-/// Design tokens lifted verbatim (same OKLCH values) from the Velar Claude
+/// Design tokens lifted verbatim (same OKLCH values) from the Auvren Claude
 /// Design source. Screens choose which surface (ink/dark vs paper/light) to
 /// sit on explicitly, matching the mockups - this is not a single global
 /// light/dark palette swap.

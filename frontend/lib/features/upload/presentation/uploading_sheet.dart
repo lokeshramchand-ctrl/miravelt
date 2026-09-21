@@ -19,7 +19,7 @@ import 'upload_state.dart';
 /// or the Period switcher's "Add a statement" row.
 Future<void> startUploadFlow(BuildContext context, WidgetRef ref) async {
   ref.read(uploadControllerProvider.notifier).reset();
-  await showVelarSheet<void>(
+  await showAuvrenSheet<void>(
     context,
     dark: true,
     child: const _UploadingSheetBody(),

@@ -1,7 +1,7 @@
 import "server-only";
 
-/** All server-side calls to velar-backend go through here. Nothing in this
- * file - the backend URL, VELAR_API_KEY, VELAR_ADMIN_KEY, or any access
+/** All server-side calls to auvren-backend go through here. Nothing in this
+ * file - the backend URL, AUVREN_API_KEY, AUVREN_ADMIN_KEY, or any access
  * token - ever reaches the browser: pages/actions call these functions on
  * the server and pass back only the JSON they need. */
 
@@ -34,7 +34,7 @@ export class BackendError extends Error {
 async function rawFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const backendUrl = requiredEnv("BACKEND_URL");
   const headers = new Headers(init.headers);
-  headers.set("X-Velar-API-Key", requiredEnv("VELAR_API_KEY"));
+  headers.set("X-Auvren-API-Key", requiredEnv("AUVREN_API_KEY"));
   if (init.body && typeof init.body === "string" && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
@@ -52,7 +52,7 @@ export async function publicBackendFetch(path: string, init?: RequestInit): Prom
 export async function adminBackendFetch(accessToken: string, path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   headers.set("Authorization", `Bearer ${accessToken}`);
-  headers.set("X-Velar-Admin-Key", requiredEnv("VELAR_ADMIN_KEY"));
+  headers.set("X-Auvren-Admin-Key", requiredEnv("AUVREN_ADMIN_KEY"));
   const res = await rawFetch(path, { ...init, headers });
 
   if (!res.ok) {

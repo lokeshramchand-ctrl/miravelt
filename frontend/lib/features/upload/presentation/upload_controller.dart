@@ -60,7 +60,7 @@ class UploadController extends Notifier<UploadState> {
       ref.invalidate(periodsProvider);
     } on ApiException catch (e) {
       if (e is ApiHttpException && e.statusCode == 413) {
-        state = state.copyWith(stage: UploadStage.rejected, errorMessage: 'This file is too large - Velar accepts statements up to 10MB.');
+        state = state.copyWith(stage: UploadStage.rejected, errorMessage: 'This file is too large - Auvren accepts statements up to 10MB.');
         return;
       }
       state = state.copyWith(stage: UploadStage.rejected, errorMessage: e.message);

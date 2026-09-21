@@ -10,10 +10,10 @@ from core.config import settings
 
 logger = logging.getLogger(__name__)
 
-API_KEY_NAME = "X-Velar-API-Key"
+API_KEY_NAME = "X-Auvren-API-Key"
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
-ADMIN_KEY_NAME = "X-Velar-Admin-Key"
+ADMIN_KEY_NAME = "X-Auvren-Admin-Key"
 admin_key_header = APIKeyHeader(name=ADMIN_KEY_NAME, auto_error=False)
 
 # Argon2id (the library's default variant) with its built-in, OWASP-aligned
@@ -39,17 +39,17 @@ def verify_password(password: str, hashed_password: str) -> bool:
 async def validate_api_key(api_key_header: str = Security(api_key_header)) -> str:
     """
     Validates the incoming API key via a constant-time comparison against
-    the single configured VELAR_API_KEY. This is already O(1) with no
+    the single configured AUVREN_API_KEY. This is already O(1) with no
     lookup - there's exactly one valid value, not a set of per-client keys -
     so it has no need of Redis or any other cache in front of it.
     """
     if not api_key_header:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing X-Velar-API-Key header"
+            detail="Missing X-Auvren-API-Key header"
         )
 
-    if not secrets.compare_digest(api_key_header, settings.VELAR_API_KEY):
+    if not secrets.compare_digest(api_key_header, settings.AUVREN_API_KEY):
         logger.warning("Rejected invalid API key attempt.")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -62,7 +62,7 @@ async def validate_api_key(api_key_header: str = Security(api_key_header)) -> st
 async def validate_admin_key(admin_key_header: str = Security(admin_key_header)) -> str:
     """Gates routers/pipelines.py's operational/batch endpoints. These run
     expensive, system-wide jobs (full clustering passes, embedding syncs)
-    with no per-user scope, so VELAR_API_KEY - shipped inside every client
+    with no per-user scope, so AUVREN_API_KEY - shipped inside every client
     app binary and trivially extractable from the compiled app - isn't a
     safe gate for them on its own. Unset ADMIN_API_KEY means these
     endpoints are unreachable (503) rather than falling back to anything

@@ -82,11 +82,11 @@ jobs:
           --health-retries 5
     env:
       MONGODB_URI: "mongodb://localhost:27017/?authSource=admin"
-      MONGODB_DB_NAME: "velar_ci"
+      MONGODB_DB_NAME: "auvren_ci"
       MILVUS_URI: "http://localhost:19530"
       EMBED_MODEL: "nomic-embed-text"
       LLM_MODEL: "llama3"
-      VELAR_API_KEY: "ci_test_key"
+      AUVREN_API_KEY: "ci_test_key"
       JWT_SECRET_KEY: "ci_test_jwt_signing_key_at_least_32_characters_long"
       LOG_LEVEL: "WARNING"
     steps:
@@ -135,12 +135,12 @@ jobs:
           failure-threshold: warning
 
       - name: Build image
-        run: docker build -t velar-backend:ci .
+        run: docker build -t auvren-backend:ci .
 
       - name: Scan image for known vulnerabilities (Trivy)
         uses: aquasecurity/trivy-action@0.28.0
         with:
-          image-ref: velar-backend:ci
+          image-ref: auvren-backend:ci
           severity: "CRITICAL,HIGH"
           exit-code: "0"  # informational for now - flip to "1" to hard-fail the build once triaged
           format: "table"

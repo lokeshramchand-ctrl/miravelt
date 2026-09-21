@@ -5,7 +5,7 @@
 
 **Transaction Intelligence Engine — turning noisy financial text into explainable, structured insight.**
 
-Velar ingests raw, messy transaction strings (UPI references, bank SMS, POS narrations) and turns them into canonical merchant identity, spend category, behavioral fingerprints, anomaly signals, and natural-language explanations — grounded in retrieved data, not guesswork.
+Auvren ingests raw, messy transaction strings (UPI references, bank SMS, POS narrations) and turns them into canonical merchant identity, spend category, behavioral fingerprints, anomaly signals, and natural-language explanations — grounded in retrieved data, not guesswork.
 
 [![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-async%20API-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -22,7 +22,7 @@ Velar ingests raw, messy transaction strings (UPI references, bank SMS, POS narr
 
 ## Project Status
 
-> **Pre-production, stabilized and hardened.** Velar's architecture is genuinely ambitious — a 15-phase pipeline from ingestion through explainability. Every critical/high/medium defect previously tracked in [`docs/16-known-issues-tech-debt.md`](./docs/16-known-issues-tech-debt.md) has been fixed and verified. On top of that, a production-hardening/security pass closed real gaps: request-size limits, a concurrency race in the memory/trust engine, zero-to-real MongoDB indexes, a non-root multi-stage Docker build, CI with lint/test/dependency/secret/container scanning, and every known CVE in the pinned dependencies patched (verified via `pip-audit`). What remains open is genuine feature work requiring an infrastructure decision — a task queue for retraining, an ML observability platform — not bugs or hardening gaps.
+> **Pre-production, stabilized and hardened.** Auvren's architecture is genuinely ambitious — a 15-phase pipeline from ingestion through explainability. Every critical/high/medium defect previously tracked in [`docs/16-known-issues-tech-debt.md`](./docs/16-known-issues-tech-debt.md) has been fixed and verified. On top of that, a production-hardening/security pass closed real gaps: request-size limits, a concurrency race in the memory/trust engine, zero-to-real MongoDB indexes, a non-root multi-stage Docker build, CI with lint/test/dependency/secret/container scanning, and every known CVE in the pinned dependencies patched (verified via `pip-audit`). What remains open is genuine feature work requiring an infrastructure decision — a task queue for retraining, an ML observability platform — not bugs or hardening gaps.
 
 ---
 
@@ -52,20 +52,20 @@ Velar ingests raw, messy transaction strings (UPI references, bank SMS, POS narr
 
 ## Overview
 
-Most transaction-categorization systems either rely on brittle string matching or hand the whole problem to a single opaque LLM call. Velar takes a different approach: a layered pipeline where each stage has a single, well-defined responsibility —
+Most transaction-categorization systems either rely on brittle string matching or hand the whole problem to a single opaque LLM call. Auvren takes a different approach: a layered pipeline where each stage has a single, well-defined responsibility —
 
 - **Deterministic rules** handle the obvious cases fast and cheaply.
 - **A trust/memory state machine** means a merchant isn't treated as reliable the first time it's seen — trust is earned over repeated encounters.
 - **A confidence wall** actively rejects low-confidence or out-of-vocabulary predictions rather than letting a bad guess pollute analytics — *"Unknown" is treated as a valid, honest answer.*
 - **A grounded RAG layer** explains categorizations in natural language, but is architecturally forbidden from answering unless it has real retrieved data to point to.
 
-Velar is built as a single async FastAPI service backed by MongoDB (system of record) and Milvus (semantic vector search), with Ollama providing local/self-hosted embeddings and generation.
+Auvren is built as a single async FastAPI service backed by MongoDB (system of record) and Milvus (semantic vector search), with Ollama providing local/self-hosted embeddings and generation.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    Client([API Client]) -->|X-Velar-API-Key| API[FastAPI App]
+    Client([API Client]) -->|X-Auvren-API-Key| API[FastAPI App]
     API --> V1[/v1 — categorize, resolve, confidence/]
     API --> MEM[/memory — trust state machine/]
     API --> ANA[/v1/analytics — spend intelligence/]
@@ -79,7 +79,7 @@ flowchart LR
     API --> Prom[/metrics — Prometheus/]
 ```
 
-Velar's own code comments describe the system as a sequence of numbered **phases** — this isn't a documentation invention, it's how the codebase actually labels itself:
+Auvren's own code comments describe the system as a sequence of numbered **phases** — this isn't a documentation invention, it's how the codebase actually labels itself:
 
 | Phase | Capability | Status |
 |---|---|---|
@@ -181,8 +181,8 @@ backend/
 ### Installation
 
 ```bash
-git clone https://github.com/lokeshramchand-ctrl/backend.git velar
-cd velar
+git clone https://github.com/lokeshramchand-ctrl/backend.git auvren
+cd auvren
 
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
@@ -204,7 +204,7 @@ Copy the committed template and fill in the blanks:
 cp .env.example .env
 ```
 
-[`.env.example`](./.env.example) documents every setting `core/config.py` reads, with local-dev-appropriate defaults already filled in (Docker service hostnames, TLS disabled for the local Mongo container, `ENFORCE_HTTPS=false`, etc.) and the handful you must still replace yourself (`VELAR_API_KEY`, `JWT_SECRET_KEY`, `EMBED_MODEL`/`LLM_MODEL`) called out inline. The subset that's actually required — no default, app refuses to start without it — is:
+[`.env.example`](./.env.example) documents every setting `core/config.py` reads, with local-dev-appropriate defaults already filled in (Docker service hostnames, TLS disabled for the local Mongo container, `ENFORCE_HTTPS=false`, etc.) and the handful you must still replace yourself (`AUVREN_API_KEY`, `JWT_SECRET_KEY`, `EMBED_MODEL`/`LLM_MODEL`) called out inline. The subset that's actually required — no default, app refuses to start without it — is:
 
 | Variable | Notes |
 |---|---|
@@ -212,7 +212,7 @@ cp .env.example .env
 | `MILVUS_URI` | |
 | `EMBED_MODEL` | Ollama embedding model name — must be pulled in your local Ollama already |
 | `LLM_MODEL` | Ollama generation model name — must be pulled in your local Ollama already |
-| `VELAR_API_KEY` | Enforced on every non-public route via `X-Velar-API-Key`; any non-empty string works locally |
+| `AUVREN_API_KEY` | Enforced on every non-public route via `X-Auvren-API-Key`; any non-empty string works locally |
 | `JWT_SECRET_KEY` | Must be ≥ 32 chars — generate with `openssl rand -hex 32` |
 
 Everything else in `.env.example` (rate limits, upload size caps, device attestation, request signing, …) has a safe default and can be left as-is for local development.
@@ -231,7 +231,7 @@ docker compose -f docker-compose_local.yaml exec ollama ollama pull nomic-embed-
 docker compose -f docker-compose_local.yaml exec ollama ollama pull llama3
 
 # Optional but recommended — seed canonical merchant data:
-docker compose -f docker-compose_local.yaml exec velar-backend python scripts/seed.py
+docker compose -f docker-compose_local.yaml exec auvren-backend python scripts/seed.py
 ```
 
 **Option B — Manual (infra in Docker, backend on the host):**
@@ -284,8 +284,8 @@ The `pytest` suite uses FastAPI's `TestClient` against the real app object, so i
 
 **Build and run with Docker:**
 ```bash
-docker build -t velar-backend .
-docker run -p 8000:8000 --env-file .env velar-backend
+docker build -t auvren-backend .
+docker run -p 8000:8000 --env-file .env auvren-backend
 ```
 
 **Or via Compose** (`docker-compose_production.yaml` targets an external Coolify network — adapt for your own infrastructure):
@@ -293,11 +293,11 @@ docker run -p 8000:8000 --env-file .env velar-backend
 docker compose -f docker-compose_production.yaml up -d --build
 ```
 
-> **Important:** `docker-compose_production.yaml` no longer contains a hardcoded credential or mismatched env var names — it now reads `MONGODB_URI`, `MILVUS_URI`, `EMBED_MODEL`, `LLM_MODEL`, and `VELAR_API_KEY` from a compose `.env` file or your CI/host secret store, matching `core/config.py` exactly. **If you have ever deployed the previous version of this file**, treat the credential it contained as compromised and rotate it on your MongoDB server — removing it from the tracked file does not undo its exposure in git history.
+> **Important:** `docker-compose_production.yaml` no longer contains a hardcoded credential or mismatched env var names — it now reads `MONGODB_URI`, `MILVUS_URI`, `EMBED_MODEL`, `LLM_MODEL`, and `AUVREN_API_KEY` from a compose `.env` file or your CI/host secret store, matching `core/config.py` exactly. **If you have ever deployed the previous version of this file**, treat the credential it contained as compromised and rotate it on your MongoDB server — removing it from the tracked file does not undo its exposure in git history.
 
 ## API Overview
 
-All endpoints except `/health` and `/metrics` require the header `X-Velar-API-Key`.
+All endpoints except `/health` and `/metrics` require the header `X-Auvren-API-Key`.
 
 | Method | Endpoint | Purpose |
 |---|---|---|
@@ -329,7 +329,7 @@ All endpoints except `/health` and `/metrics` require the header `X-Velar-API-Ke
 
 ## Screenshots / API Preview
 
-Velar is a headless JSON API with no bundled frontend, so there's no UI to screenshot. The closest equivalent:
+Auvren is a headless JSON API with no bundled frontend, so there's no UI to screenshot. The closest equivalent:
 
 **Interactive API docs** — every endpoint is explorable and testable live at `/docs` (Swagger UI) and `/redoc` once the server is running:
 ```
@@ -339,7 +339,7 @@ http://localhost:8000/docs
 **Example interaction:**
 ```bash
 $ curl -s -X POST http://localhost:8000/v1/resolve \
-    -H "X-Velar-API-Key: your-secret-key-here" \
+    -H "X-Auvren-API-Key: your-secret-key-here" \
     -H "Content-Type: application/json" \
     -d '{"text": "UPI/CR/3152671239/BUNDL TECHNOLOGIES/HDFC"}'
 ```
@@ -356,14 +356,14 @@ $ curl -s -X POST http://localhost:8000/v1/resolve \
 
 ## Known Limitations
 
-Velar is transparent about its own maturity. The full, continuously-maintained list lives in [`docs/16-known-issues-tech-debt.md`](./docs/16-known-issues-tech-debt.md) — every previously-tracked defect there has been fixed and verified. What's left is genuine feature work requiring an infrastructure decision, not bugs:
+Auvren is transparent about its own maturity. The full, continuously-maintained list lives in [`docs/16-known-issues-tech-debt.md`](./docs/16-known-issues-tech-debt.md) — every previously-tracked defect there has been fixed and verified. What's left is genuine feature work requiring an infrastructure decision, not bugs:
 
 - **The retraining queue has no executor.** Corrections accumulate and get marked `"processing"` once the threshold is hit, but nothing actually retrains a model yet — that needs a task queue (Celery + broker), which is an infra decision for whoever operates this.
 - **`training/train.py` and `training/finetune.py` train on synthetic data**, not real feedback/transaction data — their docstrings describe the intended MongoDB queries, but that data-assembly pipeline isn't built yet.
 - **Observability endpoints are stubs** — no Evidently AI / MLflow integration exists yet.
 - **No caching layer yet** — nothing in current traffic patterns demonstrably needs one; MongoDB indexes now exist, a cache is separate follow-up work once a real hot path is measured.
 - **The new `/v1/pipelines/*` endpoints are manually triggered** — nothing schedules them yet (no cron/Celery beat in this repo).
-- **No per-caller authorization** — every request bearing the single shared `VELAR_API_KEY` gets identical access; real multi-tenancy is a scoped feature, not a hardening tweak.
+- **No per-caller authorization** — every request bearing the single shared `AUVREN_API_KEY` gets identical access; real multi-tenancy is a scoped feature, not a hardening tweak.
 
 ## Roadmap
 
