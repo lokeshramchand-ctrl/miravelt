@@ -2,7 +2,7 @@
 
 All endpoints are served by the single FastAPI app defined in `app.py`. Base path prefixes come from each `APIRouter(prefix=...)` declaration; there is no global `/api` prefix.
 
-**Authentication**: unless noted otherwise, every endpoint requires the header `X-Velar-API-Key`, checked against `settings.VELAR_API_KEY` (see `core/security.py`). A subset of endpoints — marked **Both** in the table below — additionally require `Authorization: Bearer <access token>` (a JWT obtained from `POST /auth/login` or `/auth/refresh`), resolved to a specific `User` by `core/jwt_auth.py::get_current_user`. The API key authenticates the calling application; the JWT authenticates the end user within it. Full detail in [22 · Authentication](./22-authentication.md).
+**Authentication**: unless noted otherwise, every endpoint requires the header `X-Auvren-API-Key`, checked against `settings.AUVREN_API_KEY` (see `core/security.py`). A subset of endpoints — marked **Both** in the table below — additionally require `Authorization: Bearer <access token>` (a JWT obtained from `POST /auth/login` or `/auth/refresh`), resolved to a specific `User` by `core/jwt_auth.py::get_current_user`. The API key authenticates the calling application; the JWT authenticates the end user within it. Full detail in [22 · Authentication](./22-authentication.md).
 
 ## 2.1 Endpoint index
 
@@ -331,7 +331,7 @@ There is no centralized exception handler beyond FastAPI/Pydantic defaults and S
 
 | Status | When | Body |
 |---|---|---|
-| `401` | Missing `X-Velar-API-Key` header | `{"detail": "Missing X-Velar-API-Key header"}` |
+| `401` | Missing `X-Auvren-API-Key` header | `{"detail": "Missing X-Auvren-API-Key header"}` |
 | `403` | Wrong API key value | `{"detail": "Invalid or revoked API Key"}` |
 | `404` | Memory profile not found; observability report not found | `{"detail": "..."}` or custom `{"message": "..."}` |
 | `422` | Pydantic request validation failure | Standard FastAPI validation error array |

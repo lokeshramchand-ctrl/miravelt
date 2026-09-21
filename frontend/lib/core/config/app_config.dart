@@ -4,14 +4,14 @@
 /// [ApiEnvironment], which is the single source of truth for both backend
 /// targets (deployed vs. localhost) and is switchable at runtime.
 ///
-/// VELAR_API_KEY has no client-facing issuance endpoint (see
+/// AUVREN_API_KEY has no client-facing issuance endpoint (see
 /// docs/API_REFERENCE.md §0) - it's a static value the app ships/configures
 /// with, the same way the backend operator holds it.
 abstract final class AppConfig {
   static const String apiKey = String.fromEnvironment(
-    'VELAR_API_KEY',
+    'AUVREN_API_KEY',
     defaultValue:
-        'velar_test_key_123', // or remove if you don't want a fallback
+        'auvren_test_key_123', // or remove if you don't want a fallback
   );
 
   /// Pre-fills the login form with a seeded local test account

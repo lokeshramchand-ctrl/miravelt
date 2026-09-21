@@ -13,12 +13,12 @@
 Accepts human feedback on a model prediction (correction or confirmation), resolves and persists the merchant it's about, and — for actual corrections — checks in the background whether enough corrections have accumulated to justify triggering a retraining run.
 
 ## Authentication
-**Required.** `X-Velar-API-Key: <settings.VELAR_API_KEY>`, enforced via `Depends(validate_api_key)`.
+**Required.** `X-Auvren-API-Key: <settings.AUVREN_API_KEY>`, enforced via `Depends(validate_api_key)`.
 
 ## Headers
 | Header | Required | Value |
 |---|---|---|
-| `X-Velar-API-Key` | Yes | Your configured `VELAR_API_KEY` |
+| `X-Auvren-API-Key` | Yes | Your configured `AUVREN_API_KEY` |
 | `Content-Type` | Yes | `application/json` |
 
 ## Request body
@@ -97,7 +97,7 @@ sequenceDiagram
 ## Example request
 ```bash
 curl -s -X POST http://localhost:8000/v1/feedback/ \
-  -H "X-Velar-API-Key: $VELAR_API_KEY" \
+  -H "X-Auvren-API-Key: $AUVREN_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"transaction_id": "666f6f2d6261722d71757578", "original_prediction": "Unknown", "corrected_category": "Travel", "confidence": 0.40}'
 ```

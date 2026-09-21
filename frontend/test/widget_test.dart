@@ -3,12 +3,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:velar/core/providers/settings_providers.dart';
-import 'package:velar/features/auth/presentation/auth_controller.dart';
-import 'package:velar/features/auth/presentation/auth_state.dart';
-import 'package:velar/features/statements/domain/statement.dart';
-import 'package:velar/features/statements/presentation/period_providers.dart';
-import 'package:velar/main.dart';
+import 'package:auvren/core/providers/settings_providers.dart';
+import 'package:auvren/features/auth/presentation/auth_controller.dart';
+import 'package:auvren/features/auth/presentation/auth_state.dart';
+import 'package:auvren/features/statements/domain/statement.dart';
+import 'package:auvren/features/statements/presentation/period_providers.dart';
+import 'package:auvren/main.dart';
 
 /// Resolves immediately to unauthenticated instead of hitting TokenStorage
 /// (flutter_secure_storage's platform channel isn't backed by anything
@@ -23,7 +23,7 @@ void main() {
   // assets, which leaves a background Timer running past test teardown.
   GoogleFonts.config.allowRuntimeFetching = false;
 
-  testWidgets('VelarApp boots to the splash screen', (WidgetTester tester) async {
+  testWidgets('AuvrenApp boots to the splash screen', (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
 
@@ -38,12 +38,12 @@ void main() {
           // answer it - leaving a pending connectTimeout Timer at teardown.
           periodsProvider.overrideWith((ref) async => const <Statement>[]),
         ],
-        child: const VelarApp(),
+        child: const AuvrenApp(),
       ),
     );
 
     // The auth check is in flight for this first frame, so the app should
     // render the splash/loading screen rather than crash.
-    expect(find.text('Velar'), findsOneWidget);
+    expect(find.text('Auvren'), findsOneWidget);
   });
 }

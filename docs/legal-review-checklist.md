@@ -1,9 +1,9 @@
 # Legal & Compliance Readiness Checklist
 
 This is an engineering-side pre-launch checklist, not legal advice. It exists
-so whoever operates Velar (or a lawyer engaged to review it) has one place
+so whoever operates Auvren (or a lawyer engaged to review it) has one place
 listing exactly what's decided, what's implemented, and what's still an open
-decision before Velar is submitted to an app store or opened to real users
+decision before Auvren is submitted to an app store or opened to real users
 beyond a private beta. Cross-reference `frontend/docs/PRIVACY_POLICY.md` /
 `TERMS_OF_SERVICE.md` (canonical) and `frontend/lib/features/legal/presentation/legal_documents.dart`
 (in-app copy, kept manually in sync with the two documents above).
@@ -75,8 +75,8 @@ they're facts about the business, not the software:
       it isn't missed alongside the legal items above.
 - [ ] Confirm whether Google's API/branding usage (parsing "Google Pay"
       statements) requires any trademark/fair-use disclaimer beyond what
-      `TERMS_OF_SERVICE.md`'s "What Velar is (and isn't)" section already
-      states (Velar is not affiliated with Google Pay).
+      `TERMS_OF_SERVICE.md`'s "What Auvren is (and isn't)" section already
+      states (Auvren is not affiliated with Google Pay).
 
 ## What NOT to do
 

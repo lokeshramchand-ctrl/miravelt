@@ -10,12 +10,12 @@
 Aggregates a user's total spend and transaction count grouped by category, over a configurable lookback window.
 
 ## Authentication
-**Required.** `X-Velar-API-Key: velar_test_key_123`.
+**Required.** `X-Auvren-API-Key: auvren_test_key_123`.
 
 ## Headers
 | Header | Required | Value |
 |---|---|---|
-| `X-Velar-API-Key` | Yes | `velar_test_key_123` |
+| `X-Auvren-API-Key` | Yes | `auvren_test_key_123` |
 
 ## Request body
 None — parameters are passed via query string.
@@ -78,7 +78,7 @@ No index exists on `{user_id, timestamp}` or `category` — this runs as a colle
 ## Example request
 ```bash
 curl -s "http://localhost:8000/v1/analytics/patterns/categories?days=30" \
-  -H "X-Velar-API-Key: velar_test_key_123"
+  -H "X-Auvren-API-Key: auvren_test_key_123"
 ```
 
 ## Example response

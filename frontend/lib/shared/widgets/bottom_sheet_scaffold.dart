@@ -7,7 +7,7 @@ import '../../core/theme/app_spacing.dart';
 /// Shows [child] as a modal bottom sheet matching the design's sheet spec:
 /// radius 28 top corners, drag handle, dark or light surface, heavy/medium
 /// scrim depending on [dark].
-Future<T?> showVelarSheet<T>(
+Future<T?> showAuvrenSheet<T>(
   BuildContext context, {
   required Widget child,
   bool dark = true,
@@ -18,12 +18,12 @@ Future<T?> showVelarSheet<T>(
     isScrollControlled: isScrollControlled,
     backgroundColor: Colors.transparent,
     barrierColor: dark ? AppColors.scrimHeavy : AppColors.scrimMedium,
-    builder: (context) => VelarSheetChrome(dark: dark, child: child),
+    builder: (context) => AuvrenSheetChrome(dark: dark, child: child),
   );
 }
 
-class VelarSheetChrome extends StatelessWidget {
-  const VelarSheetChrome({super.key, required this.child, this.dark = true});
+class AuvrenSheetChrome extends StatelessWidget {
+  const AuvrenSheetChrome({super.key, required this.child, this.dark = true});
 
   final Widget child;
   final bool dark;

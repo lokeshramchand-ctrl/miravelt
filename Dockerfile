@@ -24,7 +24,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Unprivileged, no-login user - this process never needs root, and running
 # as root in a container is an unnecessary privilege-escalation surface if
 # the app or any dependency is ever compromised.
-RUN groupadd --system velar && useradd --system --gid velar --no-create-home velar
+RUN groupadd --system auvren && useradd --system --gid auvren --no-create-home auvren
 
 WORKDIR /app
 
@@ -32,9 +32,9 @@ WORKDIR /app
 # tools, no pip cache, no intermediate layers.
 COPY --from=builder /install /usr/local
 
-COPY --chown=velar:velar . .
+COPY --chown=auvren:auvren . .
 
-USER velar
+USER auvren
 
 EXPOSE 8000
 

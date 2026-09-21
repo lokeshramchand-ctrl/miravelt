@@ -10,12 +10,12 @@
 Intended to trigger a data/target drift analysis comparing current production data against a baseline reference dataset. **Currently a pure stub — does nothing.**
 
 ## Authentication
-**Required.** `X-Velar-API-Key: velar_test_key_123`.
+**Required.** `X-Auvren-API-Key: auvren_test_key_123`.
 
 ## Headers
 | Header | Required | Value |
 |---|---|---|
-| `X-Velar-API-Key` | Yes | `velar_test_key_123` |
+| `X-Auvren-API-Key` | Yes | `auvren_test_key_123` |
 
 ## Request body
 None — the handler takes no parameters at all, and no request body is read or validated regardless of what's sent.
@@ -60,7 +60,7 @@ None.
 ## Example request
 ```bash
 curl -s -X POST http://localhost:8000/v1/observability/drift/analyze \
-  -H "X-Velar-API-Key: velar_test_key_123"
+  -H "X-Auvren-API-Key: auvren_test_key_123"
 ```
 
 ## Example response

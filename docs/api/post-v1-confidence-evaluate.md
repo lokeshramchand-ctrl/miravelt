@@ -10,12 +10,12 @@
 Applies the system's "confidence wall": evaluates an upstream (would-be ML model) category prediction and forces it to `Unknown` if the category is invalid or the confidence is below the trust threshold, preventing low-quality guesses from propagating downstream.
 
 ## Authentication
-**Required.** `X-Velar-API-Key: velar_test_key_123`.
+**Required.** `X-Auvren-API-Key: auvren_test_key_123`.
 
 ## Headers
 | Header | Required | Value |
 |---|---|---|
-| `X-Velar-API-Key` | Yes | `velar_test_key_123` |
+| `X-Auvren-API-Key` | Yes | `auvren_test_key_123` |
 | `Content-Type` | Yes | `application/json` |
 
 ## Request body
@@ -83,7 +83,7 @@ sequenceDiagram
 ## Example request
 ```bash
 curl -s -X POST http://localhost:8000/v1/confidence/evaluate \
-  -H "X-Velar-API-Key: velar_test_key_123" \
+  -H "X-Auvren-API-Key: auvren_test_key_123" \
   -H "Content-Type: application/json" \
   -d '{"predicted_category": "Travel", "raw_confidence": 0.40}'
 ```

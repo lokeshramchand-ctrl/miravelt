@@ -63,7 +63,7 @@ async function refreshTokens(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Velar-API-Key": process.env.VELAR_API_KEY ?? "",
+        "X-Auvren-API-Key": process.env.AUVREN_API_KEY ?? "",
       },
       body: JSON.stringify({ refresh_token: refreshToken }),
       cache: "no-store",

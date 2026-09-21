@@ -23,7 +23,7 @@ export async function publishRelease(_prev: ReleaseFormState, formData: FormData
     // a string body, so this FormData keeps its own multipart boundary
     // exactly like a browser-submitted upload (routers/app_updates.py's
     // POST /app/releases, which core/security.py::validate_admin_key gates
-    // on top of the router's usual X-Velar-API-Key).
+    // on top of the router's usual X-Auvren-API-Key).
     await adminBackendFetch(accessToken, "/app/releases", { method: "POST", body: formData });
   } catch (e) {
     return { error: e instanceof BackendError ? (e.detail ?? "Failed to publish release.") : "Failed to publish release." };

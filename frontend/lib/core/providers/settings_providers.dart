@@ -12,7 +12,7 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
 });
 
 class ThemeModeController extends Notifier<ThemeMode> {
-  static const _key = 'velar.theme_mode';
+  static const _key = 'auvren.theme_mode';
 
   @override
   ThemeMode build() {
@@ -51,15 +51,15 @@ class BoolPreferenceController extends Notifier<bool> {
 }
 
 final keepOriginalPdfsProvider = NotifierProvider<BoolPreferenceController, bool>(
-  () => BoolPreferenceController('velar.keep_original_pdfs', true),
+  () => BoolPreferenceController('auvren.keep_original_pdfs', true),
 );
 
 final notifyAnalysisFinishedProvider = NotifierProvider<BoolPreferenceController, bool>(
-  () => BoolPreferenceController('velar.notify_analysis_finished', true),
+  () => BoolPreferenceController('auvren.notify_analysis_finished', true),
 );
 
 final notifyUnusualSpendProvider = NotifierProvider<BoolPreferenceController, bool>(
-  () => BoolPreferenceController('velar.notify_unusual_spend', false),
+  () => BoolPreferenceController('auvren.notify_unusual_spend', false),
 );
 
 /// Which of the two backends (see [ApiEnvironment]) the app talks to.
@@ -67,7 +67,7 @@ final notifyUnusualSpendProvider = NotifierProvider<BoolPreferenceController, bo
 /// from [ApiEnvironment.production] on a fresh install/unrecognized value -
 /// never silently defaults to a developer's local machine.
 class ApiEnvironmentController extends Notifier<ApiEnvironment> {
-  static const _key = 'velar.api_environment';
+  static const _key = 'auvren.api_environment';
 
   @override
   ApiEnvironment build() {

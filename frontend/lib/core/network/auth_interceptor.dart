@@ -5,7 +5,7 @@ import 'package:dio/dio.dart';
 import '../config/app_config.dart';
 import '../storage/token_storage.dart';
 
-/// Attaches `X-Velar-API-Key` to every request and `Authorization: Bearer`
+/// Attaches `X-Auvren-API-Key` to every request and `Authorization: Bearer`
 /// once a session exists. On a 401, attempts exactly one token refresh
 /// (single-flight - concurrent 401s share the same refresh call) and
 /// retries the original request; if refresh itself fails, clears the
@@ -16,7 +16,7 @@ class AuthInterceptor extends Interceptor {
     required this._tokenStorage,
     required this._onSessionExpired,
   })  : _refreshDio = Dio(BaseOptions(baseUrl: baseUrl))
-          ..options.headers['X-Velar-API-Key'] = AppConfig.apiKey;
+          ..options.headers['X-Auvren-API-Key'] = AppConfig.apiKey;
 
   final TokenStorage _tokenStorage;
   final Future<void> Function() _onSessionExpired;
@@ -26,7 +26,7 @@ class AuthInterceptor extends Interceptor {
 
   @override
   Future<void> onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
-    options.headers['X-Velar-API-Key'] = AppConfig.apiKey;
+    options.headers['X-Auvren-API-Key'] = AppConfig.apiKey;
     final accessToken = await _tokenStorage.readAccessToken();
     if (accessToken != null) {
       options.headers['Authorization'] = 'Bearer $accessToken';
@@ -37,7 +37,7 @@ class AuthInterceptor extends Interceptor {
   @override
   Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
     final response = err.response;
-    final alreadyRetried = err.requestOptions.extra['velar_retried'] == true;
+    final alreadyRetried = err.requestOptions.extra['auvren_retried'] == true;
 
     final isAuthEndpoint = err.requestOptions.path.startsWith('/auth/');
     if (response?.statusCode != 401 || alreadyRetried || isAuthEndpoint) {
@@ -55,7 +55,7 @@ class AuthInterceptor extends Interceptor {
 
     try {
       final retryOptions = err.requestOptions;
-      retryOptions.extra['velar_retried'] = true;
+      retryOptions.extra['auvren_retried'] = true;
       final accessToken = await _tokenStorage.readAccessToken();
       retryOptions.headers['Authorization'] = 'Bearer $accessToken';
       final response = await _refreshDio.fetch(retryOptions);

@@ -16,7 +16,7 @@ import 'app_update_state.dart';
 /// than the one installed. Self-hosted equivalent of a Play Store update
 /// prompt - see routers/app_updates.py.
 Future<void> showAppUpdateSheet(BuildContext context) {
-  return showVelarSheet<void>(context, dark: true, isScrollControlled: false, child: const _AppUpdateSheetBody());
+  return showAuvrenSheet<void>(context, dark: true, isScrollControlled: false, child: const _AppUpdateSheetBody());
 }
 
 class _AppUpdateSheetBody extends ConsumerWidget {

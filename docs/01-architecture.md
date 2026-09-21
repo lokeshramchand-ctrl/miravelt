@@ -2,7 +2,7 @@
 
 ## 1.1 Overview
 
-Velar is a single FastAPI service (`app.py`) that fronts two datastores (MongoDB, Milvus) and one external inference server (Ollama). It is **not** a microservice mesh — every router, engine, and ML component documented here runs in the same Python process, in the same container. There is no message queue, no Celery worker, and no separate training service actually wired up in this codebase, despite comments referencing them (see [16 · Known Issues](./16-known-issues-tech-debt.md)).
+Auvren is a single FastAPI service (`app.py`) that fronts two datastores (MongoDB, Milvus) and one external inference server (Ollama). It is **not** a microservice mesh — every router, engine, and ML component documented here runs in the same Python process, in the same container. There is no message queue, no Celery worker, and no separate training service actually wired up in this codebase, despite comments referencing them (see [16 · Known Issues](./16-known-issues-tech-debt.md)).
 
 The codebase is organized as a linear sequence of "Phases," visible directly in source comments. Each phase builds on data produced by the previous one:
 
@@ -30,7 +30,7 @@ Only a subset of these phases are reachable over HTTP today. The rest exist as i
 
 ```mermaid
 flowchart LR
-    subgraph Container["velar-backend container (Dockerfile)"]
+    subgraph Container["auvren-backend container (Dockerfile)"]
         APP["Uvicorn / FastAPI app.py"]
     end
     subgraph Data["Datastores"]
@@ -41,7 +41,7 @@ flowchart LR
         Ollama[["Ollama server(s)<br/>OLLAMA_URI / OLLAMA_HOSTS"]]
     end
 
-    Client(["API Consumer"]) -- "HTTPS + X-Velar-API-Key" --> APP
+    Client(["API Consumer"]) -- "HTTPS + X-Auvren-API-Key" --> APP
     APP -- "Motor (async)" --> Mongo
     APP -- "MilvusClient" --> Milvus
     APP -- "httpx (async)" --> Ollama
@@ -205,7 +205,7 @@ State thresholds (`memory/state_machine.py`): `frequency >= 10` → `PERMANENT`;
 
 ## 1.8 Security & rate limiting
 
-- **Auth — two independent layers**: every router except `/health`, `/live`, `/ready`, and `/metrics` is mounted with `dependencies=[Depends(validate_api_key)]` in `app.py`, unchanged from before. `validate_api_key` (`core/security.py`) checks the `X-Velar-API-Key` header against `settings.VELAR_API_KEY` — this authenticates the *calling application* (the one trusted client consuming this backend), not an individual end user.
+- **Auth — two independent layers**: every router except `/health`, `/live`, `/ready`, and `/metrics` is mounted with `dependencies=[Depends(validate_api_key)]` in `app.py`, unchanged from before. `validate_api_key` (`core/security.py`) checks the `X-Auvren-API-Key` header against `settings.AUVREN_API_KEY` — this authenticates the *calling application* (the one trusted client consuming this backend), not an individual end user.
 
   A second, independent layer authenticates the *end user* within that application boundary: `core/jwt_auth.py::get_current_user` validates a `Authorization: Bearer <JWT>` access token and resolves it to a `User` document. Unlike the API key (attached once per router via `dependencies=[...]`), this is bound explicitly as a handler parameter — `current_user: User = Depends(get_current_user)` — only on the specific endpoints that need to know *which* user is calling: `POST /auth/me`/`/auth/logout` implicitly via the token, `POST /v1/categorize`, every `GET /v1/analytics/*`, and `POST /v1/feedback/`. Endpoints that operate on data that isn't scoped to one user (`/v1/resolve`, `/v1/confidence/evaluate`, `/v1/explain`, `/memory/*`, `/v1/pipelines/*`, `/v1/observability/*`, `/v1/analytics/anomaly/check`) stay API-key-only, exactly as before.
 

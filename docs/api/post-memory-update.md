@@ -10,12 +10,12 @@
 Records an encounter with a merchant entity, incrementing its seen-count and running the trust state machine to decide whether it has earned promotion to a higher memory state (`EPHEMERAL → TEMPORARY → PERMANENT`).
 
 ## Authentication
-**Required.** `X-Velar-API-Key: velar_test_key_123`.
+**Required.** `X-Auvren-API-Key: auvren_test_key_123`.
 
 ## Headers
 | Header | Required | Value |
 |---|---|---|
-| `X-Velar-API-Key` | Yes | `velar_test_key_123` |
+| `X-Auvren-API-Key` | Yes | `auvren_test_key_123` |
 | `Content-Type` | Yes | `application/json` |
 
 ## Request body
@@ -98,7 +98,7 @@ sequenceDiagram
 ## Example request
 ```bash
 curl -s -X POST http://localhost:8000/memory/update \
-  -H "X-Velar-API-Key: velar_test_key_123" \
+  -H "X-Auvren-API-Key: auvren_test_key_123" \
   -H "Content-Type: application/json" \
   -d '{"canonical_name": "Zomato", "raw_text": "paid to zomato media pvt"}'
 ```

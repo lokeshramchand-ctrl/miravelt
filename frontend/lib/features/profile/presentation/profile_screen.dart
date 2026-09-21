@@ -107,7 +107,7 @@ class ProfileScreen extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text('Theme', style: AppTypography.rowLabel14.copyWith(color: AppColors.onDark)),
-                      VelarSegmentedControl<ThemeMode>(
+                      AuvrenSegmentedControl<ThemeMode>(
                         value: themeMode,
                         options: const [(ThemeMode.light, 'Light'), (ThemeMode.dark, 'Dark'), (ThemeMode.system, 'Auto')],
                         onChanged: (mode) => ref.read(themeModeProvider.notifier).set(mode),
@@ -151,7 +151,7 @@ class ProfileScreen extends ConsumerWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text('API server', style: AppTypography.rowLabel14.copyWith(color: AppColors.onDark)),
-                          VelarSegmentedControl<ApiEnvironment>(
+                          AuvrenSegmentedControl<ApiEnvironment>(
                             value: env,
                             options: [for (final e in ApiEnvironment.values) (e, e.label)],
                             onChanged: (next) => _switchApiEnvironment(context, ref, next),
@@ -251,7 +251,7 @@ class ProfileScreen extends ConsumerWidget {
         buffer.writeln('${txn.timestamp.toIso8601String()},${txn.merchant ?? ''},${txn.category ?? ''},${txn.amount},${txn.transactionType.name},${txn.status.name}');
       }
       if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
-      await Share.share(buffer.toString(), subject: 'Velar export - ${period.originalFilename}');
+      await Share.share(buffer.toString(), subject: 'Auvren export - ${period.originalFilename}');
     } on ApiException catch (e) {
       if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
       messenger.showSnackBar(SnackBar(content: Text(e.message), backgroundColor: AppColors.rose));

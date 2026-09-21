@@ -1,23 +1,23 @@
 services:
-  velar-backend:
+  auvren-backend:
     build: .
-    container_name: velar-backend-staging
+    container_name: auvren-backend-staging
     # No bind mount, same reasoning as docker-compose_production.yaml:
     # staging must run the image that was actually built from the branch
     # under test, not whatever's on the host filesystem.
     environment:
       # Staging must point at its OWN MongoDB/Milvus/Redis instances and its
-      # own VELAR_API_KEY/JWT_SECRET_KEY — never the production values, and
+      # own AUVREN_API_KEY/JWT_SECRET_KEY — never the production values, and
       # never production's databases. See docker-compose_production.yaml for
       # why (a leaked staging credential must not be a production incident).
       - MONGODB_URI=${MONGODB_URI:?MONGODB_URI must be set}
-      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-velar_staging}
+      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-auvren_staging}
       - MILVUS_URI=${MILVUS_URI:?MILVUS_URI must be set}
       - OLLAMA_URI=${OLLAMA_URI:-}
       - OLLAMA_HOSTS=${OLLAMA_HOSTS:-}
       - EMBED_MODEL=${EMBED_MODEL:?EMBED_MODEL must be set}
       - LLM_MODEL=${LLM_MODEL:?LLM_MODEL must be set}
-      - VELAR_API_KEY=${VELAR_API_KEY:?VELAR_API_KEY must be set}
+      - AUVREN_API_KEY=${AUVREN_API_KEY:?AUVREN_API_KEY must be set}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
       - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
       - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-15}
@@ -60,19 +60,19 @@ services:
   # Same rationale as docker-compose_production.yaml: no-ops if REDIS_URI is
   # unset, omit these two services entirely if staging doesn't need the
   # scheduled batch pipelines exercised.
-  velar-celery-worker:
+  auvren-celery-worker:
     build: .
-    container_name: velar-celery-worker-staging
+    container_name: auvren-celery-worker-staging
     command: celery -A tasks.celery_app worker --loglevel=info --concurrency=1
     environment:
       - MONGODB_URI=${MONGODB_URI:?MONGODB_URI must be set}
-      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-velar_staging}
+      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-auvren_staging}
       - MILVUS_URI=${MILVUS_URI:?MILVUS_URI must be set}
       - OLLAMA_URI=${OLLAMA_URI:-}
       - OLLAMA_HOSTS=${OLLAMA_HOSTS:-}
       - EMBED_MODEL=${EMBED_MODEL:?EMBED_MODEL must be set}
       - LLM_MODEL=${LLM_MODEL:?LLM_MODEL must be set}
-      - VELAR_API_KEY=${VELAR_API_KEY:?VELAR_API_KEY must be set}
+      - AUVREN_API_KEY=${AUVREN_API_KEY:?AUVREN_API_KEY must be set}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
       - ENVIRONMENT=staging
       - REDIS_URI=${REDIS_URI:?REDIS_URI must be set to run the Celery worker/beat services}
@@ -97,17 +97,17 @@ services:
           cpus: "0.1"
           memory: 128m
 
-  velar-celery-beat:
+  auvren-celery-beat:
     build: .
-    container_name: velar-celery-beat-staging
+    container_name: auvren-celery-beat-staging
     command: celery -A tasks.celery_app beat --loglevel=info
     environment:
       - MONGODB_URI=${MONGODB_URI:?MONGODB_URI must be set}
-      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-velar_staging}
+      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-auvren_staging}
       - MILVUS_URI=${MILVUS_URI:?MILVUS_URI must be set}
       - EMBED_MODEL=${EMBED_MODEL:?EMBED_MODEL must be set}
       - LLM_MODEL=${LLM_MODEL:?LLM_MODEL must be set}
-      - VELAR_API_KEY=${VELAR_API_KEY:?VELAR_API_KEY must be set}
+      - AUVREN_API_KEY=${AUVREN_API_KEY:?AUVREN_API_KEY must be set}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
       - ENVIRONMENT=staging
       - REDIS_URI=${REDIS_URI:?REDIS_URI must be set to run the Celery worker/beat services}

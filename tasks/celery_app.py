@@ -1,5 +1,5 @@
 """
-Celery application: task queue + beat scheduler for velar-backend's batch
+Celery application: task queue + beat scheduler for auvren-backend's batch
 pipelines (routers/pipelines.py) and the retraining-queue executor
 (feedback/retraining_queue.py) - both previously manual-trigger-only, and a
 TODO respectively (docs/16-known-issues-tech-debt.md §16.5).
@@ -29,7 +29,7 @@ from milvus.insert_vectors import vector_store
 logger = logging.getLogger(__name__)
 
 celery_app = Celery(
-    "velar",
+    "auvren",
     broker=settings.REDIS_URI or "redis://localhost:6379/0",
     backend=settings.REDIS_URI or "redis://localhost:6379/0",
     include=["tasks.pipeline_tasks", "tasks.retraining_tasks"],

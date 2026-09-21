@@ -10,7 +10,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/error_retry.dart';
 import '../../../shared/widgets/skeleton.dart';
-import '../../../shared/widgets/velar_list_row.dart';
+import '../../../shared/widgets/auvren_list_row.dart';
 import '../../statements/domain/statement.dart';
 import '../../statements/domain/transaction.dart';
 import '../../statements/presentation/period_providers.dart';
@@ -102,7 +102,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                               ),
                             ),
                             for (final txn in group.transactions)
-                              VelarListRow(
+                              AuvrenListRow(
                                 avatarInitials: (txn.merchant?.isNotEmpty ?? false) ? txn.merchant![0].toUpperCase() : '?',
                                 avatarTint: AppColors.forCategory(txn.category ?? '').withValues(alpha: 0.16),
                                 avatarInk: AppColors.forCategory(txn.category ?? ''),

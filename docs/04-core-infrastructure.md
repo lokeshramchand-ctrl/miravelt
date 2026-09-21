@@ -9,15 +9,15 @@ Configuration is a single Pydantic `Settings` object (`BaseSettings`), instantia
 | Env var | Type | Required | Default | Purpose |
 |---|---|---|---|---|
 | `MONGODB_URI` | `str` | Yes | — | Mongo connection string |
-| `MONGODB_DB_NAME` | `str` | No | `"velar"` | Mongo database name |
+| `MONGODB_DB_NAME` | `str` | No | `"auvren"` | Mongo database name |
 | `MILVUS_URI` | `str` | Yes | — | Milvus endpoint |
 | `OLLAMA_URI` | `str \| None` | No | `None` | Single Ollama host; takes precedence over `OLLAMA_HOSTS` |
 | `OLLAMA_HOSTS` | `str \| None` | No | `None` | Comma-separated list of Ollama hosts for failover resolution |
 | `EMBED_MODEL` | `str` | Yes | — | Ollama model name for embeddings |
 | `LLM_MODEL` | `str` | Yes | — | Ollama model name for generation |
-| `VELAR_API_KEY` | `str` | Yes | — | **Declared but never read by `core/security.py`** — see [Known Issues](./16-known-issues-tech-debt.md#hardcoded-api-key) |
+| `AUVREN_API_KEY` | `str` | Yes | — | **Declared but never read by `core/security.py`** — see [Known Issues](./16-known-issues-tech-debt.md#hardcoded-api-key) |
 
-Because these are all required (no default) except where noted, **the process will fail to start** (Pydantic validation error at `settings = Settings()`) if `.env` is missing any of `MONGODB_URI`, `MILVUS_URI`, `EMBED_MODEL`, `LLM_MODEL`, or `VELAR_API_KEY`.
+Because these are all required (no default) except where noted, **the process will fail to start** (Pydantic validation error at `settings = Settings()`) if `.env` is missing any of `MONGODB_URI`, `MILVUS_URI`, `EMBED_MODEL`, `LLM_MODEL`, or `AUVREN_API_KEY`.
 
 `ollama_hosts_list` is a computed property that splits `OLLAMA_HOSTS` on commas and strips whitespace; returns `[]` if unset.
 
@@ -45,14 +45,14 @@ Consumers: `rag/generator.py` and `embeddings/generate_embeddings.py` now call `
 ```python
 async def validate_api_key(api_key_header: str = Security(api_key_header)) -> str:
     if not api_key_header:
-        raise HTTPException(401, "Missing X-Velar-API-Key header")
-    if api_key_header != settings.VELAR_API_KEY:
+        raise HTTPException(401, "Missing X-Auvren-API-Key header")
+    if api_key_header != settings.AUVREN_API_KEY:
         raise HTTPException(403, "Invalid or revoked API Key")
     return "developer_id_789"
 ```
 
-- The header name is `X-Velar-API-Key` (`API_KEY_NAME`), implemented via `fastapi.security.api_key.APIKeyHeader(auto_error=False)` so that a missing header is handled explicitly (401) rather than FastAPI's default 403.
-- ✅ **FIXED** — the comparison now reads `settings.VELAR_API_KEY` instead of a hardcoded literal. Rotating `VELAR_API_KEY` in `.env`/deployment config now actually takes effect. See [16 · Known Issues §16.2](./16-known-issues-tech-debt.md#162-high-previously-security--correctness-with-real-user-impact--all-fixed).
+- The header name is `X-Auvren-API-Key` (`API_KEY_NAME`), implemented via `fastapi.security.api_key.APIKeyHeader(auto_error=False)` so that a missing header is handled explicitly (401) rather than FastAPI's default 403.
+- ✅ **FIXED** — the comparison now reads `settings.AUVREN_API_KEY` instead of a hardcoded literal. Rotating `AUVREN_API_KEY` in `.env`/deployment config now actually takes effect. See [16 · Known Issues §16.2](./16-known-issues-tech-debt.md#162-high-previously-security--correctness-with-real-user-impact--all-fixed).
 - On success, the function still returns a **hardcoded identity string** `"developer_id_789"` — there is no real multi-tenant identity resolution; this return value is unused by any caller today (FastAPI dependency return values are discarded when used only in `dependencies=[...]`, not `Depends()` bound to a parameter). This is a genuine remaining limitation (multi-tenancy is on the roadmap), not something silently fixed here.
 - The docstring claims "In production, this routes through Redis for sub-millisecond validation" — no Redis client, dependency, or configuration exists anywhere in this repository.
 
@@ -81,6 +81,6 @@ Uses **SlowAPI** (`slowapi.Limiter`), keyed by `get_remote_address` (client IP).
 ## 4.6 Application composition — `app.py`
 
 - Logging is configured globally at `DEBUG` level via `logging.basicConfig` — this applies to the root logger, so every module's `logging.getLogger(__name__)` calls inherit `DEBUG` verbosity in any environment unless overridden. There is no environment-based log-level switch (no `LOG_LEVEL` env var is read).
-- `FastAPI(title="Velar", version="1.0.0", lifespan=lifespan)` — OpenAPI docs are available at the default `/docs` and `/redoc` paths (not disabled).
+- `FastAPI(title="Auvren", version="1.0.0", lifespan=lifespan)` — OpenAPI docs are available at the default `/docs` and `/redoc` paths (not disabled).
 - Router mount order: `v1` → `memory` → `analytics` → `rag` → `observability`, each with `dependencies=[Depends(validate_api_key)]` applied at the `include_router` call (this wraps every route in that router with the auth dependency, in addition to any dependencies declared on the router or individual routes directly — there are none of the latter here).
 - The local dev entry point (`if __name__ == "__main__": uvicorn.run(...)`) hardcodes `reload=True`, `host="0.0.0.0"`, `port=8000` — this path is bypassed entirely in Docker, where the `CMD`/`command` directly invokes `uvicorn app:app` without `--reload`.

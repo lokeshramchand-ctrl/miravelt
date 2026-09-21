@@ -34,7 +34,7 @@ class OnboardingScreen extends ConsumerWidget {
                     child: Text('V', style: AppTypography.badge10.copyWith(color: AppColors.accentInk, fontSize: 12)),
                   ),
                   const SizedBox(width: 8),
-                  Text('Velar', style: AppTypography.wordmark14.copyWith(color: AppColors.onDark)),
+                  Text('Auvren', style: AppTypography.wordmark14.copyWith(color: AppColors.onDark)),
                 ],
               ),
               Expanded(
@@ -51,7 +51,7 @@ class OnboardingScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 14),
                       Text(
-                        'Add one Google Pay statement. Velar reads every transaction, names the merchants, finds the patterns and tells you what changed.',
+                        'Add one Google Pay statement. Auvren reads every transaction, names the merchants, finds the patterns and tells you what changed.',
                         style: AppTypography.footnote15.copyWith(color: AppColors.onDarkMuted),
                       ),
                       const SizedBox(height: 24),

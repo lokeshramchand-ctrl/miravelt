@@ -67,7 +67,7 @@ class RecurringScreen extends ConsumerWidget {
                         const EmptyState(
                           icon: Icons.repeat_rounded,
                           title: 'No recurring payments detected yet',
-                          subtitle: 'Velar looks for merchants you pay on a regular cadence within this period.',
+                          subtitle: 'Auvren looks for merchants you pay on a regular cadence within this period.',
                         )
                       else
                         for (var i = 0; i < payments.length; i++) ...[

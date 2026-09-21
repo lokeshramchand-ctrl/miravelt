@@ -1,6 +1,6 @@
-# Velar Terms of Service
+# Auvren Terms of Service
 
-**Status: draft, not yet reviewed by a lawyer.** Velar is not currently
+**Status: draft, not yet reviewed by a lawyer.** Auvren is not currently
 published on any app store. Read this alongside the
 [Privacy Policy](./PRIVACY_POLICY.md), which covers your data
 specifically - this document covers the rest of the relationship.
@@ -9,18 +9,18 @@ specifically - this document covers the rest of the relationship.
 
 ## Who this is
 
-Velar is developed by an individual developer, not a registered company.
+Auvren is developed by an individual developer, not a registered company.
 
 - **Developer:** Lokesh Ram Chand
 - **Contact:** lokeshramchand@gmail
 
-## What Velar is (and isn't)
+## What Auvren is (and isn't)
 
-Velar reads Google Pay transaction statement PDFs that you upload and
+Auvren reads Google Pay transaction statement PDFs that you upload and
 turns them into a spending overview, categorization, recurring-payment
 detection, and a searchable transaction history.
 
-Velar is **not**:
+Auvren is **not**:
 - A bank, payment processor, or financial institution
 - Able to move money, initiate payments, or access your bank/UPI account
   directly - it only reads a PDF file you choose to give it
@@ -35,14 +35,14 @@ Velar is **not**:
   responsible for keeping your login credentials confidential and for
   all activity under your account.
 - You must be legally capable of agreeing to these terms in your
-  jurisdiction to use Velar.
+  jurisdiction to use Auvren.
 - Don't share your account with people you don't trust with your
   financial statement data - anyone signed in can see everything
   uploaded to that account.
 
 ## Acceptable use
 
-Don't use Velar to:
+Don't use Auvren to:
 - Upload statements you're not authorized to view (e.g. someone else's,
   without their consent)
 - Attempt to access another user's account or data
@@ -67,7 +67,7 @@ Pay / bank records.
 ## Your content
 
 You retain ownership of the statement PDFs you upload and the data
-derived from them. By uploading a statement, you grant Velar the
+derived from them. By uploading a statement, you grant Auvren the
 permissions necessary to store, parse, and process it in order to
 provide the app's features to you, as described in the Privacy Policy.
 We don't claim ownership of your financial data, and we don't use it for
@@ -76,16 +76,16 @@ accuracy (see the Privacy Policy for specifics).
 
 ## Service availability
 
-Velar is currently run on infrastructure operated by an individual
+Auvren is currently run on infrastructure operated by an individual
 developer, not a redundant commercial hosting setup. The service may be
 unavailable, slow, or interrupted without notice, including for
-maintenance, and there is no uptime guarantee. Don't rely on Velar as
+maintenance, and there is no uptime guarantee. Don't rely on Auvren as
 your sole record of your finances - your bank and Google Pay remain the
 authoritative source.
 
 ## Disclaimer of warranties
 
-Velar is provided "as is," without warranties of any kind, express or
+Auvren is provided "as is," without warranties of any kind, express or
 implied, including but not limited to fitness for a particular purpose,
 accuracy, or non-infringement. Automated categorization and analytics may
 contain errors.
@@ -93,14 +93,14 @@ contain errors.
 ## Limitation of liability
 
 To the maximum extent permitted by applicable law, the developer of
-Velar is not liable for any indirect, incidental, or consequential
+Auvren is not liable for any indirect, incidental, or consequential
 damages arising from your use of the app, including decisions made based
 on its output. Nothing in these terms limits liability that cannot
 lawfully be limited in your jurisdiction.
 
 ## Termination
 
-You can stop using Velar at any time by signing out and requesting
+You can stop using Auvren at any time by signing out and requesting
 account deletion (see the Privacy Policy). We may suspend or terminate
 access for violations of the "Acceptable use" section above.
 

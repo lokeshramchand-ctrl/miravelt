@@ -76,7 +76,7 @@ ApiException apiExceptionFromDioError(DioException error) {
       return const ApiNetworkException('The request timed out. Check your connection and try again.');
     }
     if (error.type == DioExceptionType.connectionError) {
-      return const ApiNetworkException("Couldn't reach Velar. Check your connection and try again.");
+      return const ApiNetworkException("Couldn't reach Auvren. Check your connection and try again.");
     }
     return ApiNetworkException(error.message ?? 'Something went wrong.');
   }

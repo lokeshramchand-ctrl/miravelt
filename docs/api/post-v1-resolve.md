@@ -10,12 +10,12 @@
 Cleans a noisy bank/UPI transaction narration and resolves it to a canonical merchant name via a database-backed, graded-confidence lookup. One of the cleanest, fully-working endpoints in the system.
 
 ## Authentication
-**Required.** `X-Velar-API-Key: velar_test_key_123`, enforced via `Depends(validate_api_key)`.
+**Required.** `X-Auvren-API-Key: auvren_test_key_123`, enforced via `Depends(validate_api_key)`.
 
 ## Headers
 | Header | Required | Value |
 |---|---|---|
-| `X-Velar-API-Key` | Yes | `velar_test_key_123` |
+| `X-Auvren-API-Key` | Yes | `auvren_test_key_123` |
 | `Content-Type` | Yes | `application/json` |
 
 ## Request body
@@ -90,7 +90,7 @@ sequenceDiagram
 ## Example request
 ```bash
 curl -s -X POST http://localhost:8000/v1/resolve \
-  -H "X-Velar-API-Key: velar_test_key_123" \
+  -H "X-Auvren-API-Key: auvren_test_key_123" \
   -H "Content-Type: application/json" \
   -d '{"text": "UPI/CR/3152671239/BUNDL TECHNOLOGIES/HDFC"}'
 ```

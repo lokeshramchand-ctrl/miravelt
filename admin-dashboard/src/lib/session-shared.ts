@@ -1,7 +1,7 @@
 import { sealData, unsealData, type SessionOptions } from "iron-session";
 
 /** Everything persisted in the session cookie. Deliberately minimal - the
- * FastAPI backend (velar-backend) stays the sole authority on identity and
+ * FastAPI backend (auvren-backend) stays the sole authority on identity and
  * scope; this is just enough to attach to outgoing backend requests and
  * decide when to refresh. */
 export interface SessionData {
@@ -12,7 +12,7 @@ export interface SessionData {
   user?: { id: string; email: string };
 }
 
-export const SESSION_COOKIE_NAME = "velar_admin_session";
+export const SESSION_COOKIE_NAME = "auvren_admin_session";
 
 function sessionPassword(): string {
   const password = process.env.SESSION_SECRET;

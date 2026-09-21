@@ -15,13 +15,13 @@ void main() async {
   runApp(
     ProviderScope(
       overrides: [sharedPreferencesProvider.overrideWithValue(sharedPreferences)],
-      child: const VelarApp(),
+      child: const AuvrenApp(),
     ),
   );
 }
 
-class VelarApp extends ConsumerWidget {
-  const VelarApp({super.key});
+class AuvrenApp extends ConsumerWidget {
+  const AuvrenApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -29,7 +29,7 @@ class VelarApp extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
-      title: 'Velar',
+      title: 'Auvren',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,

@@ -65,7 +65,7 @@ class RejectedScreen extends ConsumerWidget {
                             const SizedBox(height: 10),
                             _step('02', 'Choose a date range, tap Get statement'),
                             const SizedBox(height: 10),
-                            _step('03', 'Share the PDF straight into Velar'),
+                            _step('03', 'Share the PDF straight into Auvren'),
                           ],
                         ),
                       ),

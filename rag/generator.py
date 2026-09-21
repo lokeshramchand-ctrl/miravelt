@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class ExplanationGenerator:
     def __init__(self):
         self.system_prompt = """
-You are the Velar Transaction Intelligence Reasoning Engine.
+You are the Auvren Transaction Intelligence Reasoning Engine.
 Your ONLY purpose is to explain transaction categorizations or recommend financial insights based STRICTLY on the provided XML context.
 
 RULES:
