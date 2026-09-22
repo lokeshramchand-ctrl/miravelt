@@ -8,10 +8,24 @@ services:
     volumes:
       - mongo_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      # Deliberately a TCP connect rather than `mongosh --eval ping`. mongosh
+      # is a Node CLI that has to boot a JS runtime inside this container's
+      # share of Docker's memory; on a loaded machine it was measured taking
+      # 2m59s to answer, blowing past even a 20s timeout while mongod itself
+      # accepted connections on :27017 in under a tenth of a second. That
+      # false "unhealthy" is not cosmetic - miravelt-backend gates on
+      # `depends_on: mongodb: condition: service_healthy`, so a flapping
+      # check stops the backend starting at all.
+      #
+      # The tradeoff: this proves mongod is listening, not that it can serve
+      # a command. That is the right depth for a startup gate - the backend
+      # does a real `ping` of its own on every /health call, which is what
+      # the app's Developer settings sheet actually displays.
+      test: ["CMD-SHELL", "timeout 3 bash -c '</dev/tcp/127.0.0.1/27017'"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 20s
 
   # ---- Milvus standalone stack (etcd + minio + milvus) ----
   # Self-contained so `docker compose up` is enough for local dev - no
@@ -146,6 +160,16 @@ services:
       - .:/app
     env_file:
       - .env
+    # These four override whatever .env holds. .env ships the host-mode
+    # `localhost` variants so a bare `uvicorn app:app` on the host works, but
+    # inside this container `localhost` is the container itself - the sibling
+    # services are only reachable by their compose service names on the shared
+    # network. Compose's `environment:` wins over `env_file:`, so both
+    # workflows stay correct without anyone hand-editing .env before `up`.
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017
+      MILVUS_URI: http://milvus:19530
+      OLLAMA_URI: http://ollama:11434
     ports:
       - "9850:8000"
     depends_on:
@@ -185,6 +209,16 @@ services:
       - .:/app
     env_file:
       - .env
+    # These four override whatever .env holds. .env ships the host-mode
+    # `localhost` variants so a bare `uvicorn app:app` on the host works, but
+    # inside this container `localhost` is the container itself - the sibling
+    # services are only reachable by their compose service names on the shared
+    # network. Compose's `environment:` wins over `env_file:`, so both
+    # workflows stay correct without anyone hand-editing .env before `up`.
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017
+      MILVUS_URI: http://milvus:19530
+      OLLAMA_URI: http://ollama:11434
     command: celery -A tasks.celery_app worker --loglevel=info --concurrency=2
     depends_on:
       mongodb:
@@ -213,6 +247,16 @@ services:
       - .:/app
     env_file:
       - .env
+    # These four override whatever .env holds. .env ships the host-mode
+    # `localhost` variants so a bare `uvicorn app:app` on the host works, but
+    # inside this container `localhost` is the container itself - the sibling
+    # services are only reachable by their compose service names on the shared
+    # network. Compose's `environment:` wins over `env_file:`, so both
+    # workflows stay correct without anyone hand-editing .env before `up`.
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017
+      MILVUS_URI: http://milvus:19530
+      OLLAMA_URI: http://ollama:11434
     command: celery -A tasks.celery_app beat --loglevel=info
     depends_on:
       redis:

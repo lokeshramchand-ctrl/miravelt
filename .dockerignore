@@ -31,3 +31,13 @@ assets/
 # Local-only compose/dev files - the image doesn't need to see these
 docker-compose_local.yaml
 docker-compose_production.yaml
+
+# The other two deployables in this repo. The backend image is the FastAPI
+# app at the repo root only - it never reads these, and `COPY . .` would
+# otherwise pull the Flutter app and the Next.js BFF (plus their build
+# output and node_modules) into the build context. Besides bloating the
+# image, frontend/build/ is written by `flutter build` and a concurrent
+# build makes the context shift underfoot, failing `docker compose build`
+# with "error from sender: context canceled".
+frontend/
+admin-dashboard/
