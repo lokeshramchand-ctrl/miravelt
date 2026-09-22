@@ -154,7 +154,7 @@ class _SignalsScreenState extends ConsumerState<SignalsScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              "Signals are written from your computed analytics only. If a figure isn't in your statement, Auvren won't claim it.",
+              "Signals are written from your computed analytics only. If a figure isn't in your statement, Miravelt won't claim it.",
               textAlign: TextAlign.center,
               style: AppTypography.footnote1155.copyWith(color: AppColors.onDarkFaint),
             ),

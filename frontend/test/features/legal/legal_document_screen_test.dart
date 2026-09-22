@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'package:auvren/features/legal/presentation/legal_document_screen.dart';
-import 'package:auvren/features/legal/presentation/legal_documents.dart';
-import 'package:auvren/features/legal/presentation/privacy_policy_screen.dart';
-import 'package:auvren/features/legal/presentation/terms_of_service_screen.dart';
+import 'package:miravelt/features/legal/presentation/legal_document_screen.dart';
+import 'package:miravelt/features/legal/presentation/legal_documents.dart';
+import 'package:miravelt/features/legal/presentation/privacy_policy_screen.dart';
+import 'package:miravelt/features/legal/presentation/terms_of_service_screen.dart';
 
 void main() {
   GoogleFonts.config.allowRuntimeFetching = false;
@@ -38,7 +38,7 @@ void main() {
         headings,
         containsAll(<String>[
           'Who this is',
-          "What Auvren is (and isn't)",
+          "What Miravelt is (and isn't)",
           'Your account',
           'Acceptable use',
           'Disclaimer and liability',

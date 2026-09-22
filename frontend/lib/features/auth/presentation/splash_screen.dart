@@ -32,7 +32,7 @@ class SplashScreen extends ConsumerWidget {
               child: Text('V', style: AppTypography.amountMedium19.copyWith(color: AppColors.accentInk)),
             ),
             const SizedBox(height: 14),
-            Text('Auvren', style: AppTypography.wordmark14.copyWith(color: AppColors.onDark)),
+            Text('Miravelt', style: AppTypography.wordmark14.copyWith(color: AppColors.onDark)),
             const SizedBox(height: 28),
             SizedBox(
               width: 22,

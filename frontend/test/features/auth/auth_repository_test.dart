@@ -1,10 +1,10 @@
 import 'package:flutter_secure_storage_platform_interface/flutter_secure_storage_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:auvren/core/network/api_client.dart';
-import 'package:auvren/core/network/api_exception.dart';
-import 'package:auvren/core/storage/token_storage.dart';
-import 'package:auvren/features/auth/data/auth_repository.dart';
+import 'package:miravelt/core/network/api_client.dart';
+import 'package:miravelt/core/network/api_exception.dart';
+import 'package:miravelt/core/storage/token_storage.dart';
+import 'package:miravelt/features/auth/data/auth_repository.dart';
 
 import '../../support/fake_http_client_adapter.dart';
 import '../../support/fake_secure_storage_platform.dart';
@@ -25,7 +25,7 @@ void main() {
 
   const userJson = {
     'id': 'user_123',
-    'email': 'test@auvren.dev',
+    'email': 'test@miravelt.dev',
     'is_active': true,
     'created_at': '2026-08-13T00:00:00Z',
   };
@@ -45,16 +45,16 @@ void main() {
       adapter.queue('POST', '/auth/login', tokenResponse(suffix: '1'));
       adapter.queue('GET', '/users/me', const FakeResponse(statusCode: 200, body: userJson));
 
-      final user = await repository.login(email: 'test@auvren.dev', password: 'TestPass123!');
+      final user = await repository.login(email: 'test@miravelt.dev', password: 'TestPass123!');
 
       expect(user.id, 'user_123');
-      expect(user.email, 'test@auvren.dev');
+      expect(user.email, 'test@miravelt.dev');
       expect(await tokenStorage.readAccessToken(), 'access-1');
       expect(await tokenStorage.readRefreshToken(), 'refresh-1');
     });
 
     test('persists tokens even when the follow-up /users/me 404s', () async {
-      // Mirrors what auvren.deploy.lokeshrc.me actually does today:
+      // Mirrors what miravelt.deploy.lokeshrc.me actually does today:
       // /auth/login succeeds and issues real tokens, but /users/me isn't
       // mounted there (see ApiEnvironment.production in
       // lib/core/config/api_environment.dart for the full writeup).
@@ -71,7 +71,7 @@ void main() {
       );
 
       await expectLater(
-        repository.login(email: 'test@auvren.dev', password: 'TestPass123!'),
+        repository.login(email: 'test@miravelt.dev', password: 'TestPass123!'),
         throwsA(isA<ApiHttpException>().having((e) => e.statusCode, 'statusCode', 404)),
       );
 
@@ -89,11 +89,11 @@ void main() {
       adapter.queue('POST', '/auth/login', tokenResponse(suffix: '3'));
       adapter.queue('GET', '/users/me', const FakeResponse(statusCode: 200, body: userJson));
 
-      final registered = await repository.register(email: 'test@auvren.dev', password: 'TestPass123!');
-      final loggedIn = await repository.login(email: 'test@auvren.dev', password: 'TestPass123!');
+      final registered = await repository.register(email: 'test@miravelt.dev', password: 'TestPass123!');
+      final loggedIn = await repository.login(email: 'test@miravelt.dev', password: 'TestPass123!');
 
-      expect(registered.email, 'test@auvren.dev');
-      expect(loggedIn.email, 'test@auvren.dev');
+      expect(registered.email, 'test@miravelt.dev');
+      expect(loggedIn.email, 'test@miravelt.dev');
       expect(await tokenStorage.hasSession(), isTrue);
     });
   });

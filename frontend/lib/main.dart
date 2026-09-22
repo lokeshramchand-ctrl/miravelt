@@ -15,13 +15,13 @@ void main() async {
   runApp(
     ProviderScope(
       overrides: [sharedPreferencesProvider.overrideWithValue(sharedPreferences)],
-      child: const AuvrenApp(),
+      child: const MiraveltApp(),
     ),
   );
 }
 
-class AuvrenApp extends ConsumerWidget {
-  const AuvrenApp({super.key});
+class MiraveltApp extends ConsumerWidget {
+  const MiraveltApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -29,7 +29,7 @@ class AuvrenApp extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
-      title: 'Auvren',
+      title: 'Miravelt',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,

@@ -42,7 +42,7 @@ class _AnalysingScreenState extends ConsumerState<AnalysingScreen> {
       setState(() => _notifyRequested = true);
       messenger.showSnackBar(SnackBar(content: const Text("We'll notify you when this finishes."), backgroundColor: AppColors.ink700));
     } else {
-      messenger.showSnackBar(SnackBar(content: const Text('Notifications are turned off for Auvren in system settings.'), backgroundColor: AppColors.rose));
+      messenger.showSnackBar(SnackBar(content: const Text('Notifications are turned off for Miravelt in system settings.'), backgroundColor: AppColors.rose));
     }
   }
 
