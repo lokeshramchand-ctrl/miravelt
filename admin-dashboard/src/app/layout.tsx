@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Auvren Admin",
-  description: "Admin dashboard for the Auvren backend.",
+  title: "Miravelt Admin",
+  description: "Admin dashboard for the Miravelt backend.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
