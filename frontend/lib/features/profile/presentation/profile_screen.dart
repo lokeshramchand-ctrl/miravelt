@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -137,32 +138,49 @@ class ProfileScreen extends ConsumerWidget {
                 }),
               ],
             ),
-            if (kDebugMode) ...[
-              const SizedBox(height: 22),
-              const _SectionLabel('DEVELOPER'),
-              const SizedBox(height: 10),
-              _Card(
-                children: [
-                  Consumer(builder: (context, ref, _) {
-                    final env = ref.watch(apiEnvironmentProvider);
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('API server', style: AppTypography.rowLabel14.copyWith(color: AppColors.onDark)),
-                          AuvrenSegmentedControl<ApiEnvironment>(
-                            value: env,
-                            options: [for (final e in ApiEnvironment.values) (e, e.label)],
-                            onChanged: (next) => _switchApiEnvironment(context, ref, next),
-                          ),
-                        ],
+            const SizedBox(height: 22),
+            const _SectionLabel('DEVELOPER'),
+            const SizedBox(height: 10),
+            _Card(
+              children: [
+                _DeveloperUnlockRow(onUnlocked: () => _showSnack(context, 'Developer settings enabled')),
+                Consumer(builder: (context, ref, _) {
+                  final unlocked = ref.watch(developerModeUnlockedProvider);
+                  if (!unlocked) return const SizedBox.shrink();
+                  final env = ref.watch(apiEnvironmentProvider);
+                  return Column(
+                    children: [
+                      Divider(height: 1, color: AppColors.hairlineDark),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('API server', style: AppTypography.rowLabel14.copyWith(color: AppColors.onDark)),
+                            AuvrenSegmentedControl<ApiEnvironment>(
+                              value: env,
+                              options: [for (final e in ApiEnvironment.values) (e, e.label)],
+                              onChanged: (next) => _switchApiEnvironment(context, ref, next),
+                            ),
+                          ],
+                        ),
                       ),
-                    );
-                  }),
-                ],
-              ),
-            ],
+                      if (env == ApiEnvironment.custom) ...[
+                        Divider(height: 1, color: AppColors.hairlineDark),
+                        Consumer(builder: (context, ref, _) {
+                          final url = ref.watch(customApiBaseUrlProvider);
+                          return _NavRow(
+                            title: 'Custom server URL',
+                            trailing: url.isEmpty ? 'Not set ›' : '$url ›',
+                            onTap: () => _editCustomBaseUrl(context, ref),
+                          );
+                        }),
+                      ],
+                    ],
+                  );
+                }),
+              ],
+            ),
             const SizedBox(height: 22),
             const _SectionLabel('LEGAL'),
             const SizedBox(height: 10),
@@ -258,13 +276,22 @@ class ProfileScreen extends ConsumerWidget {
     }
   }
 
-  /// Debug-only (see the DEVELOPER section's kDebugMode guard above).
-  /// Sessions are per-backend - a token from one environment won't
-  /// authenticate against the other's JWT_SECRET_KEY - so this signs the
-  /// user out rather than leaving them on a confusing 401 loop.
+  /// Gated by [developerModeUnlockedProvider], not build mode (see
+  /// [_DeveloperUnlockRow]) - available in release builds too. Sessions are
+  /// per-backend - a token from one environment won't authenticate against
+  /// the other's JWT_SECRET_KEY - so this signs the user out rather than
+  /// leaving them on a confusing 401 loop.
   Future<void> _switchApiEnvironment(BuildContext context, WidgetRef ref, ApiEnvironment next) async {
     final current = ref.read(apiEnvironmentProvider);
-    if (next == current) return;
+    String? customUrl;
+    if (next == ApiEnvironment.custom) {
+      // Re-tapping Custom while already on it is how you edit the URL, so
+      // this prompt runs even when next == current.
+      customUrl = await _promptCustomBaseUrl(context, ref);
+      if (customUrl == null || !context.mounted) return;
+    } else if (next == current) {
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -281,9 +308,74 @@ class ProfileScreen extends ConsumerWidget {
       ),
     );
     if (confirmed != true || !context.mounted) return;
+    if (customUrl != null) {
+      ref.read(customApiBaseUrlProvider.notifier).set(customUrl);
+    }
     ref.read(apiEnvironmentProvider.notifier).set(next);
     await ref.read(authControllerProvider.notifier).logout();
     if (context.mounted) context.go('/login');
+  }
+
+  Future<void> _editCustomBaseUrl(BuildContext context, WidgetRef ref) async {
+    final url = await _promptCustomBaseUrl(context, ref);
+    if (url == null) return;
+    ref.read(customApiBaseUrlProvider.notifier).set(url);
+    if (context.mounted) _showSnack(context, 'Custom server URL saved - sign out and back in to apply it.');
+  }
+
+  /// Prompts for and validates a backend URL, returning the normalized
+  /// (trailing-slash) form on save or `null` on cancel. Doesn't itself
+  /// switch [apiEnvironmentProvider] - callers decide what to do with it.
+  Future<String?> _promptCustomBaseUrl(BuildContext context, WidgetRef ref) async {
+    final controller = TextEditingController(text: ref.read(customApiBaseUrlProvider));
+    String? error;
+    return showDialog<String>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            backgroundColor: AppColors.ink850,
+            title: Text('Custom backend URL', style: AppTypography.rowLabel14.copyWith(color: AppColors.onDark)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  keyboardType: TextInputType.url,
+                  style: TextStyle(color: AppColors.onDark),
+                  decoration: InputDecoration(hintText: 'http://192.168.1.5:8000/', errorText: error),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Plain http:// only reaches 10.0.2.2, localhost or 127.0.0.1 on this device - any other host needs https:// or the OS blocks it.',
+                  style: AppTypography.footnote1155.copyWith(color: AppColors.onDarkMuted),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(context).pop(), child: Text('Cancel', style: TextStyle(color: AppColors.onDarkMuted))),
+              TextButton(
+                onPressed: () {
+                  final normalized = _normalizeBaseUrl(controller.text);
+                  if (normalized == null) {
+                    setState(() => error = 'Enter a valid http(s) URL, e.g. http://localhost:8000/');
+                    return;
+                  }
+                  Navigator.of(context).pop(normalized);
+                },
+                child: Text('Save', style: TextStyle(color: AppColors.accent)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showSnack(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: AppColors.ink700));
   }
 
   Future<void> _confirmDeleteAccount(BuildContext context, WidgetRef ref) async {
@@ -346,6 +438,82 @@ class _NavRow extends StatelessWidget {
           children: [
             Text(title, style: AppTypography.rowLabel14.copyWith(color: AppColors.onDark)),
             Text(trailing, style: AppTypography.meta12.copyWith(color: AppColors.onDarkFaint)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Validates and normalizes a developer-entered backend URL, or returns
+/// `null` if it isn't a usable absolute http(s) URL.
+String? _normalizeBaseUrl(String input) {
+  final trimmed = input.trim();
+  if (trimmed.isEmpty) return null;
+  final uri = Uri.tryParse(trimmed);
+  if (uri == null || uri.host.isEmpty || (uri.scheme != 'http' && uri.scheme != 'https')) return null;
+  return trimmed.endsWith('/') ? trimmed : '$trimmed/';
+}
+
+/// The "Developer settings" row itself - tapping it 5 times within 2s of
+/// the first tap flips [developerModeUnlockedProvider], mirroring Android's
+/// Settings > About > tap the build number gesture. Always visible so a
+/// tester on a release build can find it without a debug build; once
+/// unlocked it just shows a static "Enabled" state instead of a live tap
+/// counter, since there's nothing left to unlock.
+class _DeveloperUnlockRow extends ConsumerStatefulWidget {
+  const _DeveloperUnlockRow({required this.onUnlocked});
+  final VoidCallback onUnlocked;
+
+  @override
+  ConsumerState<_DeveloperUnlockRow> createState() => _DeveloperUnlockRowState();
+}
+
+class _DeveloperUnlockRowState extends ConsumerState<_DeveloperUnlockRow> {
+  static const _tapsRequired = 5;
+  static const _tapWindow = Duration(seconds: 2);
+
+  int _taps = 0;
+  Timer? _resetTimer;
+
+  @override
+  void dispose() {
+    _resetTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onTap() {
+    if (ref.read(developerModeUnlockedProvider)) return;
+    _resetTimer?.cancel();
+    _resetTimer = Timer(_tapWindow, () => setState(() => _taps = 0));
+    setState(() => _taps += 1);
+    if (_taps < _tapsRequired) return;
+    _taps = 0;
+    _resetTimer?.cancel();
+    ref.read(developerModeUnlockedProvider.notifier).set(true);
+    widget.onUnlocked();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final unlocked = ref.watch(developerModeUnlockedProvider);
+    final remaining = _tapsRequired - _taps;
+    final subtitle = unlocked
+        ? 'Enabled'
+        : (_taps > 0 ? '$remaining more tap${remaining == 1 ? '' : 's'} to enable' : null);
+    return InkWell(
+      onTap: _onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Developer settings', style: AppTypography.rowLabel14.copyWith(color: AppColors.onDark)),
+            if (subtitle != null) ...[
+              const SizedBox(height: 3),
+              Text(subtitle, style: AppTypography.footnote1155.copyWith(color: AppColors.onDarkFaint)),
+            ],
           ],
         ),
       ),

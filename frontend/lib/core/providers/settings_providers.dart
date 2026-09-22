@@ -62,10 +62,10 @@ final notifyUnusualSpendProvider = NotifierProvider<BoolPreferenceController, bo
   () => BoolPreferenceController('auvren.notify_unusual_spend', false),
 );
 
-/// Which of the two backends (see [ApiEnvironment]) the app talks to.
-/// Persisted so a developer's choice survives app restarts; always starts
-/// from [ApiEnvironment.production] on a fresh install/unrecognized value -
-/// never silently defaults to a developer's local machine.
+/// Which backend (see [ApiEnvironment]) the app talks to. Persisted so a
+/// developer's choice survives app restarts; always starts from
+/// [ApiEnvironment.production] on a fresh install/unrecognized value - never
+/// silently defaults to a developer's local machine.
 class ApiEnvironmentController extends Notifier<ApiEnvironment> {
   static const _key = 'auvren.api_environment';
 
@@ -74,6 +74,7 @@ class ApiEnvironmentController extends Notifier<ApiEnvironment> {
     final stored = ref.watch(sharedPreferencesProvider).getString(_key);
     return switch (stored) {
       'local' => ApiEnvironment.local,
+      'custom' => ApiEnvironment.custom,
       _ => ApiEnvironment.production,
     };
   }
@@ -85,3 +86,42 @@ class ApiEnvironmentController extends Notifier<ApiEnvironment> {
 }
 
 final apiEnvironmentProvider = NotifierProvider<ApiEnvironmentController, ApiEnvironment>(ApiEnvironmentController.new);
+
+/// The developer-entered URL backing [ApiEnvironment.custom] (e.g.
+/// `http://192.168.1.5:8000/`) - unused while a preset environment is
+/// active, but kept around so re-selecting Custom prefills the last value.
+class CustomApiBaseUrlController extends Notifier<String> {
+  static const _key = 'auvren.custom_api_base_url';
+
+  @override
+  String build() => ref.watch(sharedPreferencesProvider).getString(_key) ?? '';
+
+  void set(String url) {
+    state = url;
+    ref.read(sharedPreferencesProvider).setString(_key, url);
+  }
+}
+
+final customApiBaseUrlProvider = NotifierProvider<CustomApiBaseUrlController, String>(CustomApiBaseUrlController.new);
+
+/// The base URL every repository actually talks to - resolves
+/// [ApiEnvironment.custom] against [customApiBaseUrlProvider] (falling back
+/// to production if that's somehow blank, which the Profile UI's own
+/// validation should never allow) so [ApiEnvironment.baseUrl]'s two fixed
+/// presets stay the only case that needs no stored override.
+final effectiveApiBaseUrlProvider = Provider<String>((ref) {
+  final environment = ref.watch(apiEnvironmentProvider);
+  if (environment != ApiEnvironment.custom) return environment.baseUrl;
+  final custom = ref.watch(customApiBaseUrlProvider).trim();
+  if (custom.isEmpty) return ApiEnvironment.production.baseUrl;
+  return custom.endsWith('/') ? custom : '$custom/';
+});
+
+/// Unlocked by tapping the "Developer settings" row 5 times, mirroring
+/// Android's Developer Options gesture - persisted so it stays unlocked
+/// across restarts once a developer has found it once. Gates visibility of
+/// the API server picker in every build (not just debug), since a tester on
+/// a release APK may need to point at a staging/local backend too.
+final developerModeUnlockedProvider = NotifierProvider<BoolPreferenceController, bool>(
+  () => BoolPreferenceController('auvren.developer_mode_unlocked', false),
+);

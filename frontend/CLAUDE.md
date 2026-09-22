@@ -21,19 +21,28 @@ flutter build apk --release \
 
 ## Configuration
 
-The app only ever points at one of exactly two backends - `ApiEnvironment` in
-`lib/core/config/api_environment.dart`:
+The app points at one of three backends - `ApiEnvironment` in `lib/core/config/api_environment.dart`:
 
 | Environment | Default base URL | Override (`--dart-define`) |
 |---|---|---|
 | `production` (release default) | `https://auvren.deploy.lokeshrc.me/` | `AUVREN_API_BASE_URL` |
 | `local` | `http://10.0.2.2:9850/` on Android emulator, `http://localhost:9850/` elsewhere (matches `docker-compose_local.yaml`'s port) | `AUVREN_LOCAL_API_BASE_URL` |
+| `custom` | none - a URL a developer types in at runtime, stored via `customApiBaseUrlProvider` | n/a |
 
 Which one is active is a **runtime** choice, persisted on-device and switchable from Profile >
-Developer > "API server" in debug builds only (switching signs the user out - a session token from
-one backend isn't valid on the other); a fresh install always starts on `production`. The one
-value that stays build-time only is `AUVREN_API_KEY` (`--dart-define`, no usable default - falls
-back to a `auvren_test_key_123` placeholder otherwise, see `lib/core/config/app_config.dart`).
+Developer settings > "API server" (switching signs the user out - a session token from one backend
+isn't valid on the other); a fresh install always starts on `production`. `effectiveApiBaseUrlProvider`
+(`lib/core/providers/settings_providers.dart`) is what `apiClientProvider` actually watches - it
+resolves `custom` against the stored override, since `ApiEnvironment.baseUrl` itself only knows the
+two static presets. The Developer settings section is unlocked by tapping its row 5 times (like
+Android's Developer Options), not gated by `kDebugMode` - it's reachable in release builds too, so
+QA on a release APK can point at a staging/local backend without a debug build. There is no
+separate Ollama/Milvus setting: the app never talks to those directly (see `ARCHITECTURE.md`), only
+to whichever backend is active, so pointing at a different backend is the only lever the client has.
+Plain `http://` only reaches `10.0.2.2`/`localhost`/`127.0.0.1` (see `network_security_config.xml` /
+`Info.plist`'s ATS exceptions) - a custom URL to any other host needs `https://`. The one value that
+stays build-time only is `AUVREN_API_KEY` (`--dart-define`, no usable default - falls back to a
+`auvren_test_key_123` placeholder otherwise, see `lib/core/config/app_config.dart`).
 
 Local HTTP (not HTTPS) to `10.0.2.2`/`localhost`/`127.0.0.1` is explicitly allowlisted for this
 reason; every other host must be HTTPS.
