@@ -2,8 +2,12 @@ import type { Metadata } from "next";
 import { Header } from "@/components/sites/becomeautonomous-com-5026bacf/root-8a5edab2/Header";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Auvren",
-  description: "Privacy Policy for Auvren",
+  title: "Privacy Policy",
+  description:
+    "How Auvren collects, uses, and protects your financial data and personal information.",
+  alternates: {
+    canonical: "/privacy-policy",
+  },
 };
 
 function SubSection({

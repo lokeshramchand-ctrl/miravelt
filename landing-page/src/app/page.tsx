@@ -9,10 +9,28 @@ import { ThinkingSection } from "@/components/sites/becomeautonomous-com-5026bac
 import { PinnedCta } from "@/components/sites/becomeautonomous-com-5026bacf/root-8a5edab2/PinnedCta";
 import { FaqSection } from "@/components/sites/becomeautonomous-com-5026bacf/root-8a5edab2/FaqSection";
 import { Footer } from "@/components/sites/becomeautonomous-com-5026bacf/root-8a5edab2/Footer";
+import { FAQS } from "@/lib/faq-data";
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQS.map((faq) => ({
+    "@type": "Question",
+    name: faq.q,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: faq.a,
+    },
+  })),
+};
 
 export default function Home() {
   return (
     <main className="bg-[#f2f2f2]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <Header />
       <Hero />
 
