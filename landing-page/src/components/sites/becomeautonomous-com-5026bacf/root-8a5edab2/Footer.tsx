@@ -48,7 +48,7 @@ export function Footer() {
           <AutonomousMonogram className="h-5 w-5" />
         </div>
         <div className="flex flex-1 flex-col gap-1 text-[13px] text-[#020203]/50 md:flex-row md:items-center md:gap-4">
-          <span>Copyright © 2026 Auvren. All rights reserved.</span>
+          <span>Copyright © 2026 Miravelt. All rights reserved.</span>
           <a href="/privacy-policy" className="underline underline-offset-2">
             Privacy Policy
           </a>

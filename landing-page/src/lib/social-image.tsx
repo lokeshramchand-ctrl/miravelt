@@ -75,7 +75,7 @@ export function renderSocialCard() {
           }}
         />
         <span style={{ fontSize: 22, color: "rgba(242,242,242,0.5)" }}>
-          auvren.lokeshrc.me
+          miravelt.lokeshrc.me
         </span>
       </div>
     </div>
