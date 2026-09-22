@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/network/api_exception.dart';
@@ -9,6 +10,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_buttons.dart';
+import '../../developer/presentation/developer_settings.dart';
 import 'auth_controller.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -115,6 +117,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 40),
+                // The only entry point to Developer settings that works when
+                // the backend is down - Profile is behind a successful sign-in,
+                // which is exactly what an unreachable backend prevents.
+                const Center(child: DeveloperUnlockGesture(child: _BuildStamp())),
               ],
             ),
           ),
@@ -145,5 +152,29 @@ class _FieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(text, style: AppTypography.microLabel11.copyWith(color: AppColors.onDarkFaint));
+  }
+}
+
+/// The version line at the foot of the login screen, and the thing you tap
+/// five times to reveal Developer settings - the same affordance Android
+/// uses for its own Developer options.
+///
+/// Deliberately shows the version rather than the wordmark: test/widget_test.dart
+/// asserts that exactly one widget renders the text "Auvren" on first frame,
+/// and a wordmark here would satisfy that finder from the login screen and
+/// mask what it is actually checking.
+class _BuildStamp extends StatelessWidget {
+  const _BuildStamp();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PackageInfo>(
+      future: PackageInfo.fromPlatform(),
+      builder: (context, snapshot) {
+        final info = snapshot.data;
+        final label = info == null ? 'Version' : 'Version ${info.version} (${info.buildNumber})';
+        return Text(label, style: AppTypography.footnote12.copyWith(color: AppColors.onDarkFaint));
+      },
+    );
   }
 }
