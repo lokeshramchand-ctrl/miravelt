@@ -10,12 +10,12 @@
 Intended to serve the most recently generated HTML drift report. **Currently a pure stub that always returns 404 — no report can ever be generated or served, since there is no code path anywhere that produces one.**
 
 ## Authentication
-**Required.** `X-Auvren-API-Key: auvren_test_key_123`.
+**Required.** `X-Miravelt-API-Key: miravelt_test_key_123`.
 
 ## Headers
 | Header | Required | Value |
 |---|---|---|
-| `X-Auvren-API-Key` | Yes | `auvren_test_key_123` |
+| `X-Miravelt-API-Key` | Yes | `miravelt_test_key_123` |
 
 ## Request body
 None.
@@ -60,7 +60,7 @@ None. No filesystem access either — despite the concept of "serving a report,"
 ## Example request
 ```bash
 curl -s http://localhost:8000/v1/observability/reports/latest \
-  -H "X-Auvren-API-Key: auvren_test_key_123"
+  -H "X-Miravelt-API-Key: miravelt_test_key_123"
 ```
 
 ## Example response

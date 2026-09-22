@@ -67,7 +67,7 @@ Like `train.py`, `load_training_data()` uses **hardcoded mock data** (4 example 
 Converts logits to probabilities via softmax, then reports weighted `f1`, `roc_auc` (with a `try/except ValueError` fallback to `0.0` if a batch happens to be missing a class — common with small/imbalanced batches), and `calibration_error` via the same `evaluator.expected_calibration_error` used in Phase 9.
 
 ### Output
-Saves the trained LoRA adapter (not the full base model) to `{output_dir}/final_adapter` via `model.save_pretrained` / `tokenizer.save_pretrained`. Default `output_dir` is `./models/auvren-finbert-lora`.
+Saves the trained LoRA adapter (not the full base model) to `{output_dir}/final_adapter` via `model.save_pretrained` / `tokenizer.save_pretrained`. Default `output_dir` is `./models/miravelt-finbert-lora`.
 
 ### Dependencies note
 This module imports `torch`, `datasets`, `transformers`, and `peft` — **none of these appear in `requirements.txt`** (see [14 · Deployment §14.1](./14-deployment-operations.md#141-python-dependencies)). Running `training/finetune.py` against the checked-in dependency list will fail with `ModuleNotFoundError` until those packages are installed separately.

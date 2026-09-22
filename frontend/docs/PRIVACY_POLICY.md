@@ -1,17 +1,17 @@
-# Auvren Privacy Policy
+# Miravelt Privacy Policy
 
-**Status: draft, not yet reviewed by a lawyer.** Auvren is not currently
+**Status: draft, not yet reviewed by a lawyer.** Miravelt is not currently
 published on any app store. This document accurately describes what the
 app and its backend actually do as of the date below - it is written to be
 factual, not aspirational - but it has not received formal legal review
-and should get one before Auvren is submitted to the Play Store, the App
+and should get one before Miravelt is submitted to the Play Store, the App
 Store, or otherwise made available to the public.
 
 **Last updated:** 2026-09-20
 
 ## Who this is
 
-Auvren is developed by an individual developer, not a registered company.
+Miravelt is developed by an individual developer, not a registered company.
 
 - **Developer:** Lokesh Ram Chand
 - **Contact:** lokeshramchand@gmail
@@ -19,12 +19,12 @@ Auvren is developed by an individual developer, not a registered company.
 If you have questions about this policy or your data, contact the address
 above.
 
-## What Auvren is
+## What Miravelt is
 
-Auvren is a personal finance app. You upload a Google Pay transaction
-statement (a PDF you export from Google Pay yourself), and Auvren parses it
+Miravelt is a personal finance app. You upload a Google Pay transaction
+statement (a PDF you export from Google Pay yourself), and Miravelt parses it
 to show you a spending overview, category breakdowns, recurring-payment
-detection, and a searchable transaction history. Auvren is not a bank, is
+detection, and a searchable transaction history. Miravelt is not a bank, is
 not a payment processor, and cannot move money - it only reads statements
 you choose to give it.
 
@@ -64,7 +64,7 @@ you choose to give it.
 
 Statement parsing, merchant categorization, and the natural-language
 explanations you see in the app ("Why this category") run on
-infrastructure Auvren's developer operates directly:
+infrastructure Miravelt's developer operates directly:
 
 - The database (MongoDB) and vector search index (Milvus) that store your
   data are self-hosted, not a third-party managed database service.
@@ -143,7 +143,7 @@ Regardless of where you live, you can at any time:
 
 ## Children's privacy
 
-Auvren is not directed at children and is not knowingly used to collect
+Miravelt is not directed at children and is not knowingly used to collect
 data from anyone under 13. If you believe a child has created an account,
 contact us and we'll delete it.
 

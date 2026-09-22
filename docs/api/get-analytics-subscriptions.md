@@ -10,12 +10,12 @@
 Identifies merchants that behave like recurring subscriptions (highly regular billing intervals) and reports their estimated combined monthly cost.
 
 ## Authentication
-**Required.** `X-Auvren-API-Key: auvren_test_key_123`.
+**Required.** `X-Miravelt-API-Key: miravelt_test_key_123`.
 
 ## Headers
 | Header | Required | Value |
 |---|---|---|
-| `X-Auvren-API-Key` | Yes | `auvren_test_key_123` |
+| `X-Miravelt-API-Key` | Yes | `miravelt_test_key_123` |
 
 ## Request body
 None. No query parameters either.
@@ -81,7 +81,7 @@ db.transactions.aggregate([
 ## Example request
 ```bash
 curl -s http://localhost:8000/v1/analytics/subscriptions \
-  -H "X-Auvren-API-Key: auvren_test_key_123"
+  -H "X-Miravelt-API-Key: miravelt_test_key_123"
 ```
 
 ## Example response

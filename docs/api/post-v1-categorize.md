@@ -12,7 +12,7 @@ Runs raw transaction text through the deterministic rule engine, persists the ca
 > ✅ **This endpoint previously raised `AttributeError` on every call and could not complete successfully.** That's fixed — see [16 · Known Issues §16.1](../16-known-issues-tech-debt.md#161-critical-previously-broke-the-application-or-a-whole-feature--all-fixed) for the full history of what was wrong.
 
 ## Authentication
-**Required.** `X-Auvren-API-Key: <settings.AUVREN_API_KEY>`, enforced via `Depends(validate_api_key)` attached at `app.include_router(v1.router, dependencies=[...])`, using a constant-time comparison against the configured key.
+**Required.** `X-Miravelt-API-Key: <settings.MIRAVELT_API_KEY>`, enforced via `Depends(validate_api_key)` attached at `app.include_router(v1.router, dependencies=[...])`, using a constant-time comparison against the configured key.
 
 ## Rate limit
 `50/minute` per client IP — tighter than the app's global default of `100/minute`. Exceeding it returns `429`.
@@ -20,7 +20,7 @@ Runs raw transaction text through the deterministic rule engine, persists the ca
 ## Headers
 | Header | Required | Value |
 |---|---|---|
-| `X-Auvren-API-Key` | Yes | Your configured `AUVREN_API_KEY` |
+| `X-Miravelt-API-Key` | Yes | Your configured `MIRAVELT_API_KEY` |
 | `Content-Type` | Yes | `application/json` |
 
 ## Request body
@@ -42,7 +42,7 @@ Only Pydantic type-level validation: `text` must be present and a string. No len
 ## Error codes
 | Code | When |
 |---|---|
-| `401` | Missing `X-Auvren-API-Key` header |
+| `401` | Missing `X-Miravelt-API-Key` header |
 | `403` | Wrong API key value |
 | `422` | `text` field missing or wrong type |
 | `429` | More than 50 requests/minute from the same client |
@@ -79,7 +79,7 @@ sequenceDiagram
 ## Example request
 ```bash
 curl -s -X POST http://localhost:8000/v1/categorize \
-  -H "X-Auvren-API-Key: $AUVREN_API_KEY" \
+  -H "X-Miravelt-API-Key: $MIRAVELT_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"text": "paid 500 to swiggy"}'
 ```

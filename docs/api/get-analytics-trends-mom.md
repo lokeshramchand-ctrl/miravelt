@@ -10,12 +10,12 @@
 Intended to report month-over-month spending growth. **Currently half-mocked**: the current month's figure is a real query; the previous month's figure is a hardcoded constant.
 
 ## Authentication
-**Required.** `X-Auvren-API-Key: auvren_test_key_123`.
+**Required.** `X-Miravelt-API-Key: miravelt_test_key_123`.
 
 ## Headers
 | Header | Required | Value |
 |---|---|---|
-| `X-Auvren-API-Key` | Yes | `auvren_test_key_123` |
+| `X-Miravelt-API-Key` | Yes | `miravelt_test_key_123` |
 
 ## Request body
 None. No query parameters.
@@ -80,7 +80,7 @@ db.transactions.aggregate([
 ## Example request
 ```bash
 curl -s http://localhost:8000/v1/analytics/trends/mom \
-  -H "X-Auvren-API-Key: auvren_test_key_123"
+  -H "X-Miravelt-API-Key: miravelt_test_key_123"
 ```
 
 ## Example response

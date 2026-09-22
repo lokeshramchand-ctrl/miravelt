@@ -10,12 +10,12 @@
 A lightweight variant of the profile lookup — returns just the trust state and seen-count, without the full profile payload, and treats "never seen" as a normal `200` response rather than a `404`.
 
 ## Authentication
-**Required.** `X-Auvren-API-Key: auvren_test_key_123`.
+**Required.** `X-Miravelt-API-Key: miravelt_test_key_123`.
 
 ## Headers
 | Header | Required | Value |
 |---|---|---|
-| `X-Auvren-API-Key` | Yes | `auvren_test_key_123` |
+| `X-Miravelt-API-Key` | Yes | `miravelt_test_key_123` |
 
 ## Request body
 None.
@@ -79,7 +79,7 @@ No separate service — calls `profile_repo.get_profile` directly, same pattern 
 ## Example request
 ```bash
 curl -s http://localhost:8000/memory/state/Zomato \
-  -H "X-Auvren-API-Key: auvren_test_key_123"
+  -H "X-Miravelt-API-Key: miravelt_test_key_123"
 ```
 
 ## Example response

@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Scoped to `frontend/` - the Flutter mobile client for the Auvren backend (repo root `../`). See
+Scoped to `frontend/` - the Flutter mobile client for the Miravelt backend (repo root `../`). See
 `docs/DESIGN_SPEC.md` for the full design spec and `docs/API_REFERENCE.md` for the backend
 contract this app is built against.
 
@@ -10,13 +10,13 @@ contract this app is built against.
 
 ```bash
 flutter pub get
-flutter run --dart-define=AUVREN_API_KEY=your-api-key-here
+flutter run --dart-define=MIRAVELT_API_KEY=your-api-key-here
 flutter analyze                          # should report no issues
 flutter test                              # full widget/unit suite
 flutter test test/features/auth/login_screen_test.dart   # single test file
 flutter build apk --release \
-  --dart-define=AUVREN_API_BASE_URL=https://your-production-host \
-  --dart-define=AUVREN_API_KEY=your-production-api-key
+  --dart-define=MIRAVELT_API_BASE_URL=https://your-production-host \
+  --dart-define=MIRAVELT_API_KEY=your-production-api-key
 ```
 
 ## Configuration
@@ -25,8 +25,8 @@ The app points at one of three backends - `ApiEnvironment` in `lib/core/config/a
 
 | Environment | Default base URL | Override (`--dart-define`) |
 |---|---|---|
-| `production` (release default) | `https://auvren.deploy.lokeshrc.me/` | `AUVREN_API_BASE_URL` |
-| `local` | `http://10.0.2.2:9850/` on Android emulator, `http://localhost:9850/` elsewhere (matches `docker-compose_local.yaml`'s port) | `AUVREN_LOCAL_API_BASE_URL` |
+| `production` (release default) | `https://miravelt.deploy.lokeshrc.me/` | `MIRAVELT_API_BASE_URL` |
+| `local` | `http://10.0.2.2:9850/` on Android emulator, `http://localhost:9850/` elsewhere (matches `docker-compose_local.yaml`'s port) | `MIRAVELT_LOCAL_API_BASE_URL` |
 | `custom` | none - a URL a developer types in at runtime, stored via `customApiBaseUrlProvider` | n/a |
 
 Which one is active is a **runtime** choice, persisted on-device and switchable from Profile >
@@ -41,8 +41,8 @@ separate Ollama/Milvus setting: the app never talks to those directly (see `ARCH
 to whichever backend is active, so pointing at a different backend is the only lever the client has.
 Plain `http://` only reaches `10.0.2.2`/`localhost`/`127.0.0.1` (see `network_security_config.xml` /
 `Info.plist`'s ATS exceptions) - a custom URL to any other host needs `https://`. The one value that
-stays build-time only is `AUVREN_API_KEY` (`--dart-define`, no usable default - falls back to a
-`auvren_test_key_123` placeholder otherwise, see `lib/core/config/app_config.dart`).
+stays build-time only is `MIRAVELT_API_KEY` (`--dart-define`, no usable default - falls back to a
+`miravelt_test_key_123` placeholder otherwise, see `lib/core/config/app_config.dart`).
 
 Local HTTP (not HTTPS) to `10.0.2.2`/`localhost`/`127.0.0.1` is explicitly allowlisted for this
 reason; every other host must be HTTPS.
@@ -68,5 +68,20 @@ reading from another feature's data layer). Shared cross-feature code lives in `
   new tests needing a fake network/storage layer rather than writing new mocks per test.
 
 Before this is Play-Store-publishable: `android/app/build.gradle.kts`'s release `signingConfig`
-still signs with the debug keystore (see the `TODO` there), and the app icons are still Flutter's
-default placeholders.
+still signs with the debug keystore (see the `TODO` there).
+
+## Icons and avatars
+
+Launcher icons on both platforms are generated from `../assets/upfront_icon.png` by
+`tool/generate_app_icons.py` (needs Pillow, run from the repo root) - edit the source art and
+rerun it rather than hand-editing the bitmaps. It writes the iOS `AppIcon.appiconset` slots
+flattened onto `#0D0F15` (iOS rejects alpha in app icons), plus Android's adaptive layers
+(`mipmap-anydpi-v26` + `ic_launcher_foreground.png`, art kept inside the 66dp safe zone) and
+the legacy/round bitmaps. The background colour is `AppColors.ink900`, duplicated in
+`values/ic_launcher_background.xml` - keep the two in sync.
+
+The *user* avatar is one of the nine illustrations in `assets/avatars/`, assigned by
+`lib/core/avatars/user_avatars.dart` from a stable FNV-1a hash of the user id (not stored
+server-side, not random per launch). Render it with `UserAvatar`, which falls back to the
+initials `AvatarChip` when there's no user; `AvatarChip` on its own is still what merchant
+rows use.

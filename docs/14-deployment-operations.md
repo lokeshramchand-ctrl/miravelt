@@ -12,9 +12,9 @@ Statement ingestion ([23 · Statement Ingestion Pipeline](./23-statements-pipeli
 FROM python:3.12-slim AS builder
 # ... installs deps into /install ...
 FROM python:3.12-slim AS runtime
-# ... copies only /install, runs as a non-root `auvren` user, HEALTHCHECK on /live ...
+# ... copies only /install, runs as a non-root `miravelt` user, HEALTHCHECK on /live ...
 ```
-✅ **FIXED** — now a multi-stage build (build tools and pip cache never reach the final image), runs as a non-root user (verified: `docker run ... id` reports `uid=999(auvren)`), and has a `HEALTHCHECK` polling `/live`. Base image is deliberately kept at `python:3.12-slim` rather than Alpine — Alpine's musl libc has known friction with the scientific-Python wheels (`scikit-learn`, `numpy`, `umap-learn`) the clustering endpoint needs at runtime.
+✅ **FIXED** — now a multi-stage build (build tools and pip cache never reach the final image), runs as a non-root user (verified: `docker run ... id` reports `uid=999(miravelt)`), and has a `HEALTHCHECK` polling `/live`. Base image is deliberately kept at `python:3.12-slim` rather than Alpine — Alpine's musl libc has known friction with the scientific-Python wheels (`scikit-learn`, `numpy`, `umap-learn`) the clustering endpoint needs at runtime.
 
 `.dockerignore` now excludes `.env`, `*.pem`/`*.key`, local dev venvs, `.git`, docs, and the local-only compose files — previously `.env` was **not** excluded, meaning a `.env` file present in the build context would have been baked into the image layer via `COPY . .`. Fixed.
 
@@ -24,7 +24,7 @@ FROM python:3.12-slim AS runtime
 ```yaml
 services:
   mongodb:            # mongo:6.0, port 27017, named volume mongo_data
-  auvren-backend:       # builds from local Dockerfile, port 9850:8000
+  miravelt-backend:       # builds from local Dockerfile, port 9850:8000
                        # env_file: .env
                        # depends_on: mongodb
 ```
@@ -33,17 +33,17 @@ This is the intended local dev stack — but it only stands up **MongoDB**, not 
 ### `docker-compose_production.yaml`
 ```yaml
 services:
-  auvren-backend:
+  miravelt-backend:
     build: .
     environment:
       - MONGODB_URI=${MONGODB_URI:?MONGODB_URI must be set}
-      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-auvren}
+      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-miravelt}
       - MILVUS_URI=${MILVUS_URI:?MILVUS_URI must be set}
       - OLLAMA_URI=${OLLAMA_URI:-}
       - OLLAMA_HOSTS=${OLLAMA_HOSTS:-}
       - EMBED_MODEL=${EMBED_MODEL:?EMBED_MODEL must be set}
       - LLM_MODEL=${LLM_MODEL:?LLM_MODEL must be set}
-      - AUVREN_API_KEY=${AUVREN_API_KEY:?AUVREN_API_KEY must be set}
+      - MIRAVELT_API_KEY=${MIRAVELT_API_KEY:?MIRAVELT_API_KEY must be set}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
       - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
       - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-15}
@@ -60,13 +60,13 @@ services:
 
 ```env
 MONGODB_URI=mongodb://<host>:27017
-MONGODB_DB_NAME=auvren
+MONGODB_DB_NAME=miravelt
 MILVUS_URI=http://<host>:19530
 OLLAMA_URI=http://<host>:11434        # OR use OLLAMA_HOSTS below
 OLLAMA_HOSTS=http://host1:11434,http://host2:11434
 EMBED_MODEL=<ollama embedding model name>
 LLM_MODEL=<ollama generation model name>
-AUVREN_API_KEY=<enforced on every non-public route via X-Auvren-API-Key>
+MIRAVELT_API_KEY=<enforced on every non-public route via X-Miravelt-API-Key>
 JWT_SECRET_KEY=<required, min 32 chars - app fails to start otherwise; generate with: openssl rand -hex 32>
 JWT_ALGORITHM=HS256                   # optional, default shown
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES=15    # optional, default shown
@@ -91,7 +91,7 @@ Full request/response details for all of these are in [02 · API Reference §2.1
 
 ## 14.6 `scripts/test_pipeline.sh` — manual E2E smoke test
 
-A bash script exercising the API end-to-end against a running server at `http://localhost:8080` (note: this differs from the Dockerfile's default port `8000` and compose's exposed port `9850` — adjust `BASE_URL` to match whichever way you've started the server). It parses `AUVREN_API_KEY` out of a local `.env` if present, falling back to the hardcoded `auvren_test_key_123` — make sure this matches your actual configured `AUVREN_API_KEY`, since `core/security.py` now enforces the real configured value rather than accepting that literal unconditionally. Exercises: merchant resolution, memory state promotion (3 calls to force `EPHEMERAL → TEMPORARY`), the confidence wall, mock data seeding, top-merchant/category analytics, then cleans up the mock data it created.
+A bash script exercising the API end-to-end against a running server at `http://localhost:8080` (note: this differs from the Dockerfile's default port `8000` and compose's exposed port `9850` — adjust `BASE_URL` to match whichever way you've started the server). It parses `MIRAVELT_API_KEY` out of a local `.env` if present, falling back to the hardcoded `miravelt_test_key_123` — make sure this matches your actual configured `MIRAVELT_API_KEY`, since `core/security.py` now enforces the real configured value rather than accepting that literal unconditionally. Exercises: merchant resolution, memory state promotion (3 calls to force `EPHEMERAL → TEMPORARY`), the confidence wall, mock data seeding, top-merchant/category analytics, then cleans up the mock data it created.
 
 ## 14.7 Running locally without Docker
 
