@@ -1,10 +1,10 @@
-export const SITE_URL = "https://auvren.lokeshrc.me";
-export const SITE_NAME = "Auvren";
+export const SITE_URL = "https://miravelt.lokeshrc.me";
+export const SITE_NAME = "Miravelt";
 export const TAGLINE = "Clarity on every transaction.";
 export const DESCRIPTION =
   "Automatic categorization, merchant cleanup and explanations grounded in your own spending data.";
 export const LONG_DESCRIPTION =
-  "Auvren automatically categorizes every transaction, cleans up merchant names, and explains spending changes using only your own financial history.";
+  "Miravelt automatically categorizes every transaction, cleans up merchant names, and explains spending changes using only your own financial history.";
 
 // AutonomousMonogram path, kept in sync with
 // src/components/sites/becomeautonomous-com-5026bacf/shared/icons.tsx

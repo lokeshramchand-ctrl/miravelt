@@ -4,7 +4,7 @@ import { Header } from "@/components/sites/becomeautonomous-com-5026bacf/root-8a
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "How Auvren collects, uses, and protects your financial data and personal information.",
+    "How Miravelt collects, uses, and protects your financial data and personal information.",
   alternates: {
     canonical: "/privacy-policy",
   },
@@ -62,7 +62,7 @@ export default function PrivacyPolicyPage() {
         <div className="font-sans text-[15px] leading-[1.5] text-[#707785] md:text-[16px] [&_strong]:text-[#020203] [&_a]:underline [&_a]:underline-offset-[0.14em] [&_li]:mb-2 [&_li]:leading-[1.5] [&_p]:mb-4 [&_ul]:my-4 [&_ul]:list-disc [&_ul]:pl-6">
           <Section id="gmail" title="Gmail connection and privacy">
             <p>
-              This section applies when you connect Gmail to Auvren. It
+              This section applies when you connect Gmail to Miravelt. It
               supplements our website privacy policy and controls how we
               handle Google user data if another section of this policy
               differs.
@@ -70,7 +70,7 @@ export default function PrivacyPolicyPage() {
 
             <SubSection title="Information we access">
               <p>
-                Connecting Gmail is optional. With your permission, Auvren can
+                Connecting Gmail is optional. With your permission, Miravelt can
                 access your connected email address, message headers,
                 senders, recipients, subjects, message bodies, and
                 attachments. Google&rsquo;s read-only permission applies
@@ -86,7 +86,7 @@ export default function PrivacyPolicyPage() {
                 We use Gmail data to carry out searches you request, find
                 financial statements, tax forms, and investment updates, and
                 help you review and organize relevant information and
-                documents in Auvren. Connecting Gmail does not itself enable
+                documents in Miravelt. Connecting Gmail does not itself enable
                 recurring scans. If you separately enable inbox checks, we
                 read new messages to identify financial items that may need
                 your attention. You can turn these checks off. Relevant
@@ -116,7 +116,7 @@ export default function PrivacyPolicyPage() {
                 along with connection details and records of Gmail activity.
                 Imported attachments, extracted financial information,
                 findings, and relevant conversation content may be retained
-                in Auvren. We retain this information for the features you use
+                in Miravelt. We retain this information for the features you use
                 and for applicable legal, regulatory, security, and
                 recordkeeping needs. Retention depends on the type of record
                 and those needs; disconnecting Gmail does not automatically
@@ -126,12 +126,12 @@ export default function PrivacyPolicyPage() {
 
             <SubSection title="Disconnecting and requesting deletion">
               <p>
-                You can disconnect Gmail in Auvren to stop further access
-                through that connection, or remove Auvren&rsquo;s access in
+                You can disconnect Gmail in Miravelt to stop further access
+                through that connection, or remove Miravelt&rsquo;s access in
                 your Google Account&rsquo;s third-party connections settings.
                 Turning off inbox checks stops recurring scanning but leaves
                 the connection available for searches you request. To
-                request deletion of Gmail data held by Auvren, including
+                request deletion of Gmail data held by Miravelt, including
                 imported documents and related records, contact{" "}
                 <a href="mailto:hello@atg.science">hello@atg.science</a>. We
                 may need to verify your identity. We will explain any
@@ -167,7 +167,7 @@ export default function PrivacyPolicyPage() {
             </SubSection>
 
             <p>
-              Auvren&rsquo;s use of information received from Google APIs will
+              Miravelt&rsquo;s use of information received from Google APIs will
               adhere to the Google API Services User Data Policy, including
               the Limited Use requirements.
             </p>
@@ -183,11 +183,11 @@ export default function PrivacyPolicyPage() {
             </p>
           </Section>
 
-          <Section title="Auvren Website Privacy Policy">
+          <Section title="Miravelt Website Privacy Policy">
             <p>
               This Privacy Policy is designed to help you understand how
-              Auvren and its related organizations and affiliates
-              (&ldquo;Auvren&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo; or
+              Miravelt and its related organizations and affiliates
+              (&ldquo;Miravelt&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo; or
               &ldquo;our&rdquo;), collects, uses and shares personal
               information collected through this website. We value your
               privacy, and we will not share your personal information with

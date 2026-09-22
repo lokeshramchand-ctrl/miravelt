@@ -71,7 +71,7 @@ export const metadata: Metadata = {
   },
   description: LONG_DESCRIPTION,
   keywords: [
-    "Auvren",
+    "Miravelt",
     "personal finance app",
     "automatic transaction categorization",
     "spending insights",
