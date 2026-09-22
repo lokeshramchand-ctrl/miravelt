@@ -1,4 +1,4 @@
-"""Concurrent load test against the running Auvren backend.
+"""Concurrent load test against the running Miravelt backend.
 
 Usage:
     .venv/Scripts/python.exe scripts/stress_test.py
@@ -19,7 +19,7 @@ import time
 import httpx
 
 BASE_URL = "http://localhost:8000"
-API_KEY = os.environ.get("AUVREN_API_KEY", "")
+API_KEY = os.environ.get("MIRAVELT_API_KEY", "")
 TOTAL_REQUESTS = 500
 CONCURRENCY = 50
 
@@ -40,7 +40,7 @@ async def fire_login(client: httpx.AsyncClient, results: list, sem: asyncio.Sema
         try:
             resp = await client.post(
                 f"{BASE_URL}/auth/login",
-                headers={"X-Auvren-API-Key": API_KEY, "Content-Type": "application/json"},
+                headers={"X-Miravelt-API-Key": API_KEY, "Content-Type": "application/json"},
                 json={"email": "stress-test@example.com", "password": "wrong-password"},
             )
             results.append((resp.status_code, time.perf_counter() - start))

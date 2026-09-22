@@ -7,7 +7,7 @@ from database.mongo import db
 async def seed():
     await db.connect()
 
-    # Auvren Phase 3 Seed Data
+    # Miravelt Phase 3 Seed Data
     merchants = [
         {
             "canonical_name": "Swiggy",

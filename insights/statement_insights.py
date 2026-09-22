@@ -27,7 +27,7 @@ class StatementInsightGenerator:
     """
 
     system_prompt = """
-You are the Auvren Financial Insights Engine.
+You are the Miravelt Financial Insights Engine.
 Your ONLY purpose is to turn a user's already-computed statement analytics into brief, natural-language financial observations.
 
 RULES:

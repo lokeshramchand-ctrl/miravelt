@@ -109,7 +109,7 @@ async def lifespan(app: FastAPI):
 
 # FastAPI App
 app = FastAPI(
-    title="Auvren",
+    title="Miravelt",
     description="Core engine for raw transaction ingestion and ML routing.",
     version="1.0.0",
     lifespan=lifespan
@@ -153,7 +153,7 @@ Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 
 # Routers (secured)
-# Every router is mounted behind the shared X-Auvren-API-Key dependency,
+# Every router is mounted behind the shared X-Miravelt-API-Key dependency,
 # regardless of whether any of its handlers also require a per-user JWT
 # (core/jwt_auth.py::get_current_user, applied at the handler level where
 # needed - see routers/auth.py, routers/v1.py, routers/analytics.py,
@@ -163,7 +163,7 @@ Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 #
 # pipelines.router is the one exception: its handlers take no per-user JWT
 # at all (they're system-wide batch jobs, not scoped to a user), so
-# AUVREN_API_KEY alone - shipped inside every client app binary - isn't a
+# MIRAVELT_API_KEY alone - shipped inside every client app binary - isn't a
 # safe gate for them. It gets an additional validate_admin_key dependency
 # on top, gated by a separate operator-only secret (see core/security.py).
 app.include_router(auth.router, dependencies=[Depends(validate_api_key)])
@@ -178,7 +178,7 @@ app.include_router(feedback_router, dependencies=[Depends(validate_api_key)])
 app.include_router(pipelines.router, dependencies=[Depends(validate_api_key), Depends(validate_admin_key)])
 app.include_router(statements.router, dependencies=[Depends(validate_api_key)])
 app.include_router(jobs.router, dependencies=[Depends(validate_api_key)])
-# routers/app_updates.py: GET routes need only AUVREN_API_KEY (read-only
+# routers/app_updates.py: GET routes need only MIRAVELT_API_KEY (read-only
 # version metadata + the APK bytes); POST /app/releases layers
 # validate_admin_key on top of that at the route level (see the router
 # itself) since publishing a build is what actually reaches every installed

@@ -65,7 +65,7 @@ async def _issue_token_pair(
 @router.post("/register", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/minute")
 async def register(request: Request, payload: RegisterRequest):
-    """Creates a new user account. Gated behind the same X-Auvren-API-Key
+    """Creates a new user account. Gated behind the same X-Miravelt-API-Key
     dependency as every other router (app.py) - the API key authenticates the
     calling application; a JWT for the new user doesn't exist yet at this
     point, since the account doesn't exist yet either."""

@@ -36,7 +36,7 @@ def _to_response(release: AppRelease) -> AppReleaseResponse:
 @router.get("/latest-version", response_model=AppReleaseResponse)
 async def get_latest_version(platform: AppPlatform = AppPlatform.ANDROID):
     """Polled by the app on launch (frontend's app_update_controller.dart) to
-    decide whether to show the "update available" sheet. X-Auvren-API-Key
+    decide whether to show the "update available" sheet. X-Miravelt-API-Key
     alone gates this - it's read-only version metadata, not sensitive, and
     every installed app already holds that key."""
     release = await app_release_repo.get_latest(platform)
@@ -64,7 +64,7 @@ async def download_release(version_code: int, platform: AppPlatform = AppPlatfor
         _iter_chunks(),
         media_type="application/vnd.android.package-archive",
         headers={
-            "Content-Disposition": f'attachment; filename="auvren-v{release.version_name}.apk"',
+            "Content-Disposition": f'attachment; filename="miravelt-v{release.version_name}.apk"',
             "Content-Length": str(release.size_bytes),
             "X-Sha256": release.sha256,
         },
@@ -81,9 +81,9 @@ async def publish_release(
     platform: AppPlatform = Form(AppPlatform.ANDROID),
 ):
     """Uploads a new build and marks it latest. Operator-only (same
-    X-Auvren-Admin-Key gate as routers/pipelines.py) - this is how a new build
+    X-Miravelt-Admin-Key gate as routers/pipelines.py) - this is how a new build
     actually gets in front of installed devices, so it can't be gated by
-    AUVREN_API_KEY alone (shipped inside every client app binary)."""
+    MIRAVELT_API_KEY alone (shipped inside every client app binary)."""
     if not apk.filename or not apk.filename.lower().endswith(".apk"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Expected a .apk file")
 

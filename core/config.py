@@ -4,17 +4,17 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     MONGODB_URI: str
-    MONGODB_DB_NAME: str = "auvren"
+    MONGODB_DB_NAME: str = "miravelt"
     MILVUS_URI: str
     OLLAMA_URI: str | None = None  # optional single host
     OLLAMA_HOSTS: str | None = None  # comma-separated list
     EMBED_MODEL: str
     LLM_MODEL: str
-    AUVREN_API_KEY: str
+    MIRAVELT_API_KEY: str
 
     # Gates routers/pipelines.py (behavior profiling, embedding sync, decay
     # sweep, clustering, graph rebuild) - deliberately separate from and
-    # never falls back to AUVREN_API_KEY, which ships inside every client app
+    # never falls back to MIRAVELT_API_KEY, which ships inside every client app
     # binary and is trivially extractable, so it can't be trusted to gate
     # expensive, system-wide batch jobs that aren't scoped to any one user.
     # Unset by default: those endpoints 503 until an operator explicitly
@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     ADMIN_API_KEY: str | None = None
 
     # JWT user authentication (core/jwt_auth.py, routers/auth.py). Distinct
-    # from AUVREN_API_KEY above: the API key authenticates the calling
+    # from MIRAVELT_API_KEY above: the API key authenticates the calling
     # application, JWT_SECRET_KEY signs per-user access tokens issued after
     # login - see docs/01-architecture.md §1.8.
     JWT_SECRET_KEY: str
