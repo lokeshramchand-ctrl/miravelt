@@ -2,7 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 /// Builds a [Color] from an OKLCH triple, matching the CSS `oklch()` values
-/// used verbatim in the Auvren design tokens (see design/tokens.md).
+/// used verbatim in the Miravelt design tokens (see design/tokens.md).
 ///
 /// [lightness] is 0-1 (design tokens are given as a %, e.g. `14.5%` -> 0.145).
 /// [chroma] is unitless (e.g. `0.008`). [hue] is in degrees.

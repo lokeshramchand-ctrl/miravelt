@@ -12,7 +12,7 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
 });
 
 class ThemeModeController extends Notifier<ThemeMode> {
-  static const _key = 'auvren.theme_mode';
+  static const _key = 'miravelt.theme_mode';
 
   @override
   ThemeMode build() {
@@ -51,15 +51,15 @@ class BoolPreferenceController extends Notifier<bool> {
 }
 
 final keepOriginalPdfsProvider = NotifierProvider<BoolPreferenceController, bool>(
-  () => BoolPreferenceController('auvren.keep_original_pdfs', true),
+  () => BoolPreferenceController('miravelt.keep_original_pdfs', true),
 );
 
 final notifyAnalysisFinishedProvider = NotifierProvider<BoolPreferenceController, bool>(
-  () => BoolPreferenceController('auvren.notify_analysis_finished', true),
+  () => BoolPreferenceController('miravelt.notify_analysis_finished', true),
 );
 
 final notifyUnusualSpendProvider = NotifierProvider<BoolPreferenceController, bool>(
-  () => BoolPreferenceController('auvren.notify_unusual_spend', false),
+  () => BoolPreferenceController('miravelt.notify_unusual_spend', false),
 );
 
 /// Which backend (see [ApiEnvironment]) the app talks to. Persisted so a
@@ -67,7 +67,7 @@ final notifyUnusualSpendProvider = NotifierProvider<BoolPreferenceController, bo
 /// [ApiEnvironment.production] on a fresh install/unrecognized value - never
 /// silently defaults to a developer's local machine.
 class ApiEnvironmentController extends Notifier<ApiEnvironment> {
-  static const _key = 'auvren.api_environment';
+  static const _key = 'miravelt.api_environment';
 
   @override
   ApiEnvironment build() {
@@ -91,7 +91,7 @@ final apiEnvironmentProvider = NotifierProvider<ApiEnvironmentController, ApiEnv
 /// `http://192.168.1.5:8000/`) - unused while a preset environment is
 /// active, but kept around so re-selecting Custom prefills the last value.
 class CustomApiBaseUrlController extends Notifier<String> {
-  static const _key = 'auvren.custom_api_base_url';
+  static const _key = 'miravelt.custom_api_base_url';
 
   @override
   String build() => ref.watch(sharedPreferencesProvider).getString(_key) ?? '';
@@ -123,5 +123,5 @@ final effectiveApiBaseUrlProvider = Provider<String>((ref) {
 /// the API server picker in every build (not just debug), since a tester on
 /// a release APK may need to point at a staging/local backend too.
 final developerModeUnlockedProvider = NotifierProvider<BoolPreferenceController, bool>(
-  () => BoolPreferenceController('auvren.developer_mode_unlocked', false),
+  () => BoolPreferenceController('miravelt.developer_mode_unlocked', false),
 );

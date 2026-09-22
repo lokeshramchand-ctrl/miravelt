@@ -157,7 +157,7 @@ class _DeveloperSettingsSheetState extends ConsumerState<_DeveloperSettingsSheet
               const SizedBox(height: 18),
               Text('API SERVER', style: AppTypography.microLabelTracked105.copyWith(color: AppColors.onDarkFaint)),
               const SizedBox(height: 10),
-              AuvrenSegmentedControl<ApiEnvironment>(
+              MiraveltSegmentedControl<ApiEnvironment>(
                 value: environment,
                 options: [for (final e in ApiEnvironment.values) (e, e.label)],
                 onChanged: _switchEnvironment,

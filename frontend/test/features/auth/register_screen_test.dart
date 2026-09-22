@@ -4,7 +4,7 @@ import 'package:flutter_secure_storage_platform_interface/flutter_secure_storage
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'package:auvren/features/auth/presentation/register_screen.dart';
+import 'package:miravelt/features/auth/presentation/register_screen.dart';
 
 import '../../support/fake_secure_storage_platform.dart';
 
@@ -34,7 +34,7 @@ void main() {
   testWidgets('rejects a password under 8 characters', (tester) async {
     await pumpRegister(tester);
 
-    await tester.enterText(fields.at(0), 'test@auvren.dev');
+    await tester.enterText(fields.at(0), 'test@miravelt.dev');
     await tester.enterText(fields.at(1), 'short1');
     await tester.enterText(fields.at(2), 'short1');
     await tapCreateAccount(tester);
@@ -46,7 +46,7 @@ void main() {
     await pumpRegister(tester);
     final tooLong = 'a' * 129;
 
-    await tester.enterText(fields.at(0), 'test@auvren.dev');
+    await tester.enterText(fields.at(0), 'test@miravelt.dev');
     await tester.enterText(fields.at(1), tooLong);
     await tester.enterText(fields.at(2), tooLong);
     await tapCreateAccount(tester);
@@ -57,7 +57,7 @@ void main() {
   testWidgets('rejects a confirm-password mismatch', (tester) async {
     await pumpRegister(tester);
 
-    await tester.enterText(fields.at(0), 'test@auvren.dev');
+    await tester.enterText(fields.at(0), 'test@miravelt.dev');
     await tester.enterText(fields.at(1), 'TestPass123!');
     await tester.enterText(fields.at(2), 'DoesNotMatch1');
     await tapCreateAccount(tester);

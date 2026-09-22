@@ -48,8 +48,8 @@ class ToggleRow extends StatelessWidget {
 }
 
 /// "Light / Dark / Auto" style 3-way pill segmented control.
-class AuvrenSegmentedControl<T> extends StatelessWidget {
-  const AuvrenSegmentedControl({super.key, required this.options, required this.value, required this.onChanged});
+class MiraveltSegmentedControl<T> extends StatelessWidget {
+  const MiraveltSegmentedControl({super.key, required this.options, required this.value, required this.onChanged});
 
   final List<(T value, String label)> options;
   final T value;

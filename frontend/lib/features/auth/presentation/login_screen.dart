@@ -160,7 +160,7 @@ class _FieldLabel extends StatelessWidget {
 /// uses for its own Developer options.
 ///
 /// Deliberately shows the version rather than the wordmark: test/widget_test.dart
-/// asserts that exactly one widget renders the text "Auvren" on first frame,
+/// asserts that exactly one widget renders the text "Miravelt" on first frame,
 /// and a wordmark here would satisfy that finder from the login screen and
 /// mask what it is actually checking.
 class _BuildStamp extends StatelessWidget {

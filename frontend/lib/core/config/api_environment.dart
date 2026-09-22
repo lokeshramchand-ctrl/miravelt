@@ -30,11 +30,11 @@ enum ApiEnvironment {
     switch (this) {
       case ApiEnvironment.production:
         return const String.fromEnvironment(
-          'AUVREN_API_BASE_URL',
-          defaultValue: 'https://auvren.deploy.lokeshrc.me/',
+          'MIRAVELT_API_BASE_URL',
+          defaultValue: 'https://miravelt.deploy.lokeshrc.me/',
         );
       case ApiEnvironment.local:
-        const override = String.fromEnvironment('AUVREN_LOCAL_API_BASE_URL');
+        const override = String.fromEnvironment('MIRAVELT_LOCAL_API_BASE_URL');
         return override.isNotEmpty ? override : _defaultLocalBaseUrl;
       case ApiEnvironment.custom:
         throw UnsupportedError('ApiEnvironment.custom has no static baseUrl - use effectiveApiBaseUrlProvider');
@@ -51,7 +51,7 @@ enum ApiEnvironment {
   // 10.0.2.2 is its documented alias for that. iOS simulator can reach the
   // host directly as localhost. Port 9850 matches docker-compose_local.yaml's
   // published port for the full containerized stack; override via
-  // --dart-define=AUVREN_LOCAL_API_BASE_URL=... for a bare
+  // --dart-define=MIRAVELT_LOCAL_API_BASE_URL=... for a bare
   // `uvicorn app:app --reload` on 8000, a real device on the LAN, or a
   // different port.
   static String get _defaultLocalBaseUrl => Platform.isAndroid ? 'http://10.0.2.2:9850/' : 'http://localhost:9850/';

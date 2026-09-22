@@ -16,7 +16,7 @@ const _kTransactionCategories = [
 ];
 
 Future<void> showTransactionSheet(BuildContext context, Transaction transaction) {
-  return showAuvrenSheet<void>(context, dark: false, child: _TransactionSheetBody(transaction: transaction));
+  return showMiraveltSheet<void>(context, dark: false, child: _TransactionSheetBody(transaction: transaction));
 }
 
 class _TransactionSheetBody extends ConsumerStatefulWidget {
@@ -40,7 +40,7 @@ class _TransactionSheetBodyState extends ConsumerState<_TransactionSheetBody> {
             correctedCategory: correctedCategory,
             confidence: 1.0,
           );
-      setState(() => _feedbackResult = recorded ? 'Thanks - your correction trains Auvren\'s merchant memory.' : 'Thanks for confirming.');
+      setState(() => _feedbackResult = recorded ? 'Thanks - your correction trains Miravelt\'s merchant memory.' : 'Thanks for confirming.');
     } catch (_) {
       setState(() => _feedbackResult = "Couldn't record your feedback. Please try again.");
     } finally {
@@ -201,7 +201,7 @@ class _TransactionSheetBodyState extends ConsumerState<_TransactionSheetBody> {
             ],
           ),
           const SizedBox(height: 12),
-          Center(child: Text("Your correction trains Auvren's merchant memory.", style: AppTypography.microLabel11.copyWith(color: AppColors.onLightFaint))),
+          Center(child: Text("Your correction trains Miravelt's merchant memory.", style: AppTypography.microLabel11.copyWith(color: AppColors.onLightFaint))),
         ],
       ],
     );

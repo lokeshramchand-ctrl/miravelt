@@ -13,7 +13,7 @@ import '../../statements/presentation/period_providers.dart';
 import '../../upload/presentation/uploading_sheet.dart';
 
 Future<void> showPeriodSwitcher(BuildContext context, WidgetRef ref) {
-  return showAuvrenSheet<void>(context, dark: true, child: const _PeriodSwitcherBody());
+  return showMiraveltSheet<void>(context, dark: true, child: const _PeriodSwitcherBody());
 }
 
 class _PeriodSwitcherBody extends ConsumerWidget {

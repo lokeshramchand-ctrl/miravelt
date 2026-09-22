@@ -22,22 +22,22 @@ const privacyPolicyDocument = LegalDocument(
   title: 'Privacy Policy',
   lastUpdated: '2026-09-20',
   intro:
-      'Status: draft, not yet reviewed by a lawyer. Auvren is not currently '
+      'Status: draft, not yet reviewed by a lawyer. Miravelt is not currently '
       'published on any app store. This describes what the app and its '
       'backend actually do - it has not received formal legal review.',
   sections: [
     LegalSection(
       'Who this is',
-      'Auvren is developed by an individual developer, not a registered '
+      'Miravelt is developed by an individual developer, not a registered '
           'company.\n\nDeveloper: Lokesh Ram Chand\nContact: lokeshramchand@gmail\n\n'
           'Contact that address with questions about this policy or your data.',
     ),
     LegalSection(
-      'What Auvren is',
+      'What Miravelt is',
       'A personal finance app. You upload a Google Pay statement PDF you '
-          'export yourself, and Auvren parses it into a spending overview, '
+          'export yourself, and Miravelt parses it into a spending overview, '
           'category breakdowns, recurring-payment detection, and a '
-          'searchable transaction history. Auvren is not a bank or payment '
+          'searchable transaction history. Miravelt is not a bank or payment '
           'processor and cannot move money - it only reads statements you '
           'choose to give it.',
     ),
@@ -112,7 +112,7 @@ const privacyPolicyDocument = LegalDocument(
     ),
     LegalSection(
       'Children\'s privacy',
-      'Auvren is not directed at children and is not knowingly used to '
+      'Miravelt is not directed at children and is not knowingly used to '
           'collect data from anyone under 13. Contact us if you believe a '
           'child has created an account.',
     ),
@@ -128,7 +128,7 @@ const termsOfServiceDocument = LegalDocument(
   title: 'Terms of Service',
   lastUpdated: '2026-08-14',
   intro:
-      'Status: draft, not yet reviewed by a lawyer. Auvren is not currently '
+      'Status: draft, not yet reviewed by a lawyer. Miravelt is not currently '
       'published on any app store. Read alongside the Privacy Policy, '
       'which covers your data specifically.',
   sections: [
@@ -137,10 +137,10 @@ const termsOfServiceDocument = LegalDocument(
       'Developer: Lokesh Ram Chand\nContact: lokeshramchand@gmail',
     ),
     LegalSection(
-      'What Auvren is (and isn\'t)',
-      'Auvren reads Google Pay statement PDFs you upload into a spending '
+      'What Miravelt is (and isn\'t)',
+      'Miravelt reads Google Pay statement PDFs you upload into a spending '
           'overview, categorization, recurring-payment detection, and '
-          'transaction history.\n\nAuvren is not: a bank, payment processor, '
+          'transaction history.\n\nMiravelt is not: a bank, payment processor, '
           'or financial institution; able to move money or access your '
           'bank/UPI account directly; or a source of financial, tax, or '
           'investment advice. Categorization and signals are automated '
@@ -175,7 +175,7 @@ const termsOfServiceDocument = LegalDocument(
     LegalSection(
       'Your content',
       'You retain ownership of the statements you upload and data '
-          'derived from them. Uploading grants Auvren the permissions '
+          'derived from them. Uploading grants Miravelt the permissions '
           'needed to store, parse, and process it to provide the app\'s '
           'features, as described in the Privacy Policy. We don\'t use '
           'your data beyond providing the app and improving '
@@ -183,15 +183,15 @@ const termsOfServiceDocument = LegalDocument(
     ),
     LegalSection(
       'Service availability',
-      'Auvren runs on infrastructure operated by an individual developer, '
+      'Miravelt runs on infrastructure operated by an individual developer, '
           'not a redundant commercial hosting setup. The service may be '
           'unavailable, slow, or interrupted without notice, with no '
-          'uptime guarantee. Don\'t rely on Auvren as your sole financial '
+          'uptime guarantee. Don\'t rely on Miravelt as your sole financial '
           'record - your bank and Google Pay remain authoritative.',
     ),
     LegalSection(
       'Disclaimer and liability',
-      'Auvren is provided "as is," without warranties of any kind, '
+      'Miravelt is provided "as is," without warranties of any kind, '
           'including fitness for a particular purpose, accuracy, or '
           'non-infringement. To the maximum extent permitted by law, the '
           'developer is not liable for indirect, incidental, or '
@@ -200,7 +200,7 @@ const termsOfServiceDocument = LegalDocument(
     ),
     LegalSection(
       'Termination',
-      'Stop using Auvren any time by signing out and requesting account '
+      'Stop using Miravelt any time by signing out and requesting account '
           'deletion. We may suspend or terminate access for violations of '
           'Acceptable use.',
     ),
