@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class FinetuneEngine:
-    def __init__(self, base_model_id: str = "ProsusAI/finbert", output_dir: str = "./models/auvren-finbert-lora"):
+    def __init__(self, base_model_id: str = "ProsusAI/finbert", output_dir: str = "./models/miravelt-finbert-lora"):
         self.base_model_id = base_model_id
         self.output_dir = output_dir
 

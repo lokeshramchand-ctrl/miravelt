@@ -30,12 +30,12 @@ logging.basicConfig(
     format="%(asctime)s 🧪 [TEST] %(levelname)s: %(message)s",
     datefmt="%H:%M:%S"
 )
-logger = logging.getLogger("auvren_test_suite")
+logger = logging.getLogger("miravelt_test_suite")
 
 # The required Phase 15 authorization header
-VALID_API_KEY = "auvren_test_key_123"
+VALID_API_KEY = "miravelt_test_key_123"
 HEADERS = {
-    "X-Auvren-API-Key": VALID_API_KEY,
+    "X-Miravelt-API-Key": VALID_API_KEY,
     "Content-Type": "application/json"
 }
 
@@ -106,7 +106,7 @@ def test_security_valid_key_missing_jwt(client):
 def test_pipeline_endpoints_disabled_without_admin_key(client):
     """routers/pipelines.py (behavior profiling, embedding sync, decay
     sweep, clustering, graph rebuild) run expensive, system-wide batch jobs
-    with no per-user scope - AUVREN_API_KEY alone can't gate them, since it
+    with no per-user scope - MIRAVELT_API_KEY alone can't gate them, since it
     ships inside every client app binary and is trivially extractable. With
     ADMIN_API_KEY unset (the default), they must be unreachable - not fall
     back to being open to anyone holding the app's API key."""
@@ -120,7 +120,7 @@ def test_pipeline_endpoint_requires_correct_admin_key(client, monkeypatch):
     monkeypatch.setattr(settings, "ADMIN_API_KEY", "test-admin-key-for-pipelines")
 
     wrong_key_res = client.post(
-        "/v1/pipelines/decay/sweep", headers={**HEADERS, "X-Auvren-Admin-Key": "wrong-key"}
+        "/v1/pipelines/decay/sweep", headers={**HEADERS, "X-Miravelt-Admin-Key": "wrong-key"}
     )
     assert wrong_key_res.status_code == 403
     logger.info("Wrong admin key correctly rejected with 403.")
@@ -130,7 +130,7 @@ def test_pipeline_endpoint_requires_correct_admin_key(client, monkeypatch):
     logger.info("Missing admin key (API key alone) correctly rejected with 403.")
 
     correct_key_res = client.post(
-        "/v1/pipelines/decay/sweep", headers={**HEADERS, "X-Auvren-Admin-Key": "test-admin-key-for-pipelines"}
+        "/v1/pipelines/decay/sweep", headers={**HEADERS, "X-Miravelt-Admin-Key": "test-admin-key-for-pipelines"}
     )
     assert correct_key_res.status_code == 200
     logger.info("Correct admin key accepted; pipeline endpoint ran.")
@@ -489,7 +489,7 @@ def test_categorize_and_analytics_reject_jwt_without_api_key(client, auth_user):
 def _auth_headers_no_content_type(auth_user):
     """Multipart uploads must not carry the JSON Content-Type from HEADERS -
     httpx sets the correct multipart boundary header itself."""
-    return {"X-Auvren-API-Key": VALID_API_KEY, "Authorization": f"Bearer {auth_user['access_token']}"}
+    return {"X-Miravelt-API-Key": VALID_API_KEY, "Authorization": f"Bearer {auth_user['access_token']}"}
 
 def _upload_mock_statement(client, auth_user, password=None):
     with open(MOCK_STATEMENT_PATH, "rb") as f:
@@ -618,7 +618,7 @@ def test_feedback_correction_updates_the_transaction(client, auth_user, auth_hea
 def test_feedback_correction_propagates_to_same_merchant(client, auth_user, auth_headers, processed_statement):
     """Correcting one transaction's category should recategorize every
     other transaction from the same merchant too - not leave siblings
-    stuck on the old category. Matches the app's own "trains Auvren's
+    stuck on the old category. Matches the app's own "trains Miravelt's
     merchant memory" framing (transaction_sheet.dart)."""
     logger.info("Verifying a feedback correction propagates to every transaction from the same merchant.")
     headers = _auth_headers_no_content_type(auth_user)
@@ -729,7 +729,7 @@ def test_statement_ownership_enforced(client, processed_statement):
     )
     assert reg.status_code == 201
     other_token, _ = create_access_token(reg.json()["id"])
-    other_headers = {"X-Auvren-API-Key": VALID_API_KEY, "Authorization": f"Bearer {other_token}"}
+    other_headers = {"X-Miravelt-API-Key": VALID_API_KEY, "Authorization": f"Bearer {other_token}"}
 
     response = client.get(f"/statements/{processed_statement['statement_id']}", headers=other_headers)
     assert response.status_code == 404
@@ -802,7 +802,7 @@ def _publish_release(client, version_code, version_name="1.0.0", apk_bytes=b"fak
     files = {"apk": (filename, io.BytesIO(apk_bytes), "application/vnd.android.package-archive")}
     data = {"version_code": str(version_code), "version_name": version_name, "release_notes": "Test release"}
     return client.post(
-        "/app/releases", files=files, data=data, headers={**HEADERS, "X-Auvren-Admin-Key": "test-admin-key-for-app-updates"}
+        "/app/releases", files=files, data=data, headers={**HEADERS, "X-Miravelt-Admin-Key": "test-admin-key-for-app-updates"}
     )
 
 def test_app_updates_latest_version_404_before_any_release(client, monkeypatch):

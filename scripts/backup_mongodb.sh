@@ -43,7 +43,7 @@ mkdir -p "$BACKUP_DIR"
 
 # Timestamp for this backup
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-BACKUP_NAME="auvren_backup_${TIMESTAMP}"
+BACKUP_NAME="miravelt_backup_${TIMESTAMP}"
 BACKUP_PATH="${BACKUP_DIR}/${BACKUP_NAME}"
 
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] Starting MongoDB backup..." | tee -a "$LOG_FILE"
@@ -116,7 +116,7 @@ echo "[$(date +'%Y-%m-%d %H:%M:%S')] Backup completed: $ARCHIVE_PATH ($BACKUP_SI
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] Cleaning up backups older than $RETENTION_DAYS days..." | tee -a "$LOG_FILE"
 
 if command -v find &> /dev/null; then
-    DELETED_COUNT=$(find "$BACKUP_DIR" -name "auvren_backup_*.tar.gz*" -mtime "+$RETENTION_DAYS" -type f -delete | wc -l)
+    DELETED_COUNT=$(find "$BACKUP_DIR" -name "miravelt_backup_*.tar.gz*" -mtime "+$RETENTION_DAYS" -type f -delete | wc -l)
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] Deleted $DELETED_COUNT old backups" | tee -a "$LOG_FILE"
 else
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] WARNING: find command not available, skipping cleanup" | tee -a "$LOG_FILE"
