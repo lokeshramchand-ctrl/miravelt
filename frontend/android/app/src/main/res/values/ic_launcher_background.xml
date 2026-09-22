@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- AppColors.ink900 - oklch(0.17 0.012 265), the app's own dark surface
+         (lib/core/theme/app_colors.dart). Keep these in sync. -->
+    <color name="ic_launcher_background">#0D0F15</color>
+</resources>

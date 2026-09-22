@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive launcher icon (Android 8 / API 26+). The launcher masks these two
+     layers to whatever shape the device uses, so the foreground bitmap keeps
+     its artwork inside the central 66dp safe zone of its 108dp canvas - see
+     tool/generate_app_icons.py, which produces both. Pre-26 devices fall back
+     to the legacy mipmap-*/ic_launcher.png bitmaps instead. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background"/>
+    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+</adaptive-icon>
