@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.auvren.auvren"
+    namespace = "com.miravelt.miravelt"
     // flutter_plugin_android_lifecycle (a file_picker dependency) requires
     // compileSdk 36+ - set via flutter.compileSdkVersion in local.properties
     // so every plugin subproject (not just :app) picks it up.
@@ -20,7 +20,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.auvren.auvren"
+        applicationId = "com.miravelt.miravelt"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

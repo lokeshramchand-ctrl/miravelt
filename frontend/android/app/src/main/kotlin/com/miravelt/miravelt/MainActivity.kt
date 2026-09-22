@@ -1,4 +1,4 @@
-package com.auvren.auvren
+package com.miravelt.miravelt
 
 import io.flutter.embedding.android.FlutterActivity
 
