@@ -10,7 +10,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../shared/widgets/avatar_chip.dart';
+import '../../../shared/widgets/user_avatar.dart';
 import '../../../shared/widgets/screen_back_header.dart';
 import '../../../shared/widgets/stat_tile.dart';
 import '../../../shared/widgets/toggle_row.dart';
@@ -48,7 +48,7 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: 18),
             Row(
               children: [
-                AvatarChip(initials: initials, size: 54, gradient: LinearGradient(colors: [AppColors.accent, AppColors.accentDim]), foregroundColor: AppColors.accentInk),
+                UserAvatar(seed: user?.id, initials: initials, size: 54, gradient: LinearGradient(colors: [AppColors.accent, AppColors.accentDim]), foregroundColor: AppColors.accentInk),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(

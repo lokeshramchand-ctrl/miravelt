@@ -10,7 +10,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/app_buttons.dart';
-import '../../../shared/widgets/avatar_chip.dart';
+import '../../../shared/widgets/user_avatar.dart';
 import '../../../shared/widgets/category_bar_row.dart';
 import '../../../shared/widgets/delta_chip.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -105,6 +105,10 @@ class _Header extends ConsumerWidget {
       AuthAuthenticated(:final user) => user.initials,
       _ => '?',
     };
+    final avatarSeed = switch (authState) {
+      AuthAuthenticated(:final user) => user.id,
+      _ => null,
+    };
 
     return Container(
       color: AppColors.ink900,
@@ -139,7 +143,8 @@ class _Header extends ConsumerWidget {
                     behavior: HitTestBehavior.opaque,
                     onTap: () => context.push('/profile'),
                     child: Center(
-                      child: AvatarChip(
+                      child: UserAvatar(
+                        seed: avatarSeed,
                         initials: initials,
                         size: 34,
                         gradient: LinearGradient(colors: [AppColors.accent, AppColors.accentDim]),

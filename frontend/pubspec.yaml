@@ -104,10 +104,11 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  # Per-user avatar illustrations. One is assigned to each user from their
+  # user id - see lib/core/avatars/user_avatars.dart. Downscaled to 256px
+  # from the 1254px originals in ../assets/avatar.
+  assets:
+    - assets/avatars/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
