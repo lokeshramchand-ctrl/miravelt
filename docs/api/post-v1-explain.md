@@ -10,12 +10,12 @@
 Generates a grounded, hallucination-resistant natural-language explanation of a transaction categorization, by retrieving semantically relevant merchant data and constraining an LLM to reason only over that retrieved evidence.
 
 ## Authentication
-**Required.** `X-Auvren-API-Key: auvren_test_key_123`.
+**Required.** `X-Miravelt-API-Key: miravelt_test_key_123`.
 
 ## Headers
 | Header | Required | Value |
 |---|---|---|
-| `X-Auvren-API-Key` | Yes | `auvren_test_key_123` |
+| `X-Miravelt-API-Key` | Yes | `miravelt_test_key_123` |
 | `Content-Type` | Yes | `application/json` |
 
 ## Request body
@@ -107,7 +107,7 @@ Plus one Milvus vector search (`vector_store.client.search(...)`) and one Ollama
 ## Example request
 ```bash
 curl -s -X POST http://localhost:8000/v1/explain \
-  -H "X-Auvren-API-Key: auvren_test_key_123" \
+  -H "X-Miravelt-API-Key: miravelt_test_key_123" \
   -H "Content-Type: application/json" \
   -d '{"transaction_text": "Swiggy order", "target_question": "Why was this categorized as Food?"}'
 ```

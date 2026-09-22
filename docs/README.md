@@ -1,12 +1,12 @@
-# Auvren — Engineering Documentation
+# Miravelt — Engineering Documentation
 
-Welcome to the internal engineering documentation for **Auvren**. This portal is written for engineers joining the team who need to understand the system deeply enough to operate, extend, or debug it without asking around first.
+Welcome to the internal engineering documentation for **Miravelt**. This portal is written for engineers joining the team who need to understand the system deeply enough to operate, extend, or debug it without asking around first.
 
 > **Scope note:** Every statement in these documents is derived directly from the code in this repository as of the current `three` branch. Where the implementation is incomplete, inconsistent, or contains a defect, it is called out explicitly rather than glossed over — see [16 · Known Issues & Tech Debt](./16-known-issues-tech-debt.md). Nothing here describes aspirational or planned behavior unless the source comments themselves describe it as a future phase.
 
-## What is Auvren?
+## What is Miravelt?
 
-Auvren ingests raw, noisy financial transaction strings (UPI references, bank SMS text, POS narrations) and turns them into structured, explainable output: canonical merchant identity, spend category, behavioral fingerprints, anomalies, subscriptions, and natural-language explanations grounded in retrieved data.
+Miravelt ingests raw, noisy financial transaction strings (UPI references, bank SMS text, POS narrations) and turns them into structured, explainable output: canonical merchant identity, spend category, behavioral fingerprints, anomalies, subscriptions, and natural-language explanations grounded in retrieved data.
 
 The codebase is organized as a series of **numbered "Phases"** — this isn't a documentation invention, it's how the engineers who built it labeled the system in code comments (`# Phase 3 Endpoint`, `# Phase 9 Specific Features`, `PHASE 0 & 15: SYSTEM HEALTH & SECURITY`, etc.). This documentation set follows that same phase structure because it is the most accurate map of intent to implementation.
 
@@ -15,7 +15,7 @@ The codebase is organized as a series of **numbered "Phases"** — this isn't a 
 | Doc | Read this when you need to... |
 |---|---|
 | [01 · Architecture](./01-architecture.md) | Understand the overall system shape, service topology, and how a request moves through the stack |
-| [02 · API Reference](./02-api-reference.md) | Integrate with or call any HTTP endpoint Auvren exposes |
+| [02 · API Reference](./02-api-reference.md) | Integrate with or call any HTTP endpoint Miravelt exposes |
 | [03 · Data Model](./03-data-model.md) | Understand Pydantic schemas, MongoDB collections, and the Milvus vector schema |
 | [04 · Core Infrastructure](./04-core-infrastructure.md) | Understand config, security, rate limiting, the Ollama client, and DB connection lifecycle |
 | [05 · Ingestion, Resolution & Memory (Phases 1–4)](./05-ingestion-resolution-memory.md) | Understand how raw text becomes a merchant identity with a persistent memory state |
@@ -27,7 +27,7 @@ The codebase is organized as a series of **numbered "Phases"** — this isn't a 
 | [11 · Analytics Engine (Phase 13)](./11-analytics-engine.md) | Understand spend analytics, subscriptions, trends, and anomaly detection |
 | [12 · Observability & MLOps (Phase 14)](./12-observability-mlops.md) | Understand Prometheus metrics and the drift-analysis stubs |
 | [13 · Knowledge Graph](./13-knowledge-graph.md) | Understand the cross-phase graph layer built on NetworkX |
-| [14 · Deployment & Operations](./14-deployment-operations.md) | Build, configure, and run Auvren locally or in production |
+| [14 · Deployment & Operations](./14-deployment-operations.md) | Build, configure, and run Miravelt locally or in production |
 | [15 · Testing](./15-testing.md) | Understand the automated test suite and manual E2E script |
 | [16 · Known Issues & Tech Debt](./16-known-issues-tech-debt.md) | Understand which parts of the system are broken, disconnected, or mocked |
 | [22 · Authentication](./22-authentication.md) | Understand the two-layer API-key + JWT auth model: token lifecycle, password hashing, refresh rotation, per-endpoint protection, and configuration |
@@ -39,7 +39,7 @@ The codebase is organized as a series of **numbered "Phases"** — this isn't a 
 
 ```mermaid
 flowchart LR
-    Client([Client]) -->|X-Auvren-API-Key + JWT| API[FastAPI App<br/>app.py]
+    Client([Client]) -->|X-Miravelt-API-Key + JWT| API[FastAPI App<br/>app.py]
     API --> V1[/v1 router/]
     API --> MEM[/memory router/]
     API --> ANA[/v1/analytics router/]

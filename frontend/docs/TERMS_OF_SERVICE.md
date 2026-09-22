@@ -1,6 +1,6 @@
-# Auvren Terms of Service
+# Miravelt Terms of Service
 
-**Status: draft, not yet reviewed by a lawyer.** Auvren is not currently
+**Status: draft, not yet reviewed by a lawyer.** Miravelt is not currently
 published on any app store. Read this alongside the
 [Privacy Policy](./PRIVACY_POLICY.md), which covers your data
 specifically - this document covers the rest of the relationship.
@@ -9,18 +9,18 @@ specifically - this document covers the rest of the relationship.
 
 ## Who this is
 
-Auvren is developed by an individual developer, not a registered company.
+Miravelt is developed by an individual developer, not a registered company.
 
 - **Developer:** Lokesh Ram Chand
 - **Contact:** lokeshramchand@gmail
 
-## What Auvren is (and isn't)
+## What Miravelt is (and isn't)
 
-Auvren reads Google Pay transaction statement PDFs that you upload and
+Miravelt reads Google Pay transaction statement PDFs that you upload and
 turns them into a spending overview, categorization, recurring-payment
 detection, and a searchable transaction history.
 
-Auvren is **not**:
+Miravelt is **not**:
 - A bank, payment processor, or financial institution
 - Able to move money, initiate payments, or access your bank/UPI account
   directly - it only reads a PDF file you choose to give it
@@ -35,14 +35,14 @@ Auvren is **not**:
   responsible for keeping your login credentials confidential and for
   all activity under your account.
 - You must be legally capable of agreeing to these terms in your
-  jurisdiction to use Auvren.
+  jurisdiction to use Miravelt.
 - Don't share your account with people you don't trust with your
   financial statement data - anyone signed in can see everything
   uploaded to that account.
 
 ## Acceptable use
 
-Don't use Auvren to:
+Don't use Miravelt to:
 - Upload statements you're not authorized to view (e.g. someone else's,
   without their consent)
 - Attempt to access another user's account or data
@@ -67,7 +67,7 @@ Pay / bank records.
 ## Your content
 
 You retain ownership of the statement PDFs you upload and the data
-derived from them. By uploading a statement, you grant Auvren the
+derived from them. By uploading a statement, you grant Miravelt the
 permissions necessary to store, parse, and process it in order to
 provide the app's features to you, as described in the Privacy Policy.
 We don't claim ownership of your financial data, and we don't use it for
@@ -76,16 +76,16 @@ accuracy (see the Privacy Policy for specifics).
 
 ## Service availability
 
-Auvren is currently run on infrastructure operated by an individual
+Miravelt is currently run on infrastructure operated by an individual
 developer, not a redundant commercial hosting setup. The service may be
 unavailable, slow, or interrupted without notice, including for
-maintenance, and there is no uptime guarantee. Don't rely on Auvren as
+maintenance, and there is no uptime guarantee. Don't rely on Miravelt as
 your sole record of your finances - your bank and Google Pay remain the
 authoritative source.
 
 ## Disclaimer of warranties
 
-Auvren is provided "as is," without warranties of any kind, express or
+Miravelt is provided "as is," without warranties of any kind, express or
 implied, including but not limited to fitness for a particular purpose,
 accuracy, or non-infringement. Automated categorization and analytics may
 contain errors.
@@ -93,14 +93,14 @@ contain errors.
 ## Limitation of liability
 
 To the maximum extent permitted by applicable law, the developer of
-Auvren is not liable for any indirect, incidental, or consequential
+Miravelt is not liable for any indirect, incidental, or consequential
 damages arising from your use of the app, including decisions made based
 on its output. Nothing in these terms limits liability that cannot
 lawfully be limited in your jurisdiction.
 
 ## Termination
 
-You can stop using Auvren at any time by signing out and requesting
+You can stop using Miravelt at any time by signing out and requesting
 account deletion (see the Privacy Policy). We may suspend or terminate
 access for violations of the "Acceptable use" section above.
 

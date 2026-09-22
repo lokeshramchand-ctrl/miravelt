@@ -26,7 +26,7 @@ Renamed the import and call site to `davies_bouldin_score`.
 
 ### ✅ FIXED — Hardcoded API key, config setting unused
 **File**: `core/security.py`
-`validate_api_key` now compares against `settings.AUVREN_API_KEY` instead of the literal `"auvren_test_key_123"`. Rotating `AUVREN_API_KEY` in `.env`/deployment config now actually takes effect.
+`validate_api_key` now compares against `settings.MIRAVELT_API_KEY` instead of the literal `"miravelt_test_key_123"`. Rotating `MIRAVELT_API_KEY` in `.env`/deployment config now actually takes effect.
 
 ### ✅ FIXED — Plaintext credential committed in `docker-compose_production.yaml`
 **File**: `docker-compose_production.yaml`
@@ -81,7 +81,7 @@ All five were exercised end-to-end against a real MongoDB in verification (behav
 **Still requires a product decision, not fixed here:** actually scheduling these on a cron/Celery beat so they run automatically without a manual API call. That's an infrastructure choice for whoever operates this, not a bug fix — see §16.5.
 
 ### ✅ Addressed — `docker-compose_production.yaml` env var names vs. `core/config.py`
-Compose now sets `MONGODB_URI`/`MONGODB_DB_NAME`/`MILVUS_URI`/`OLLAMA_URI`/`OLLAMA_HOSTS`/`EMBED_MODEL`/`LLM_MODEL`/`AUVREN_API_KEY` — matching `Settings` exactly — sourced via `${VAR:?required}` substitution instead of hardcoded/wrong-named values.
+Compose now sets `MONGODB_URI`/`MONGODB_DB_NAME`/`MILVUS_URI`/`OLLAMA_URI`/`OLLAMA_HOSTS`/`EMBED_MODEL`/`LLM_MODEL`/`MIRAVELT_API_KEY` — matching `Settings` exactly — sourced via `${VAR:?required}` substitution instead of hardcoded/wrong-named values.
 
 ### Not changed — `README.md` vs. `docker-compose_local.yaml` Milvus/Ollama gap
 This was re-checked and found to already be accurately documented (the README explicitly notes the local compose file only provisions MongoDB and that Milvus/Ollama must be run separately) — no code or doc change was needed here, it was already honest.
@@ -107,7 +107,7 @@ These were flagged in earlier versions of this document as "medium" gaps but are
 - **Response caching** for `routers/analytics.py`'s four read endpoints via `core/cache.py`'s `@cached` decorator (cache-aside, Redis-backed, 3-minute TTL, degrades to a no-op if `REDIS_URI` is unset).
 - **Rate limiting is now distributed** when `REDIS_URI` is set (`core/rate_limiter.py`'s `storage_uri`) — SlowAPI's in-memory default only counts requests per-process, which silently stops enforcing real limits the moment this app runs as more than one replica.
 - **Not addressed by this**: `training/train.py::load_data()` still generates synthetic data (see below) — the executor now actually runs `BaselineTrainer`, but still against fake data. Response caching is only wired into `routers/analytics.py`'s reads as the demonstrated pattern; other expensive read paths (`/v1/explain`) aren't cached yet. Database indexes were already addressed separately (`database/mongo.py::ensure_indexes`, not part of this change).
-- Requires `REDIS_URI` set and `celery -A tasks.celery_app worker` / `... beat` actually running (see `docker-compose_local.yaml`'s `celery-worker`/`celery-beat` services, or `docker-compose_production.yaml`'s `auvren-celery-worker`/`auvren-celery-beat`) — everything above still degrades to "disabled," not a crash, if it isn't.
+- Requires `REDIS_URI` set and `celery -A tasks.celery_app worker` / `... beat` actually running (see `docker-compose_local.yaml`'s `celery-worker`/`celery-beat` services, or `docker-compose_production.yaml`'s `miravelt-celery-worker`/`miravelt-celery-beat`) — everything above still degrades to "disabled," not a crash, if it isn't.
 
 ### Still open
 

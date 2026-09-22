@@ -10,12 +10,12 @@
 Fetches the complete stored memory profile for a named entity — its trust level, seen-count, aliases, and timestamps.
 
 ## Authentication
-**Required.** `X-Auvren-API-Key: auvren_test_key_123`.
+**Required.** `X-Miravelt-API-Key: miravelt_test_key_123`.
 
 ## Headers
 | Header | Required | Value |
 |---|---|---|
-| `X-Auvren-API-Key` | Yes | `auvren_test_key_123` |
+| `X-Miravelt-API-Key` | Yes | `miravelt_test_key_123` |
 
 ## Request body
 None — bodiless `GET`.
@@ -68,7 +68,7 @@ No separate service layer here — the controller calls the repository directly,
 ## Example request
 ```bash
 curl -s http://localhost:8000/memory/profile/Zomato \
-  -H "X-Auvren-API-Key: auvren_test_key_123"
+  -H "X-Miravelt-API-Key: miravelt_test_key_123"
 ```
 
 ## Example response

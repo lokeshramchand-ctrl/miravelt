@@ -1,4 +1,4 @@
-# Auvren Backend API Reference (for Flutter/Dart client)
+# Miravelt Backend API Reference (for Flutter/Dart client)
 
 Extracted from the FastAPI backend source (`app.py`, `core/*.py`, `routers/*.py`, `feedback/api_router.py`). This is the contract the Dart networking/repository layer is generated against.
 
@@ -7,7 +7,7 @@ Extracted from the FastAPI backend source (`app.py`, `core/*.py`, `routers/*.py`
 **Base path**: no global prefix; routers mount their own prefixes (`/auth`, `/users`, `/v1`, `/v1/analytics`, `/v1/feedback`, `/v1/pipelines`, `/memory`, `/statements`, `/jobs`). Unauthenticated system routes (`/live`, `/ready`, `/health`, `/metrics`) sit at root.
 
 **Two-layer auth, every non-system route requires layer 1 at minimum:**
-1. **API key (all routers, always)**: header `X-Auvren-API-Key: <key>` — validated in `core/security.py::validate_api_key` against `settings.AUVREN_API_KEY` via `secrets.compare_digest`. Not a per-user credential; authenticates the calling application only. There is no client-facing endpoint to obtain this key — it's a static value the mobile app ships/configures with.
+1. **API key (all routers, always)**: header `X-Miravelt-API-Key: <key>` — validated in `core/security.py::validate_api_key` against `settings.MIRAVELT_API_KEY` via `secrets.compare_digest`. Not a per-user credential; authenticates the calling application only. There is no client-facing endpoint to obtain this key — it's a static value the mobile app ships/configures with.
 2. **JWT bearer (per-endpoint, additive)**: header `Authorization: Bearer <access_token>` — validated in `core/jwt_auth.py::get_current_user`. Obtained from `POST /auth/login` or `POST /auth/refresh`.
 
 Order matters for error precedence: the router-level API-key dependency runs before any handler-level JWT dependency — a request with a bad JWT but no/bad API key gets the API-key error, not a JWT error.
