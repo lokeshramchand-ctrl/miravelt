@@ -132,11 +132,11 @@ services:
       timeout: 5s
       retries: 5
 
-  auvren-backend:
+  miravelt-backend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: auvren-backend
+    container_name: miravelt-backend
     working_dir: /app
     # Bind-mounting the repo here is intentional and dev-only: it lets you
     # edit code on the host and see it reflected without rebuilding the
@@ -170,7 +170,7 @@ services:
       - ALL
 
   # ---- Celery worker + beat (tasks/celery_app.py) ----
-  # Same image as auvren-backend, different entrypoint - these run the
+  # Same image as miravelt-backend, different entrypoint - these run the
   # scheduled batch pipelines (routers/pipelines.py) and the retraining
   # executor (feedback/retraining_queue.py) instead of serving HTTP.
   # Requires REDIS_URI (set in .env, pointing at redis:6379 on this network)
@@ -179,7 +179,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: auvren-celery-worker
+    container_name: miravelt-celery-worker
     working_dir: /app
     volumes:
       - .:/app
@@ -207,7 +207,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: auvren-celery-beat
+    container_name: miravelt-celery-beat
     working_dir: /app
     volumes:
       - .:/app
