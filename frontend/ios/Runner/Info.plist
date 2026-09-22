@@ -5,13 +5,17 @@
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<!-- iOS App Transport Security blocks cleartext (HTTP) by default.
-	     ApiEnvironment.local's default (see lib/core/config/api_environment.dart)
-	     is plain HTTP against a backend on the host machine, reached from the
-	     simulator as localhost/127.0.0.1 - scoped here rather than a blanket
-	     ATS exception, so ApiEnvironment.production's real HTTPS API stays
-	     fully covered by the OS's default policy. -->
+	     This app is self-hosted, and Developer settings can point it at the
+	     operator's own backend over plain HTTP (see
+	     lib/core/config/api_environment.dart). NSAllowsLocalNetworking permits
+	     cleartext to local-network addresses ONLY - unlike Android's network
+	     security config, which cannot express address ranges, iOS can scope
+	     this properly, so ApiEnvironment.production's real HTTPS API and every
+	     other internet host stay fully covered by the default policy. -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
 		<key>NSExceptionDomains</key>
 		<dict>
 			<key>localhost</key>
