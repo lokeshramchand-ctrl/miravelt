@@ -5,7 +5,7 @@ from bson import ObjectId
 from bson.errors import InvalidId
 
 from database.mongo import db
-from models.schemas import Job, JobStatus
+from models.schemas import Job, JobStatus, JobType
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +64,30 @@ class JobRepository:
                 }
             },
         )
+
+    async def fail_interrupted_statement_jobs(self, error_message: str) -> list[str]:
+        """Marks every still-QUEUED/RUNNING statement job FAILED and returns
+        their statement ids. Only valid at process startup: jobs run in-process
+        (fastapi BackgroundTasks, one uvicorn worker - see the Dockerfile), so
+        any job still "in flight" when the process starts was killed with the
+        previous one and would otherwise poll as running forever."""
+        query = {
+            "job_type": JobType.STATEMENT_PROCESSING.value,
+            "status": {"$in": [JobStatus.QUEUED.value, JobStatus.RUNNING.value]},
+        }
+        statement_ids = [doc["resource_id"] async for doc in db.jobs.find(query, {"resource_id": 1})]
+        if statement_ids:
+            await db.jobs.update_many(
+                query,
+                {
+                    "$set": {
+                        "status": JobStatus.FAILED.value,
+                        "error_message": error_message,
+                        "completed_at": datetime.now(UTC),
+                    }
+                },
+            )
+        return statement_ids
 
     async def delete_for_resource(self, resource_id: str) -> int:
         result = await db.jobs.delete_many({"resource_id": resource_id})

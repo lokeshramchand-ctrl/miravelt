@@ -26,16 +26,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v2
+        uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
           queries: security-and-quality
 
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v2
+        uses: github/codeql-action/autobuild@v3
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
+        uses: github/codeql-action/analyze@v3
         with:
           category: "/language:${{ matrix.language }}"
 
@@ -43,18 +43,19 @@ jobs:
   semgrep:
     name: Semgrep SAST Scan
     runs-on: ubuntu-latest
+    # returntocorp/semgrep-action is deprecated and stopped writing the SARIF
+    # file; the official image's CLI is the supported way to run it.
+    container:
+      image: semgrep/semgrep
     steps:
       - uses: actions/checkout@v4
 
       - name: Run Semgrep
-        uses: returntocorp/semgrep-action@v1
-        with:
-          config: p/security-audit
-          generateSarif: true
+        run: semgrep scan --config p/security-audit --sarif --output semgrep.sarif
 
       - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@v2
-        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('semgrep.sarif') != ''
         with:
           sarif_file: semgrep.sarif
 
@@ -77,7 +78,7 @@ jobs:
           severity: "CRITICAL,HIGH,MEDIUM"
 
       - name: Upload Trivy results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: trivy-results.sarif
@@ -87,13 +88,20 @@ jobs:
   snyk-dependencies:
     name: Snyk Dependency Scan
     runs-on: ubuntu-latest
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
+      # Needs a SNYK_TOKEN repository secret; without one the scan can only
+      # fail on authentication, so it is skipped instead of failing the run.
+      - name: Skip (no SNYK_TOKEN secret configured)
+        if: env.SNYK_TOKEN == ''
+        run: echo "::notice::Snyk skipped - add a SNYK_TOKEN repository secret to enable it."
+
       - name: Run Snyk scan
+        if: env.SNYK_TOKEN != ''
         uses: snyk/actions/python-3.12@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --severity-threshold=high
 
@@ -117,7 +125,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Bandit report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: bandit-report
           path: bandit-report.json
@@ -177,7 +185,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload TruffleHog results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: trufflehog-results
           path: trufflehog-results.json
@@ -195,13 +203,15 @@ jobs:
           project: "miravelt"
           path: "."
           format: "SARIF"
+          out: "reports"
+          # --enableExperimental turns on the Python analyzers. The previous
+          # --enablePackageList/--enablePyknock are not dependency-check
+          # options, so the tool printed its usage and wrote no report.
           args: >
-            --enablePackageList
             --enableExperimental
-            --enablePyknock
 
       - name: Upload OWASP results
-        uses: github/codeql-action/upload-sarif@v2
-        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('reports/dependency-check-report.sarif') != ''
         with:
-          sarif_file: dependency-check-report.sarif
+          sarif_file: reports/dependency-check-report.sarif

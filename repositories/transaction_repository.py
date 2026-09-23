@@ -123,7 +123,8 @@ class TransactionRepository:
             return False
         result = await db.transactions.update_one(
             {"_id": oid, "user_id": user_id},
-            {"$set": {"category": category}},
+            # A user's correction is the most certain categorization there is.
+            {"$set": {"category": category, "categorization_confidence": 1.0}},
         )
         return result.modified_count > 0
 
@@ -136,7 +137,8 @@ class TransactionRepository:
         stuck on the old category."""
         result = await db.transactions.update_many(
             {"user_id": user_id, "merchant": merchant},
-            {"$set": {"category": category}},
+            # A user's correction is the most certain categorization there is.
+            {"$set": {"category": category, "categorization_confidence": 1.0}},
         )
         return result.modified_count
 

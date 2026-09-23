@@ -127,7 +127,7 @@ async def toggle_user_active(
         )
 
     user.is_active = active
-    updated = await user_repo.update_user(user.id, {"is_active": active})
+    await user_repo.update_user(user.id, {"is_active": active})
     logger.info(f"Admin {current_user.id} toggled user {user_id} active={active}")
 
     return {
@@ -227,11 +227,13 @@ async def trigger_retention_cleanup(
             "results": results
         }
     except Exception as e:
-        logger.error(f"Error during admin retention cleanup: {e}")
+        # Full detail stays in the server log; the response never carries
+        # internal exception text (same rule as core/error_handlers.py).
+        logger.exception("Error during admin retention cleanup")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Retention cleanup failed: {str(e)}"
-        )
+            detail="Retention cleanup failed. See server logs for details."
+        ) from e
 
 
 @router.get("/overview", status_code=status.HTTP_200_OK)

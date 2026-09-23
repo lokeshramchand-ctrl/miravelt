@@ -1,5 +1,5 @@
 import logging
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -59,8 +59,8 @@ class AppReleaseRepository:
     async def open_download_stream(self, gridfs_file_id: str) -> AsyncIterator[bytes]:
         try:
             oid = ObjectId(gridfs_file_id)
-        except (InvalidId, TypeError):
-            raise ValueError(f"Invalid GridFS file id: {gridfs_file_id}")
+        except (InvalidId, TypeError) as e:
+            raise ValueError(f"Invalid GridFS file id: {gridfs_file_id}") from e
         stream = await db.app_releases_bucket.open_download_stream(oid)
         return stream
 

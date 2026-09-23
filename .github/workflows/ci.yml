@@ -42,7 +42,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install ruff
-        run: pip install ruff
+        run: pip install ruff==0.16.8  # keep in step with .pre-commit-config.yaml
       - name: Run ruff check
         run: ruff check .
 
@@ -89,6 +89,10 @@ jobs:
       MIRAVELT_API_KEY: "ci_test_key"
       JWT_SECRET_KEY: "ci_test_jwt_signing_key_at_least_32_characters_long"
       LOG_LEVEL: "WARNING"
+      # ENVIRONMENT defaults to "production", which turns on HTTPS
+      # enforcement - and TestClient speaks plain http://, so every request
+      # was rejected with 400 https_required before reaching a route.
+      ENFORCE_HTTPS: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

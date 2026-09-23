@@ -2,8 +2,8 @@ import logging
 from datetime import UTC, datetime
 from enum import Enum
 
-from database.mongo import db
 from core.dlp_redaction import dlp_redactor
+from database.mongo import db
 
 logger = logging.getLogger(__name__)
 
@@ -13,11 +13,11 @@ class AuditEventType(str, Enum):
     LOGIN_SUCCESS = "login_success"
     LOGIN_FAILED = "login_failed"
     LOGOUT = "logout"
-    TOKEN_REFRESH = "token_refresh"
-    TOKEN_REVOKED = "token_revoked"
+    TOKEN_REFRESH = "token_refresh"  # noqa: S105 - event name, not a credential
+    TOKEN_REVOKED = "token_revoked"  # noqa: S105 - event name, not a credential
     MFA_ENABLED = "mfa_enabled"
     MFA_DISABLED = "mfa_disabled"
-    PASSWORD_CHANGED = "password_changed"
+    PASSWORD_CHANGED = "password_changed"  # noqa: S105 - event name, not a credential
     DEVICE_TRUSTED = "device_trusted"
     DEVICE_REVOKED = "device_revoked"
     PDF_UPLOADED = "pdf_uploaded"

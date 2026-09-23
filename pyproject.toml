@@ -36,6 +36,9 @@ ignore = [
 # explicitly rather than working around it per call site.
 extend-immutable-calls = [
     "fastapi.Depends", "fastapi.Security", "fastapi.Query", "fastapi.File", "fastapi.Form",
+    # Dependency factory: Depends(require_scope("admin")) is evaluated once at
+    # import, exactly like Depends itself.
+    "core.jwt_auth.require_scope",
 ]
 
 [tool.ruff.lint.per-file-ignores]

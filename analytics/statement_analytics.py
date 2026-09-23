@@ -123,16 +123,22 @@ class StatementAnalyticsEngine:
         ]
 
     async def _recurring_payments(
-        self, base_match: dict[str, Any], min_periodicity: float = 0.85
+        self, base_match: dict[str, Any], min_periodicity: float = 0.85, min_occurrences: int = 3
     ) -> list[RecurringPaymentItem]:
         """Same periodicity-score join analytics/subscriptions.py already
         does, scoped to this statement's transactions. behavior_patterns
         itself stays a global, cross-statement/cross-user merchant knowledge
         base (see statements/statement_service.py) - only the transaction
-        side of this join is statement-scoped."""
+        side of this join is statement-scoped.
+
+        Because that score is global, it alone can't make a merchant recurring
+        *for this user*: the merchant must also repeat within this statement
+        (min_occurrences), or a single payment to a merchant that is regular
+        for someone else would be listed."""
         pipeline = [
             {"$match": {**base_match, "transaction_type": TransactionType.DEBIT.value}},
             {"$group": {"_id": "$merchant", "last_amount": {"$last": "$amount"}, "occurrences": {"$sum": 1}}},
+            {"$match": {"occurrences": {"$gte": min_occurrences}}},
             {
                 "$lookup": {
                     "from": "behavior_patterns",
