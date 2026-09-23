@@ -9,6 +9,19 @@ logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent.parent
 ALIASES_FILE = BASE_DIR / "merchant_aliases.json"
 
+# Business-type words that identify a category even when the merchant itself
+# is unknown. Whole-word matches only, and deliberately generic nouns - never
+# personal names - so a UPI payment to a person stays Uncategorized.
+KEYWORD_CATEGORIES = [
+    (re.compile(rf"\b(?:{words})\b", re.IGNORECASE), category)
+    for words, category in [
+        (r"canteen|cafe|restaurant|hotel|dhaba|bakery|bakers|sweets|tea\s*stall|tiffins?|biryani|juice\s*(?:centre|center|shop)|foods?|kitchen|pizza", "Food"),
+        (r"fashions?|fancy|garments|textiles|clothing|footwear|mart|supermarket|kirana|general\s*stores?|retail|electronics", "Shopping"),
+        (r"pharmacy|medicals?|chemists?|hospital|clinic|diagnostics|dental", "Healthcare"),
+        (r"petrol|fuel|filling\s*station|travels|cabs|taxi|parking", "Travel"),
+    ]
+]
+
 class RuleEngine:
     def __init__(self):
         self.rules = self._load_rules()
@@ -49,6 +62,15 @@ class RuleEngine:
         # have it. Mirrors how the credit side ("Received from X") handles
         # this in statements/statement_service.py._build_transactions.
         fallback_merchant = text.strip() or "Unknown"
+
+        # No known merchant, but the printed name itself often says what the
+        # business is ("S.H.S CANTEEN 1", "KVR FASHION AND FANCY"). Only a
+        # category guess, so the merchant stays the raw text and confidence
+        # stays well below a curated alias match.
+        for pattern, category in KEYWORD_CATEGORIES:
+            if pattern.search(text):
+                return {"merchant": fallback_merchant, "category": category, "confidence": 0.6}
+
         return {
             "merchant": fallback_merchant,
             "category": "Uncategorized",

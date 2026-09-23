@@ -5,7 +5,7 @@ from typing import Any
 import httpx
 
 from core.ollama_client import LLM_MODEL, get_ollama_host
-from models.schemas import InsightItem, StatementAnalytics
+from models.schemas import InsightItem, InsightSeverity, StatementAnalytics
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +44,12 @@ RULES:
         analytics: StatementAnalytics,
         previous_analytics: StatementAnalytics | None = None,
     ) -> list[InsightItem]:
-        context: dict[str, Any] = {"current_statement": analytics.model_dump(exclude={"generated_at"})}
+        # daily_trend is one row per day - by far the bulk of the payload, and
+        # nothing an insight sentence needs, so it only slows a CPU-bound model.
+        exclude = {"generated_at", "daily_trend"}
+        context: dict[str, Any] = {"current_statement": analytics.model_dump(exclude=exclude)}
         if previous_analytics is not None:
-            context["previous_statement"] = previous_analytics.model_dump(exclude={"generated_at"})
+            context["previous_statement"] = previous_analytics.model_dump(exclude=exclude)
 
         prompt = f"CONTEXT:\n{json.dumps(context, default=str)}\n\nGenerate the insights JSON array now."
 
@@ -61,22 +64,77 @@ RULES:
         try:
             async with httpx.AsyncClient() as client:
                 api_url = f"{get_ollama_host()}/api/generate"
-                response = await client.post(api_url, json=payload, timeout=30.0)
+                # This runs in a background job, not on a request path, and a
+                # CPU-only Ollama routinely needs well over 30s for a
+                # statement-sized prompt.
+                response = await client.post(api_url, json=payload, timeout=180.0)
                 response.raise_for_status()
                 data = response.json()
                 raw_items = json.loads(data["response"])
         except Exception:
             # Insights are additive value on top of already-persisted
-            # analytics - an Ollama/network hiccup here degrades to "no
-            # insights this time", never a reason to fail the whole
-            # statement-processing job (see statements/statement_service.py).
-            logger.warning("Statement insight generation failed - continuing without insights.", exc_info=True)
-            return []
+            # analytics - an Ollama/network hiccup here is never a reason to
+            # fail the whole statement-processing job (see
+            # statements/statement_service.py).
+            logger.warning("Statement insight generation failed - using computed insights instead.", exc_info=True)
+            return self._computed_insights(analytics)
 
-        return self._to_insight_items(raw_items)
+        return self._to_insight_items(raw_items) or self._computed_insights(analytics)
+
+    @staticmethod
+    def _computed_insights(analytics: StatementAnalytics) -> list[InsightItem]:
+        """Deterministic observations read straight off the analytics, for
+        when the LLM is unavailable or returns nothing usable. Same grounding
+        rule as the prompt: every figure here is one already persisted."""
+        items: list[InsightItem] = []
+        spend = analytics.total_spend
+        if spend > 0:
+            spending = [
+                c for c in analytics.category_breakdown if c.category not in ("Income", "Uncategorized")
+            ]
+            if spending:
+                top = max(spending, key=lambda c: c.total_amount)
+                share = round(top.total_amount / spend * 100)
+                items.append(InsightItem(
+                    type="top_category",
+                    message=f"{top.category} was your biggest known category at ₹{top.total_amount:,.0f} ({share}% of spending).",
+                    severity=InsightSeverity.INFO,
+                ))
+        if analytics.top_merchants:
+            m = analytics.top_merchants[0]
+            items.append(InsightItem(
+                type="top_merchant",
+                message=f"You paid {m.merchant} the most: ₹{m.total_amount:,.0f} across {m.count} payments.",
+                severity=InsightSeverity.INFO,
+            ))
+        if analytics.recurring_payments:
+            n = len(analytics.recurring_payments)
+            items.append(InsightItem(
+                type="recurring_payments",
+                message=f"{n} recurring {'payment' if n == 1 else 'payments'} detected this period.",
+                severity=InsightSeverity.INFO,
+            ))
+        if analytics.total_income or spend:
+            if analytics.net >= 0:
+                items.append(InsightItem(
+                    type="net_flow",
+                    message=f"More came in than went out: net +₹{analytics.net:,.0f} this period.",
+                    severity=InsightSeverity.POSITIVE,
+                ))
+            else:
+                items.append(InsightItem(
+                    type="net_flow",
+                    message=f"You spent ₹{-analytics.net:,.0f} more than came in this period.",
+                    severity=InsightSeverity.WARNING,
+                ))
+        return items
 
     @staticmethod
     def _to_insight_items(raw_items: Any) -> list[InsightItem]:
+        # format: "json" makes Ollama emit a JSON object, so the requested
+        # array usually arrives wrapped, e.g. {"insights": [...]}.
+        if isinstance(raw_items, dict):
+            raw_items = next((v for v in raw_items.values() if isinstance(v, list)), [raw_items])
         if not isinstance(raw_items, list):
             return []
 
