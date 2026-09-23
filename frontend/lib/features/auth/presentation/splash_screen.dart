@@ -21,17 +21,8 @@ class SplashScreen extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [AppColors.accent, AppColors.accentDim]),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Text('V', style: AppTypography.amountMedium19.copyWith(color: AppColors.accentInk)),
-            ),
-            const SizedBox(height: 14),
+            // Wordmark only - the app's logo mark is deliberately not shown
+            // inside the app (it lives on the launcher icon alone).
             Text('Miravelt', style: AppTypography.wordmark14.copyWith(color: AppColors.onDark)),
             const SizedBox(height: 28),
             SizedBox(

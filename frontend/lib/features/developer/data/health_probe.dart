@@ -65,6 +65,8 @@ String _describe(DioException e) {
       return 'Timed out. Nothing answered at this address.';
     case DioExceptionType.badCertificate:
       return "The server's TLS certificate was rejected.";
+    case DioExceptionType.connectionError when '${e.error}'.contains('Failed host lookup'):
+      return "This host name doesn't resolve. Check the URL for typos, or that its DNS record exists.";
     case DioExceptionType.connectionError:
       // By far the most common real-world cause on a phone: a host firewall
       // dropping the port, or plain http:// to a host the OS won't allow.

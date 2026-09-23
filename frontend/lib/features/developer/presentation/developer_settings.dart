@@ -1,15 +1,21 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/config/api_environment.dart';
+import '../../../core/config/app_config.dart';
+import '../../../core/providers/core_providers.dart';
 import '../../../core/providers/settings_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/toggle_row.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../data/health_probe.dart';
 
 /// Taps required to reveal Developer settings, and the window a run of taps
@@ -167,6 +173,15 @@ class _DeveloperSettingsSheetState extends ConsumerState<_DeveloperSettingsSheet
                 url: effectiveUrl,
                 onEdit: environment == ApiEnvironment.custom ? () => _switchEnvironment(ApiEnvironment.custom) : null,
               ),
+              if (environment == ApiEnvironment.local && Platform.isAndroid && effectiveUrl.contains('10.0.2.2')) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '10.0.2.2 reaches this computer only from the Android emulator. On a physical phone, pick Custom and '
+                  "enter your computer's LAN address (e.g. http://192.168.1.5:9850/) - or connect over USB, run "
+                  '"adb reverse tcp:9850 tcp:9850" and use http://localhost:9850/.',
+                  style: AppTypography.footnote1155.copyWith(color: AppColors.onDarkMuted),
+                ),
+              ],
               const SizedBox(height: 14),
               SizedBox(
                 width: double.infinity,
@@ -207,6 +222,22 @@ class _DeveloperSettingsSheetState extends ConsumerState<_DeveloperSettingsSheet
                   ),
                 ),
               ],
+              const SizedBox(height: 14),
+              Text('BUILD', style: AppTypography.microLabelTracked105.copyWith(color: AppColors.onDarkFaint)),
+              const SizedBox(height: 10),
+              const _BuildInfo(),
+              Center(
+                child: TextButton(
+                  onPressed: () {
+                    ref.read(developerModeUnlockedProvider.notifier).set(false);
+                    Navigator.of(context).pop();
+                  },
+                  child: Text(
+                    'Hide developer settings',
+                    style: AppTypography.footnote12.copyWith(color: AppColors.onDarkFaint),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -214,20 +245,86 @@ class _DeveloperSettingsSheetState extends ConsumerState<_DeveloperSettingsSheet
     );
   }
 
-  /// Deliberately does not sign out or navigate: this sheet is reachable from
-  /// the login screen, where there is no session to end. A session that is no
-  /// longer valid against the newly-selected backend is cleared by the normal
-  /// 401 path (auth_interceptor.dart), which the router already listens to.
+  /// Signs out of the current backend *before* repointing the client. Leaving
+  /// that to the 401 path would send this session's bearer and refresh tokens
+  /// to the new host first - and a Custom URL can be any host at all. From the
+  /// login screen there is no session, so this is just a switch; from Profile
+  /// the router takes the now signed-out app back to /login.
   Future<void> _switchEnvironment(ApiEnvironment next) async {
+    // Read everything up front: signing out can make the router tear down the
+    // page this sheet sits on, after which this State's ref is unusable.
+    final environmentNotifier = ref.read(apiEnvironmentProvider.notifier);
+    final customUrlNotifier = ref.read(customApiBaseUrlProvider.notifier);
+    final tokenStorage = ref.read(tokenStorageProvider);
+    final auth = ref.read(authControllerProvider.notifier);
+    final current = ref.read(apiEnvironmentProvider);
+
+    String? customUrl;
     if (next == ApiEnvironment.custom) {
-      final url = await _promptCustomBaseUrl(context, ref);
-      if (url == null) return;
-      ref.read(customApiBaseUrlProvider.notifier).set(url);
-    } else if (next == ref.read(apiEnvironmentProvider)) {
+      customUrl = await _promptCustomBaseUrl(context, ref);
+      if (customUrl == null) return;
+      if (current == ApiEnvironment.custom && customUrl == ref.read(effectiveApiBaseUrlProvider)) return;
+    } else if (next == current) {
       return;
     }
-    ref.read(apiEnvironmentProvider.notifier).set(next);
+
+    if (await tokenStorage.hasSession()) await auth.logout();
+    if (customUrl != null) customUrlNotifier.set(customUrl);
+    environmentNotifier.set(next);
     if (mounted) setState(() => _result = null);
+  }
+}
+
+/// Build facts a tester needs when a release APK misbehaves: which build this
+/// is, and whether a real API key was compiled in (a build without
+/// --dart-define=MIRAVELT_API_KEY silently falls back to the test placeholder,
+/// the same key a fresh backend .env ships with - fine locally, never in production).
+class _BuildInfo extends StatelessWidget {
+  const _BuildInfo();
+
+  @override
+  Widget build(BuildContext context) {
+    final keyIsPlaceholder = AppConfig.apiKey == AppConfig.placeholderApiKey;
+    return FutureBuilder<PackageInfo>(
+      future: PackageInfo.fromPlatform(),
+      builder: (context, snapshot) {
+        final info = snapshot.data;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _InfoRow(label: 'App version', value: info == null ? '…' : '${info.version} (${info.buildNumber})'),
+            const _InfoRow(label: 'Build mode', value: kReleaseMode ? 'release' : (kProfileMode ? 'profile' : 'debug')),
+            _InfoRow(
+              label: 'API key',
+              value: keyIsPlaceholder ? 'default test key - set a real one before deploying' : 'set at build time',
+              warn: keyIsPlaceholder,
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({required this.label, required this.value, this.warn = false});
+
+  final String label;
+  final String value;
+  final bool warn;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 96, child: Text(label, style: AppTypography.meta12.copyWith(color: AppColors.onDarkFaint))),
+          Expanded(child: Text(value, style: AppTypography.meta12.copyWith(color: warn ? AppColors.rose : AppColors.onDark))),
+        ],
+      ),
+    );
   }
 }
 

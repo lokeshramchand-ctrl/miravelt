@@ -11,7 +11,9 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_buttons.dart';
 import '../../developer/presentation/developer_settings.dart';
+import '../../statements/presentation/period_providers.dart';
 import 'auth_controller.dart';
+import 'auth_state.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -51,7 +53,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
-    final isLoading = authState.isLoading;
+    // Signed in but still on this screen means the router is waiting for the
+    // user's periods to pick Overview vs onboarding - keep the button busy
+    // through that too, or the form looks idle after a successful sign-in.
+    final loadingPeriods = authState.valueOrNull is AuthAuthenticated && ref.watch(periodsProvider).isLoading;
+    final isLoading = authState.isLoading || loadingPeriods;
 
     return Scaffold(
       backgroundColor: AppColors.ink900,

@@ -55,9 +55,14 @@ class ProfileScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(user?.fullName?.trim().isNotEmpty == true ? user!.fullName! : (user?.email ?? ''), style: AppTypography.rowLabel14.copyWith(fontSize: 16, color: AppColors.onDark)),
-                      const SizedBox(height: 3),
-                      Text(user?.email ?? '', style: AppTypography.meta12.copyWith(color: AppColors.onDarkFaint)),
+                      // With no name set, the email is the title - don't
+                      // repeat it underneath as well.
+                      if (user?.fullName?.trim().isNotEmpty == true) ...[
+                        Text(user!.fullName!, style: AppTypography.rowLabel14.copyWith(fontSize: 16, color: AppColors.onDark)),
+                        const SizedBox(height: 3),
+                        Text(user.email, style: AppTypography.meta12.copyWith(color: AppColors.onDarkFaint)),
+                      ] else
+                        Text(user?.email ?? '', style: AppTypography.rowLabel14.copyWith(fontSize: 16, color: AppColors.onDark)),
                     ],
                   ),
                 ),
@@ -69,14 +74,19 @@ class ProfileScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(child: StatTile(label: 'PERIODS', value: '${periods.length}')),
-                const SizedBox(width: 10),
-                Expanded(child: StatTile(label: 'TXNS ANALYSED', value: '$totalTxns')),
-                const SizedBox(width: 10),
-                Expanded(child: StatTile(label: 'COMPLETED', value: '${completed.length}')),
-              ],
+            // IntrinsicHeight + stretch: "TXNS ANALYSED" wraps on phone widths,
+            // and the three tiles should still line up as one row.
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: StatTile(label: 'PERIODS', value: '${periods.length}')),
+                  const SizedBox(width: 10),
+                  Expanded(child: StatTile(label: 'TXNS ANALYSED', value: '$totalTxns')),
+                  const SizedBox(width: 10),
+                  Expanded(child: StatTile(label: 'COMPLETED', value: '${completed.length}')),
+                ],
+              ),
             ),
             const SizedBox(height: 26),
             const _SectionLabel('DATA'),

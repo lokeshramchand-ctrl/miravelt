@@ -67,3 +67,12 @@ abstract class StatementAnalytics with _$StatementAnalytics {
 
   factory StatementAnalytics.fromJson(Map<String, dynamic> json) => _$StatementAnalyticsFromJson(json);
 }
+
+extension StatementAnalyticsSpending on StatementAnalytics {
+  /// [categoryBreakdown] minus `Income`: the backend's breakdown covers every
+  /// transaction, credits included (docs/23-statements-pipeline.md), while
+  /// [totalSpend] is debits only - so any "where it went" / "% of spending"
+  /// view must leave the incoming money out or its shares pass 100%.
+  List<CategoryBreakdownEntry> get spendingBreakdown =>
+      categoryBreakdown.where((e) => e.category != 'Income').toList();
+}

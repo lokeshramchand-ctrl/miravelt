@@ -47,7 +47,16 @@ class ApiClient {
     ProgressCallback? onSendProgress,
     CancelToken? cancelToken,
   }) =>
-      _run(() => dio.post<T>(path, data: formData, onSendProgress: onSendProgress, cancelToken: cancelToken));
+      _run(() => dio.post<T>(
+            path,
+            data: formData,
+            onSendProgress: onSendProgress,
+            cancelToken: cancelToken,
+            // The backend reads and validates the whole PDF before it answers
+            // 202, and was measured taking ~30s on a 6-month statement - well
+            // past the 20s default, which failed uploads that had succeeded.
+            options: Options(receiveTimeout: const Duration(minutes: 2)),
+          ));
 
   Future<Response<T>> _run<T>(Future<Response<T>> Function() call) async {
     try {
