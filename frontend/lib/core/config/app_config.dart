@@ -12,7 +12,7 @@ abstract final class AppConfig {
 
   /// What [apiKey] falls back to when no key was passed at build time -
   /// surfaced in Developer settings so a keyless release build is obvious.
-  static const String placeholderApiKey = 'miravelt_test_key_123';
+  static const String placeholderApiKey = 'miravelt_test_key_123'; // gitleaks:allow - public test placeholder, not a credential
 
   /// Pre-fills the login form with a seeded local test account
   /// (lo@gmail.com) so sign-in during development is one tap. Debug-only:

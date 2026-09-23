@@ -24,6 +24,8 @@ _$TransactionImpl _$$TransactionImplFromJson(Map<String, dynamic> json) =>
       bank: json['bank'] as String?,
       accountLast4: json['account_last4'] as String?,
       paymentMethod: json['payment_method'] as String,
+      categorizationConfidence: (json['categorization_confidence'] as num?)
+          ?.toDouble(),
     );
 
 Map<String, dynamic> _$$TransactionImplToJson(_$TransactionImpl instance) =>
@@ -41,6 +43,7 @@ Map<String, dynamic> _$$TransactionImplToJson(_$TransactionImpl instance) =>
       'bank': instance.bank,
       'account_last4': instance.accountLast4,
       'payment_method': instance.paymentMethod,
+      'categorization_confidence': instance.categorizationConfidence,
     };
 
 const _$TransactionTypeEnumMap = {

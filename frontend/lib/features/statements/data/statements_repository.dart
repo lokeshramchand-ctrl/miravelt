@@ -15,12 +15,16 @@ class StatementsRepository {
     required String filePath,
     required String filename,
     String? password,
+    bool keepOriginalPdf = true,
     ProgressCallback? onSendProgress,
     CancelToken? cancelToken,
   }) async {
     final formData = FormData.fromMap({
       'file': await MultipartFile.fromFile(filePath, filename: filename),
       if (password != null && password.isNotEmpty) 'password': password,
+      // Profile > "Keep original PDFs". Off: the backend keeps only the
+      // extracted transactions, never the file itself.
+      'keep_original_pdf': keepOriginalPdf.toString(),
     });
     final response = await _apiClient.upload<Map<String, dynamic>>(
       '/statements/upload',
