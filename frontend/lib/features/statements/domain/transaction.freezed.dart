@@ -35,6 +35,12 @@ mixin _$Transaction {
   String? get accountLast4 => throw _privateConstructorUsedError;
   String get paymentMethod => throw _privateConstructorUsedError;
 
+  /// How the category was decided (see the backend's Transaction model):
+  /// >= 0.9 known merchant or the user's own correction, (0, 0.9) a best
+  /// guess from the payee's name, 0 no match; null for incoming money and
+  /// older rows.
+  double? get categorizationConfidence => throw _privateConstructorUsedError;
+
   /// Serializes this Transaction to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
@@ -66,6 +72,7 @@ abstract class $TransactionCopyWith<$Res> {
     String? bank,
     String? accountLast4,
     String paymentMethod,
+    double? categorizationConfidence,
   });
 }
 
@@ -97,6 +104,7 @@ class _$TransactionCopyWithImpl<$Res, $Val extends Transaction>
     Object? bank = freezed,
     Object? accountLast4 = freezed,
     Object? paymentMethod = null,
+    Object? categorizationConfidence = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -152,6 +160,10 @@ class _$TransactionCopyWithImpl<$Res, $Val extends Transaction>
                 ? _value.paymentMethod
                 : paymentMethod // ignore: cast_nullable_to_non_nullable
                       as String,
+            categorizationConfidence: freezed == categorizationConfidence
+                ? _value.categorizationConfidence
+                : categorizationConfidence // ignore: cast_nullable_to_non_nullable
+                      as double?,
           )
           as $Val,
     );
@@ -181,6 +193,7 @@ abstract class _$$TransactionImplCopyWith<$Res>
     String? bank,
     String? accountLast4,
     String paymentMethod,
+    double? categorizationConfidence,
   });
 }
 
@@ -211,6 +224,7 @@ class __$$TransactionImplCopyWithImpl<$Res>
     Object? bank = freezed,
     Object? accountLast4 = freezed,
     Object? paymentMethod = null,
+    Object? categorizationConfidence = freezed,
   }) {
     return _then(
       _$TransactionImpl(
@@ -266,6 +280,10 @@ class __$$TransactionImplCopyWithImpl<$Res>
             ? _value.paymentMethod
             : paymentMethod // ignore: cast_nullable_to_non_nullable
                   as String,
+        categorizationConfidence: freezed == categorizationConfidence
+            ? _value.categorizationConfidence
+            : categorizationConfidence // ignore: cast_nullable_to_non_nullable
+                  as double?,
       ),
     );
   }
@@ -288,6 +306,7 @@ class _$TransactionImpl implements _Transaction {
     this.bank,
     this.accountLast4,
     required this.paymentMethod,
+    this.categorizationConfidence,
   });
 
   factory _$TransactionImpl.fromJson(Map<String, dynamic> json) =>
@@ -320,9 +339,16 @@ class _$TransactionImpl implements _Transaction {
   @override
   final String paymentMethod;
 
+  /// How the category was decided (see the backend's Transaction model):
+  /// >= 0.9 known merchant or the user's own correction, (0, 0.9) a best
+  /// guess from the payee's name, 0 no match; null for incoming money and
+  /// older rows.
+  @override
+  final double? categorizationConfidence;
+
   @override
   String toString() {
-    return 'Transaction(id: $id, statementId: $statementId, timestamp: $timestamp, merchant: $merchant, category: $category, amount: $amount, transactionType: $transactionType, status: $status, counterpartyRaw: $counterpartyRaw, referenceNumber: $referenceNumber, bank: $bank, accountLast4: $accountLast4, paymentMethod: $paymentMethod)';
+    return 'Transaction(id: $id, statementId: $statementId, timestamp: $timestamp, merchant: $merchant, category: $category, amount: $amount, transactionType: $transactionType, status: $status, counterpartyRaw: $counterpartyRaw, referenceNumber: $referenceNumber, bank: $bank, accountLast4: $accountLast4, paymentMethod: $paymentMethod, categorizationConfidence: $categorizationConfidence)';
   }
 
   @override
@@ -351,7 +377,12 @@ class _$TransactionImpl implements _Transaction {
             (identical(other.accountLast4, accountLast4) ||
                 other.accountLast4 == accountLast4) &&
             (identical(other.paymentMethod, paymentMethod) ||
-                other.paymentMethod == paymentMethod));
+                other.paymentMethod == paymentMethod) &&
+            (identical(
+                  other.categorizationConfidence,
+                  categorizationConfidence,
+                ) ||
+                other.categorizationConfidence == categorizationConfidence));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -371,6 +402,7 @@ class _$TransactionImpl implements _Transaction {
     bank,
     accountLast4,
     paymentMethod,
+    categorizationConfidence,
   );
 
   /// Create a copy of Transaction
@@ -402,6 +434,7 @@ abstract class _Transaction implements Transaction {
     final String? bank,
     final String? accountLast4,
     required final String paymentMethod,
+    final double? categorizationConfidence,
   }) = _$TransactionImpl;
 
   factory _Transaction.fromJson(Map<String, dynamic> json) =
@@ -433,6 +466,13 @@ abstract class _Transaction implements Transaction {
   String? get accountLast4;
   @override
   String get paymentMethod;
+
+  /// How the category was decided (see the backend's Transaction model):
+  /// >= 0.9 known merchant or the user's own correction, (0, 0.9) a best
+  /// guess from the payee's name, 0 no match; null for incoming money and
+  /// older rows.
+  @override
+  double? get categorizationConfidence;
 
   /// Create a copy of Transaction
   /// with the given fields replaced by the non-null parameter values.

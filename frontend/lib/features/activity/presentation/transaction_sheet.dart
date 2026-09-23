@@ -76,6 +76,7 @@ class _TransactionSheetBodyState extends ConsumerState<_TransactionSheetBody> {
     final isUnusual = txn.status != TransactionStatus.success;
     final avatarLetter = (txn.merchant?.isNotEmpty ?? false) ? txn.merchant![0].toUpperCase() : '?';
     final color = AppColors.forCategory(txn.category ?? '');
+    final explanation = _categoryExplanation(txn);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -166,12 +167,12 @@ class _TransactionSheetBodyState extends ConsumerState<_TransactionSheetBody> {
                   const SizedBox(width: 6),
                   Text('WHY THIS CATEGORY', style: AppTypography.microLabelTracked105.copyWith(color: AppColors.accent)),
                   const Spacer(),
-                  Text('MERCHANT-BASED', style: AppTypography.microLabel11.copyWith(color: AppColors.onDarkFaint)),
+                  Text(explanation.label, style: AppTypography.microLabel11.copyWith(color: AppColors.onDarkFaint)),
                 ],
               ),
               const SizedBox(height: 10),
               Text(
-                'Categorized as "${txn.category ?? 'Uncategorized'}" from ${txn.merchant ?? 'this merchant'}\'s known transaction history. Grounded in your own statements - never guessed.',
+                explanation.body,
                 style: AppTypography.footnote12.copyWith(color: AppColors.onDarkMuted, height: 1.55),
               ),
             ],
@@ -222,4 +223,35 @@ class _TransactionSheetBodyState extends ConsumerState<_TransactionSheetBody> {
       ),
     );
   }
+}
+
+/// The "Why this category" card's label and sentence, chosen from how the
+/// backend actually decided the category (Transaction.categorizationConfidence)
+/// so the card never claims more certainty than there was.
+({String label, String body}) _categoryExplanation(Transaction txn) {
+  final category = txn.category ?? 'Uncategorized';
+  final payee = txn.merchant ?? 'this payee';
+  final confidence = txn.categorizationConfidence;
+
+  if (txn.transactionType == TransactionType.credit) {
+    return (label: 'INCOMING', body: 'Money you received from $payee. Incoming payments are always filed under Income.');
+  }
+  if (category == 'Uncategorized' || confidence == 0) {
+    return (
+      label: 'NOT MATCHED',
+      body: "Miravelt doesn't recognise $payee as a merchant or a type of business, so this is left uncategorized "
+          "rather than guessed. Use Wrong category to teach it - every $payee payment updates with it.",
+    );
+  }
+  if (confidence != null && confidence < 0.9) {
+    return (
+      label: 'BEST GUESS',
+      body: '$payee isn\'t a known merchant, but its name suggests a $category business. '
+          'This is a best guess - if it\'s off, use Wrong category.',
+    );
+  }
+  if (confidence != null) {
+    return (label: 'KNOWN MERCHANT', body: 'Filed under $category because $payee is a known merchant, or because you corrected it.');
+  }
+  return (label: 'MERCHANT-BASED', body: 'Filed under $category for $payee.');
 }

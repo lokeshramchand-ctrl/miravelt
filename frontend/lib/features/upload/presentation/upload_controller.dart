@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/providers/feature_providers.dart';
+import '../../../core/providers/settings_providers.dart';
 import '../../statements/presentation/period_providers.dart';
 import 'upload_state.dart';
 
@@ -49,6 +50,7 @@ class UploadController extends Notifier<UploadState> {
         filePath: path,
         filename: name,
         password: password,
+        keepOriginalPdf: ref.read(keepOriginalPdfsProvider),
         cancelToken: _cancelToken,
         onSendProgress: (sent, total) {
           if (total <= 0) return;

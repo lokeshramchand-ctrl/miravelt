@@ -38,4 +38,19 @@ class LocalNotificationsService {
     const details = NotificationDetails(android: androidDetails, iOS: DarwinNotificationDetails());
     await _plugin.show(0, title, body, details);
   }
+
+  /// Profile > "Unusual spend": a WATCH-level signal in a newly analysed
+  /// statement. Own id and channel, so it neither replaces the "ready"
+  /// notification nor shares its on/off switch in system settings.
+  Future<void> showUnusualSpend({required String body}) async {
+    const androidDetails = AndroidNotificationDetails(
+      'unusual_spend',
+      'Unusual spend',
+      channelDescription: 'WATCH-level signals found in a newly analysed statement',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+    const details = NotificationDetails(android: androidDetails, iOS: DarwinNotificationDetails());
+    await _plugin.show(1, 'Unusual spend in your statement', body, details);
+  }
 }

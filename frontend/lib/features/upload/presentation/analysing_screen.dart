@@ -11,6 +11,7 @@ import '../../../shared/widgets/app_buttons.dart';
 import '../../../shared/widgets/progress_ring.dart';
 import '../../../shared/widgets/pulsing_dot.dart';
 import '../../statements/domain/job.dart';
+import '../../signals/presentation/unusual_spend_alert.dart';
 import '../../statements/presentation/period_providers.dart';
 
 class AnalysingScreen extends ConsumerStatefulWidget {
@@ -33,6 +34,7 @@ class _AnalysingScreenState extends ConsumerState<AnalysingScreen> {
 
   bool _notifyRequested = false;
   bool _notifiedDone = false;
+  bool _unusualSpendChecked = false;
 
   @override
   void initState() {
@@ -96,6 +98,10 @@ class _AnalysingScreenState extends ConsumerState<AnalysingScreen> {
                 if (job.status == JobStatus.completed) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     _notifyIfRequested(failed: false);
+                    if (!_unusualSpendChecked) {
+                      _unusualSpendChecked = true;
+                      alertUnusualSpendIfEnabled(ref, job.resourceId);
+                    }
                     ref.read(selectedPeriodIdProvider.notifier).state = job.resourceId;
                     ref.invalidate(periodsProvider);
                     if (context.mounted) context.go('/shell/overview');

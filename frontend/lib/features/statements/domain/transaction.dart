@@ -35,6 +35,11 @@ abstract class Transaction with _$Transaction {
     String? bank,
     String? accountLast4,
     required String paymentMethod,
+    /// How the category was decided (see the backend's Transaction model):
+    /// >= 0.9 known merchant or the user's own correction, (0, 0.9) a best
+    /// guess from the payee's name, 0 no match; null for incoming money and
+    /// older rows.
+    double? categorizationConfidence,
   }) = _Transaction;
 
   factory Transaction.fromJson(Map<String, dynamic> json) => _$TransactionFromJson(json);

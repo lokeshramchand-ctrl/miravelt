@@ -79,8 +79,15 @@ reading from another feature's data layer). Shared cross-feature code lives in `
   fakes (`fake_http_client_adapter.dart`, `fake_secure_storage_platform.dart`) - reuse these for
   new tests needing a fake network/storage layer rather than writing new mocks per test.
 
-Before this is Play-Store-publishable: `android/app/build.gradle.kts`'s release `signingConfig`
-still signs with the debug keystore (see the `TODO` there).
+## Release signing
+
+`android/app/build.gradle.kts` signs release builds with the upload key named in
+`android/key.properties` (gitignored: `storeFile`, `storePassword`, `keyAlias`, `keyPassword`). The
+keystore itself is kept outside the repo so no clean or re-clone can delete it - back it up together
+with `key.properties`; losing it means a Play Console upload-key reset. Without `key.properties` (CI,
+a fresh clone) the release build falls back to the debug key and Gradle warns - fine for testing,
+not publishable. An APK signed with one key can't be installed over one signed with the other:
+uninstall first (which clears the app's stored session and settings).
 
 ## Icons and avatars
 

@@ -17,13 +17,13 @@ The app only ever points at one of exactly two backends - see `ApiEnvironment` i
 | `ApiEnvironment.production` (release default) | `https://miravelt.deploy.lokeshrc.me/` | `MIRAVELT_API_BASE_URL` |
 | `ApiEnvironment.local` | `http://10.0.2.2:9850/` on the Android emulator, `http://localhost:9850/` elsewhere (matches `docker-compose_local.yaml`'s published port) | `MIRAVELT_LOCAL_API_BASE_URL` |
 
-Which one is active is a **runtime** choice, not just a build-time one: it's persisted on-device and, in debug builds, switchable from Profile > Developer > "API server" (switching signs you out, since a session token from one backend isn't valid on the other). A fresh install always starts on `production`; the toggle itself is compiled out of release builds.
+Which one is active is a **runtime** choice, not just a build-time one: it's persisted on-device and switchable from Developer settings > "API server" in every build, release included - unlock it by tapping the version line on the login screen (or the "Developer settings" row in Profile) five times. A third option, **Custom**, takes any URL. Switching signs you out first, so a session is never sent to a different backend. A fresh install always starts on `production`.
 
 Override the defaults above for a physical device, a different local port (e.g. a bare `uvicorn app:app --reload` on 8000 instead of the full Docker stack on 9850), or a different production host.
 
 The one value that's still build-time only, via `--dart-define=MIRAVELT_API_KEY=...`, is the `X-Miravelt-API-Key` header sent on every request - it has no usable default and must always be passed (falls back to a `miravelt_test_key_123` placeholder otherwise; see `lib/core/config/app_config.dart`).
 
-Local HTTP (not HTTPS) traffic to `10.0.2.2`, `localhost`, and `127.0.0.1` is explicitly allowlisted for this reason (Android's network security config and iOS's App Transport Security both block cleartext traffic by default otherwise) - every other host is still required to be HTTPS.
+On Android, cleartext HTTP is permitted app-wide (`network_security_config.xml` explains why: a LAN address like `http://192.168.1.5:9850/` can't be allowlisted by range). On a physical phone, `10.0.2.2` (the Localhost preset) doesn't exist - use Custom with your computer's LAN address, or `adb reverse tcp:9850 tcp:9850` plus Custom `http://localhost:9850/`.
 
 ## Running locally
 

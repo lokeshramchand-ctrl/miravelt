@@ -25,6 +25,7 @@ import '../../auth/presentation/auth_state.dart';
 import '../../statements/domain/job.dart';
 import '../../statements/domain/statement.dart';
 import '../../statements/presentation/period_providers.dart';
+import '../../signals/presentation/unusual_spend_alert.dart';
 import 'period_switcher_sheet.dart';
 
 class OverviewScreen extends ConsumerStatefulWidget {
@@ -410,8 +411,11 @@ class _ProcessingPlaceholder extends ConsumerWidget {
     // fetch, so without this the placeholder outlives the analysis itself.
     final jobId = period.currentJobId;
     if (jobId != null) {
-      ref.listen(jobPollProvider(jobId), (_, next) {
+      ref.listen(jobPollProvider(jobId), (previous, next) {
         final status = next.valueOrNull?.status;
+        if (status == JobStatus.completed && previous?.valueOrNull?.status != JobStatus.completed) {
+          alertUnusualSpendIfEnabled(ref, period.id);
+        }
         if (status == JobStatus.completed || status == JobStatus.failed) ref.invalidate(periodsProvider);
       });
     }

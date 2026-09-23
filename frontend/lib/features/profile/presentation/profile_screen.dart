@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/network/api_exception.dart';
+import '../../../core/notifications/local_notifications_service.dart';
 import '../../../core/providers/feature_providers.dart';
 import '../../../core/providers/settings_providers.dart';
 import '../../../core/theme/app_colors.dart';
@@ -131,7 +132,7 @@ class ProfileScreen extends ConsumerWidget {
                     title: 'Analysis finished',
                     subtitle: 'Push when a period is ready',
                     value: value,
-                    onChanged: (v) => ref.read(notifyAnalysisFinishedProvider.notifier).set(v),
+                    onChanged: (v) => _setNotificationPreference(ref.read(notifyAnalysisFinishedProvider.notifier), v),
                   );
                 }),
                 Divider(height: 1, color: AppColors.hairlineDark),
@@ -141,7 +142,7 @@ class ProfileScreen extends ConsumerWidget {
                     title: 'Unusual spend',
                     subtitle: 'Only WATCH-level signals',
                     value: value,
-                    onChanged: (v) => ref.read(notifyUnusualSpendProvider.notifier).set(v),
+                    onChanged: (v) => _setNotificationPreference(ref.read(notifyUnusualSpendProvider.notifier), v),
                   );
                 }),
               ],
@@ -203,6 +204,13 @@ class ProfileScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// Switching an alert on is the moment to ask for notification permission -
+  /// asking only when the alert would fire means it silently never shows.
+  Future<void> _setNotificationPreference(BoolPreferenceController preference, bool enabled) async {
+    preference.set(enabled);
+    if (enabled) await LocalNotificationsService.instance.requestPermission();
   }
 
   Future<void> _editName(BuildContext context, WidgetRef ref, String? currentName) async {

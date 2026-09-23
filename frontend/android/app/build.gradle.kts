@@ -1,7 +1,14 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) keystorePropertiesFile.inputStream().use { load(it) }
 }
 
 android {
@@ -27,16 +34,35 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        // Upload key, read from android/key.properties (gitignored - see
+        // frontend/CLAUDE.md "Release signing"). The keystore itself lives
+        // outside the repo and must be backed up: a lost upload key means a
+        // Play Console key reset before the next update can ship.
+        if (keystorePropertiesFile.exists()) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // TODO: Add your own signing config for the release build - this
-            // is still signed with the debug keystore, so it is NOT
-            // Play-Store-publishable as-is. Needs a real upload keystore
-            // (see https://docs.flutter.dev/deployment/android#sign-the-app).
-            signingConfig = signingConfigs.getByName("debug")
+            // Real upload key when key.properties is present; otherwise (CI,
+            // a fresh clone) fall back to debug signing so `flutter build apk
+            // --release` still works - such an APK is NOT publishable.
+            signingConfig = if (keystorePropertiesFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                logger.warn("android/key.properties not found - release build is signed with the DEBUG key.")
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
