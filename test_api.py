@@ -196,6 +196,47 @@ def test_categorize_unmatched_falls_back_to_raw_text(client, auth_headers):
     assert data["category"] == "Uncategorized"
     assert data["confidence"] == 0.0
 
+
+def test_categorize_unknown_merchant_uses_business_keyword(client, auth_headers):
+    """An unknown vendor whose printed name says what it is ("... CANTEEN")
+    gets that category at reduced confidence; the merchant stays the raw text."""
+    text = "paid 60 to S.H.S CANTEEN 1"
+    response = client.post("/v1/categorize", json={"text": text}, headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["merchant"] == text
+    assert data["category"] == "Food"
+    assert data["confidence"] == 0.6
+
+
+def test_statement_insights_accept_wrapped_json_and_fall_back_to_computed():
+    """Ollama's format=json yields an object, so the requested array arrives
+    wrapped; and with nothing usable from the LLM, insights come from the
+    already-computed analytics rather than being empty."""
+    from insights.statement_insights import StatementInsightGenerator
+    from models.schemas import StatementAnalytics
+
+    wrapped = {"insights": [{"type": "x", "message": "m", "severity": "INFO"}]}
+    assert [i.type for i in StatementInsightGenerator._to_insight_items(wrapped)] == ["x"]
+
+    analytics = StatementAnalytics(
+        total_spend=1000.0,
+        total_income=400.0,
+        net=-600.0,
+        average_transaction_value=100.0,
+        transaction_count=10,
+        category_breakdown=[
+            {"category": "Income", "total_amount": 400.0, "count": 2},
+            {"category": "Food", "total_amount": 300.0, "count": 5},
+        ],
+        top_merchants=[{"merchant": "Zomato", "total_amount": 300.0, "count": 5}],
+    )
+    computed = StatementInsightGenerator._computed_insights(analytics)
+    types = [i.type for i in computed]
+    assert types == ["top_category", "top_merchant", "net_flow"]
+    assert "Food" in computed[0].message and "30%" in computed[0].message
+    assert computed[-1].severity.value == "WARNING"
+
 # =====================================================================
 # PHASE 4: MEMORY ENGINE (STATE PROMOTION)
 # =====================================================================
