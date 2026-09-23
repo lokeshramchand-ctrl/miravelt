@@ -15,8 +15,10 @@ admin-dashboard/     Next.js BFF (server-only) for operator/admin use
 `ARCHITECTURE.md` at the repo root is the authoritative one-level-up map: service boundaries,
 who owns what, the non-obvious decisions that must not be "fixed" as a side effect of an
 unrelated task, and the exact list of things to stop and ask about before changing. **Read it
-before making any cross-cutting change.** `docs/README.md` indexes the full documentation set
-(architecture, API reference, data model, phase-by-phase internals, auth, testing, known issues).
+before making any cross-cutting change.** `PRD.md` says what the product does and what is shipped
+vs. open; `DESIGN_SYSTEM.md` holds the mobile app's tokens, components and UI rules.
+`docs/README.md` indexes the full documentation set (architecture, API reference, data model,
+phase-by-phase internals, auth, testing, known issues).
 
 ## Commands
 
@@ -36,14 +38,21 @@ docker compose -f docker-compose_local.yaml up --build
 
 pytest test_api.py -v                                 # full suite - requires a live MongoDB at $MONGODB_URI, nothing is mocked
 pytest test_api.py -v -k test_categorize_valid_payload # single test
+# Run it like CI does: ENFORCE_HTTPS=false (TestClient speaks http://), no ADMIN_API_KEY, and
+# ideally MONGODB_DB_NAME pointing at a throwaway DB - app startup fails any in-flight statement
+# job in its DB (see ARCHITECTURE.md §3), including a running dev server's.
+ENFORCE_HTTPS=false ADMIN_API_KEY= MONGODB_DB_NAME=miravelt_test pytest test_api.py -v
 bash scripts/test_pipeline.sh                          # manual curl-driven E2E smoke test against a running server
 
-ruff check .                                           # lint (matches CI and .pre-commit-config.yaml)
+ruff check .                                           # lint - CI and pre-commit pin ruff 0.16.8; keep both in step
 ruff check . --fix
 pre-commit run --all-files                             # ruff, gitleaks, trailing-whitespace, etc.
 ```
 
 The app fails fast at startup if a required env var is missing - `core/config.py`'s `Settings`.
+`test_api.py` reads the API key from `settings`, so it works with whatever key the environment
+configures. `MIRAVELT_API_KEY` in a real `.env` must not be the `miravelt_test_key_123`
+placeholder - that value is public (it's the app's fallback).
 No linter/formatter runs automatically on save; `ruff` is the only configured tool
 (`pyproject.toml`'s `[tool.ruff]`), and `.pre-commit-config.yaml` also runs `gitleaks` for secret
 scanning.
@@ -70,7 +79,11 @@ flutter run --dart-define=MIRAVELT_API_KEY=your-api-key-here
 flutter analyze
 flutter test
 flutter test test/some_test_file.dart   # single test file
+flutter build apk --release --dart-define=MIRAVELT_API_KEY=<key from ../.env>
 ```
+
+Release builds are signed with the upload key named in `frontend/android/key.properties`
+(gitignored; the keystore lives outside the repo - see `frontend/CLAUDE.md` "Release signing").
 
 `ApiEnvironment` (`lib/core/config/api_environment.dart`) picks `production` vs `local` at
 runtime, not build time; override with `--dart-define=MIRAVELT_API_BASE_URL=...` /
@@ -87,8 +100,9 @@ opening a PR.
 
 ## Backend architecture
 
-`app.py` is a single FastAPI process - routers, ML engines, and background pipelines all run
-in-process (`fastapi.BackgroundTasks`, no Celery/queue wired up). Each router in `routers/*.py`
+`app.py` is a single FastAPI process (one uvicorn worker) - routers, ML engines, and statement
+processing all run in-process (`fastapi.BackgroundTasks`). Celery + Redis only schedule the batch
+pipelines, and only when `REDIS_URI` is set. Each router in `routers/*.py`
 should stay thin (parse → delegate to a service/engine → return); business logic belongs in
 `engines/`, `services/`, or the domain's own top-level package.
 
@@ -103,7 +117,8 @@ should stay thin (parse → delegate to a service/engine → return); business l
 | Grounded explainability (RAG) | `rag/` (`retriever` → `context_builder` → `generator`) |
 | Feedback / active learning | `feedback/` |
 | Statement ingestion product surface | `statements/`, `insights/` |
-| Data persistence | `database/mongo.py`, `repositories/` (only `profile_repository.py` exists so far - most collections are accessed directly via `database.mongo.db.<collection>`, which is documented tech debt, not the pattern to copy) |
+| Statement processing | `routers/statements.py` (upload), `statements/statement_service.py`, `insights/statement_insights.py` |
+| Data persistence | `database/mongo.py`, `repositories/` (users, refresh tokens, statements, jobs, transactions, app releases, profiles). `routers/v1.py`, `routers/pipelines.py` and the analytics engines still query `database.mongo.db.<collection>` directly - documented tech debt, not the pattern to copy |
 | Vector persistence | `database/milvus.py`, `milvus/`, `embeddings/` |
 
 **Auth is two independent layers, both enforced on nearly every router** (`app.py`'s
@@ -124,9 +139,14 @@ seems to require crossing one):
   guarantee, don't route around it.
 - No CORS middleware unless `CORS_ORIGINS` is set; only MongoDB gates `/ready`, Milvus/Ollama are
   designed to degrade rather than crash the app.
-- Batch pipelines (`behaviour`, `clustering`, `memory/decay_engine`, `graphs`) are manually
-  triggered via `/v1/pipelines/*` (admin-key gated) - there is no scheduler in this repo; don't add
-  one as a side effect of an unrelated task.
+- Batch pipelines (`behaviour`, `clustering`, `memory/decay_engine`, `graphs`) run manually via
+  `/v1/pipelines/*` (admin-key gated) and, with `REDIS_URI` set, on the Celery beat schedule in
+  `tasks/celery_app.py` - that is the only scheduler; don't add a second one.
+- One backend process per database: startup fails every still-running statement job
+  (`app.py::_fail_interrupted_statement_jobs`), which is only safe with a single process.
+- No blocking or CPU-heavy work on the event loop - PDF parsing and pymilvus calls go through
+  `asyncio.to_thread`.
+- Spending views exclude `Income` from `category_breakdown` (it covers credits too).
 - Secrets (`MIRAVELT_API_KEY`, `MIRAVELT_ADMIN_KEY`, `JWT_SECRET_KEY`, user tokens) never reach the
   admin-dashboard browser - enforced by that app's `"server-only"` files (`src/lib/backend.ts`,
   `src/lib/session.ts`).

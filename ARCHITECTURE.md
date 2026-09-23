@@ -13,7 +13,7 @@ Next.js admin-dashboard   ─┘  (BFF, server-only)                  │       
                                                                     └────────────────  ──▶  Ollama (embeddings + LLM generation)
 ```
 
-- **`app.py`** is a single FastAPI process — routers, ML engines, and background pipelines all run in the same Python process, same container. No microservices, no message queue, no Celery worker actually wired up (see `docs/16-known-issues-tech-debt.md` §16.5) — background work runs via `fastapi.BackgroundTasks` in-process.
+- **`app.py`** is a single FastAPI process (one uvicorn worker) — routers, ML engines, and statement processing all run in the same Python process, same container. Statement processing runs via `fastapi.BackgroundTasks` in-process. Celery + Redis exist only for the *batch* pipelines' schedule, and only when `REDIS_URI` is set (§3); they never run statement processing.
 - **`admin-dashboard/`** is a separate Next.js app acting as a **BFF (backend-for-frontend)**, not a second backend. It holds no business logic and no direct datastore access — every page/action calls the FastAPI backend over HTTP.
 - **`frontend/`** is the Flutter mobile client, the actual product surface end users touch.
 - **MongoDB** is the one hard dependency — `/ready` fails without it. **Milvus** and **Ollama** degrade specific features (RAG, embeddings) gracefully rather than failing the app (`app.py`'s `_check_dependencies`).
@@ -33,6 +33,8 @@ Next.js admin-dashboard   ─┘  (BFF, server-only)                  │       
 | Auth (admin-level) | `X-Miravelt-Admin-Key` — gates operator-only batch jobs & releases | `core/security.py::validate_admin_key`, `routers/admin.py`, `routers/pipelines.py` |
 | Admin dashboard session | Iron-session cookie holding the operator's JWT, server-side only | `admin-dashboard/src/lib/session.ts`, `dal.ts` |
 | Data persistence | MongoDB collections, connection lifecycle | `database/mongo.py`, `repositories/` |
+| Statement processing | PDF → transactions → analytics → insights, job progress | `routers/statements.py` (upload), `statements/statement_service.py`, `insights/`, `repositories/job_repository.py` |
+| Mobile session & routing | Launch splash, auth/period-driven redirects, backend selection | `frontend/lib/core/routing/app_router.dart`, `features/auth/`, `features/developer/` |
 | Vector persistence | Milvus collections, embeddings | `database/milvus.py`, `milvus/`, `embeddings/` |
 
 Each of these has exactly one home. If you find yourself duplicating merchant resolution logic, a state-machine transition, or a Mongo query pattern in a second place, that's a signal the boundary is being violated, not that a new variant is needed.
@@ -45,7 +47,13 @@ Each of these has exactly one home. If you find yourself duplicating merchant re
 - **Liveness vs. readiness are split** so a hung Mongo/Milvus/Ollama dependency never fails liveness and triggers a restart-loop that won't fix anything. Only MongoDB gates `/ready`; Milvus/Ollama don't, because those features are designed to degrade, not crash the app.
 - **`/v1/explain` refuses to call Ollama with no retrieved context** (`rag/retriever.py` → `"NO_CONTEXT_AVAILABLE"` short-circuit). This is the system's core hallucination-prevention guarantee — never route around it by letting the generator run on empty context "just to return something."
 - **Batch pipelines (`behaviour`, `clustering`, `memory/decay_engine`, `graphs`) are reachable both manually (`/v1/pipelines/*`) and on a schedule.** `tasks/celery_app.py` + `tasks/pipeline_tasks.py` run the same engine functions on a beat schedule (`core/config.py`'s `PIPELINE_*_INTERVAL_MINUTES`) via a Celery worker/beat process pair — see `docker-compose_local.yaml`'s `celery-worker`/`celery-beat` services. This requires `REDIS_URI` to be set; unset, everything degrades to manual-trigger-only, same as before. Still don't add a *second* scheduling mechanism (e.g. APScheduler, a raw cron entry calling the API) — this is now the one home for it, matching §2's "each responsibility has exactly one home."
-- **Only one real repository exists** (`repositories/profile_repository.py`); everything else talks to `database.mongo.db.<collection>` directly. This is documented tech debt, not the intended end state — new persistent-state work should follow the repository pattern, not the direct-access one, even though it's currently the minority pattern.
+- **Repositories exist for users, refresh tokens, statements, jobs, transactions, app releases and merchant profiles** (`repositories/`). A few places still query `database.mongo.db.<collection>` directly — `routers/v1.py`, `routers/pipelines.py`, and the analytics/behaviour engines' aggregation pipelines. That is documented tech debt, not a pattern to copy: new persistent-state work goes through a repository.
+- **Statement processing is in-process, so startup fails orphaned jobs.** A restart kills whatever `BackgroundTasks` job was running while its document still says RUNNING. `app.py::_fail_interrupted_statement_jobs` marks every QUEUED/RUNNING statement job (and its statement) FAILED at startup. This is only correct while **exactly one backend process uses a given database** — a second uvicorn worker, or a test run pointed at a live dev database, would fail the other process's in-flight jobs. Moving processing onto a real queue removes the constraint.
+- **Synchronous work never runs on the event loop.** pdfplumber extraction in the upload handler, transaction parsing in the pipeline, and the blocking pymilvus client all go through `asyncio.to_thread`. On a single-process server a few seconds of CPU on the loop freezes every other request (measured: a `/live` probe waited 35.9s during an upload).
+- **Statement insights never come back empty because the LLM failed.** `insights/statement_insights.py` asks Ollama first and falls back to deterministic insights computed from the persisted analytics — same grounding rule, no invented figures.
+- **`category_breakdown` includes Income on purpose** (`docs/23-statements-pipeline.md`). Every "where the money went" / "% of spending" view must exclude it — the app uses `StatementAnalytics.spendingBreakdown` — or shares exceed 100%.
+- **Periodicity counts distinct timestamps.** `behavior_patterns` pools a merchant's transactions across all statements and users, so re-uploaded statements produce identical timestamps; `features/periodicity.py` de-duplicates them, and a statement's recurring payments also need 3+ occurrences within that statement.
+- **Categorisation confidence is stored on each transaction** (0.95 alias match, 0.6 business keyword, 0.0 unmatched, 1.0 user correction, `None` for credits) so the app can say how a category was decided rather than implying certainty.
 - **The admin dashboard never holds `MIRAVELT_API_KEY`, `MIRAVELT_ADMIN_KEY`, or a raw access token in the browser.** Every credential lives server-side in `admin-dashboard/src/lib/backend.ts`/`session.ts` (`"server-only"` guard at the top of both). This is the entire reason the BFF exists instead of the dashboard calling the backend straight from client components.
 
 ## 4. What's allowed to touch what
@@ -76,7 +84,10 @@ Explicitly banned:
 ## 5. How data actually moves (representative flows)
 
 **Statement ingestion (the primary product surface):**
-`POST /statements/upload` → `statements/pdf_parser.py` validates/decrypts synchronously (fails fast, 422) → `Statement(PENDING)` + `Job(QUEUED)` created, `202` returned immediately → `BackgroundTasks` runs `statements/statement_service.py`: parse → categorize (`engines/rule_engine.py`) → persist transactions → update merchant profiles (`memory/memory_manager.py`) → embed + write to Milvus → run analytics → generate insights → mark `Job` `COMPLETED`. Client polls `GET /jobs/{id}`.
+`POST /statements/upload` → `statements/pdf_parser.py` validates/decrypts on a worker thread (fails fast, 422) → PDF stored in GridFS unless `keep_original_pdf=false` → `Statement(PENDING)` + `Job(QUEUED)` created, `202` returned → `BackgroundTasks` runs `statements/statement_service.py`: parse → categorize (`engines/rule_engine.py`: merchant alias, else business keyword, else Uncategorized) → persist transactions → refresh merchant behaviour profiles (`behaviour/behavior_engine.py`) → embed + write to Milvus → compute analytics → generate insights (Ollama, else computed) → mark `Job` `COMPLETED`. Client polls `GET /jobs/{id}`; a restart fails the job cleanly (§3).
+
+**Mobile app launch and sign-in:**
+The router starts on `/splash` and holds there while `AuthController` checks the stored session. `periodsProvider` is keyed on the signed-in user id, so each sign-in fetches that user's periods, and the router waits for that result before choosing Overview (has periods) or onboarding (none). Onboarding only redirects to Overview once a period has *completed*, so a first upload can reach the Analysing screen. Switching backend in Developer settings signs out against the old backend first, so a session is never sent to the new host.
 
 **Admin dashboard write (e.g. changing a user's role):**
 Browser submits a form → Next.js Server Action (`admin-dashboard/src/app/dashboard/users/actions.ts`) → `adminBackendFetch` attaches `Bearer <session JWT>` + `X-Miravelt-Admin-Key` (both read server-side from the iron-session cookie / env, never sent to the browser) → `routers/admin.py` → repository/service → MongoDB → Server Action revalidates the page.
@@ -117,6 +128,8 @@ Stop and name the conflict, show what it affects, and propose the smallest fix t
 - Introduce a new background-job/scheduling mechanism as a side effect of an unrelated feature (this is a real infra decision the repo has explicitly deferred — see `docs/16-known-issues-tech-debt.md` §16.5).
 - Send a backend secret, admin key, or raw JWT to the browser in the admin dashboard.
 - Change the two-key auth model (client key vs. admin key vs. per-user JWT) in a way that collapses the distinction in §3.
+- Run more than one backend process against the same database (extra uvicorn workers, a second replica) — the startup job sweep (§3) assumes one.
+- Put blocking or CPU-heavy work directly in an `async` handler or pipeline step instead of `asyncio.to_thread`.
 
 ## Related documents
 
@@ -124,4 +137,6 @@ Stop and name the conflict, show what it affects, and propose the smallest fix t
 - `docs/16-known-issues-tech-debt.md` — what's fixed vs. intentionally still open
 - `docs/22-authentication.md` — full auth/token lifecycle
 - `docs/23-statements-pipeline.md` — statement ingestion pipeline detail
+- `PRD.md` — what the product does and what's shipped vs. open
+- `DESIGN_SYSTEM.md` — the mobile app's tokens, components and rules
 - `admin-dashboard/README.md` — dashboard-specific conventions
