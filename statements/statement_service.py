@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import time
 
@@ -47,10 +48,14 @@ class StatementService:
             await statement_repo.mark_processing(statement_id)
             await job_repo.mark_running(job_id, "parsing")
 
-            parsed_records = statement_parser.parse_transactions(full_text)
+            # Synchronous parsing/categorizing runs on a worker thread so the
+            # single-process server keeps answering other requests meanwhile.
+            parsed_records = await asyncio.to_thread(statement_parser.parse_transactions, full_text)
 
             await job_repo.update_progress(job_id, "categorizing", 20)
-            transactions = self._build_transactions(statement.user_id, statement_id, parsed_records)
+            transactions = await asyncio.to_thread(
+                self._build_transactions, statement.user_id, statement_id, parsed_records
+            )
 
             await job_repo.update_progress(job_id, "persisting_transactions", 40)
             await transaction_repo.bulk_upsert(transactions)
@@ -104,6 +109,7 @@ class StatementService:
                 result = rule_engine.categorize(record.counterparty_raw)
                 merchant = result["merchant"]
                 category = result["category"]
+                confidence = result["confidence"]
                 transaction_type = TransactionType.DEBIT
             else:
                 # "Received from X" - X is a person or a source like "Google
@@ -111,6 +117,7 @@ class StatementService:
                 # concept of categorizing who sent you money.
                 merchant = record.counterparty_raw
                 category = TransactionCategory.INCOME.value
+                confidence = None
                 transaction_type = TransactionType.CREDIT
 
             transactions.append(
@@ -127,6 +134,7 @@ class StatementService:
                     reference_number=record.reference_number,
                     bank=record.bank,
                     account_last4=record.account_last4,
+                    categorization_confidence=confidence,
                 )
             )
         return transactions
@@ -163,7 +171,13 @@ class StatementService:
                 pattern = BehaviorPattern(**doc)
                 text = vectorizer.stringify_behavior(pattern)
                 vector = await embedding_generator.generate(text)
-                vector_store.insert_behavior_vector(pattern_id=pattern.id, merchant_name=pattern.merchant_name, vector=vector)
+                # pymilvus is a blocking client.
+                await asyncio.to_thread(
+                    vector_store.insert_behavior_vector,
+                    pattern_id=pattern.id,
+                    merchant_name=pattern.merchant_name,
+                    vector=vector,
+                )
             except Exception:
                 logger.warning("Embedding sync failed for '%s' - continuing.", merchant_name, exc_info=True)
 

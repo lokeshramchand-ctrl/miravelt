@@ -10,7 +10,15 @@ from core.device_attestation import device_attestation_verifier
 from core.jwt_auth import create_access_token, generate_refresh_token
 from core.rate_limiter import limiter
 from core.security import hash_password, verify_password
-from models.schemas import LoginRequest, LogoutRequest, RefreshRequest, RegisterRequest, TokenResponse, UserPublic, UserRole
+from models.schemas import (
+    LoginRequest,
+    LogoutRequest,
+    RefreshRequest,
+    RegisterRequest,
+    TokenResponse,
+    UserPublic,
+    UserRole,
+)
 from repositories.refresh_token_repository import refresh_token_repo
 from repositories.user_repository import user_repo
 

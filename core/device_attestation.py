@@ -1,8 +1,6 @@
-import hashlib
-import hmac
 import json
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 import httpx
 from pydantic import BaseModel

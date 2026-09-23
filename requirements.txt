@@ -46,7 +46,7 @@ httpx==0.28.1
 # - unbounded memory/runtime on crafted /ToUnicode streams and CID font width
 # ranges), relevant here since this parses untrusted user-uploaded PDFs
 # (POST /statements/upload). 6.15.0 is the fix.
-pypdf==6.15.0
+pypdf==6.16.1  # 6.15.0: PYSEC-2026-3910, -3911, -3913
 # pdfplumber: text extraction. Its default word x_tolerance (3) collapses
 # inter-word spacing on this statement format entirely (confirmed against a
 # real Google Pay statement - "Paid to Toni and Guy" extracts as

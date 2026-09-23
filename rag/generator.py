@@ -1,10 +1,9 @@
-import json
 import logging
 from typing import Any
 
 import httpx
 
-from core.llm_safety import llm_safety_validator, ExplanationOutput
+from core.llm_safety import ExplanationOutput, llm_safety_validator
 from core.ollama_client import LLM_MODEL, get_ollama_host
 
 logger = logging.getLogger(__name__)

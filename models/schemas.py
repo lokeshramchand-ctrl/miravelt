@@ -150,6 +150,11 @@ class Transaction(CoreModel):
     bank: str | None = None
     account_last4: str | None = None
     payment_method: str = "UPI"
+    # How the category was decided: 0.95 known-merchant alias, 0.6 business
+    # keyword in the payee name, 0.0 no match (Uncategorized), 1.0 a user
+    # correction; None for incoming money and for rows stored before this
+    # field existed. Lets the app say *how* a category was decided.
+    categorization_confidence: float | None = None
 
 class Feedback(CoreModel):
     id: str | None = Field(alias="_id", default=None)
@@ -433,6 +438,7 @@ class TransactionResponse(BaseModel):
     bank: str | None
     account_last4: str | None
     payment_method: str
+    categorization_confidence: float | None = None
 
 
 class TransactionListResponse(BaseModel):

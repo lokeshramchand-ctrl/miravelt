@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime
 
@@ -74,6 +75,17 @@ def _to_statement_response(statement: Statement) -> StatementResponse:
     )
 
 
+def _inspect_statement_pdf(raw_bytes: bytes, password: str | None):
+    """Every synchronous PDF step the upload has to finish before it can
+    answer 202, bundled so it runs as one worker-thread call."""
+    page_count, pdf_metadata = statement_parser.open_and_inspect(raw_bytes, password)
+    full_text = statement_parser.extract_text(raw_bytes, password)
+    statement_parser.validate_signature(full_text)
+    period_start, period_end = statement_parser.parse_period(full_text)
+    declared_sent, declared_received = statement_parser.parse_declared_totals(full_text)
+    return page_count, pdf_metadata, full_text, period_start, period_end, declared_sent, declared_received
+
+
 @router.post("/upload", response_model=StatementUploadResponse, status_code=status.HTTP_202_ACCEPTED)
 @limiter.limit("10/minute")
 async def upload_statement(
@@ -81,6 +93,10 @@ async def upload_statement(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(..., description="A Google Pay 'Transaction statement' PDF"),
     password: str | None = Form(None, description="PDF password, if the statement is password-protected"),
+    keep_original_pdf: bool = Form(
+        True,
+        description="Store the uploaded PDF alongside the parsed data. False keeps only the extracted transactions.",
+    ),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -109,15 +125,16 @@ async def upload_statement(
         ) from e
 
     try:
-        page_count, pdf_metadata = statement_parser.open_and_inspect(raw_bytes, password)
-        full_text = statement_parser.extract_text(raw_bytes, password)
-        statement_parser.validate_signature(full_text)
-        period_start, period_end = statement_parser.parse_period(full_text)
-        declared_sent, declared_received = statement_parser.parse_declared_totals(full_text)
+        # pdfplumber is pure-Python and CPU-bound (seconds per statement, far
+        # longer on a busy host) - run it on a worker thread, or every other
+        # request to this single-process server stalls until it finishes.
+        page_count, pdf_metadata, full_text, period_start, period_end, declared_sent, declared_received = (
+            await asyncio.to_thread(_inspect_statement_pdf, raw_bytes, password)
+        )
     except (CorruptedPDFError, PasswordRequiredError, IncorrectPasswordError, UnsupportedStatementError) as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(e)) from e
 
-    gridfs_file_id = await statement_repo.store_pdf(raw_bytes, file.filename)
+    gridfs_file_id = await statement_repo.store_pdf(raw_bytes, file.filename) if keep_original_pdf else None
 
     statement = await statement_repo.create(
         Statement(
@@ -243,6 +260,7 @@ async def list_statement_transactions(
                 bank=t.bank,
                 account_last4=t.account_last4,
                 payment_method=t.payment_method,
+                categorization_confidence=t.categorization_confidence,
             )
             for t in items
         ],

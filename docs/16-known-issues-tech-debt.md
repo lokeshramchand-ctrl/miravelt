@@ -67,6 +67,18 @@ The `@limiter.limit("50/minute")` decorator now lives on the real `/v1/categoriz
 **File**: `core/ollama_client.py`, `rag/generator.py`, `embeddings/generate_embeddings.py`
 Same class of bug as the Milvus one above, found while fixing it: if `OLLAMA_URI` isn't set and `OLLAMA_HOSTS` is used instead, `resolve_ollama_host()` made a synchronous health-check network call **at import time**, raising `RuntimeError` (crashing the whole app) if every host happened to be briefly unreachable at startup. Host resolution is now deferred to first actual use via `get_ollama_host()`, so a temporarily-unreachable Ollama fleet only degrades RAG/embedding endpoints, not the whole app.
 
+### ✅ FIXED — Statement upload froze the whole server
+`POST /statements/upload` ran pdfplumber text extraction (pure-Python, CPU-bound) directly on the event loop, and the background pipeline did the same for parsing and the blocking pymilvus inserts. On a 2-CPU Docker VM with Ollama busy, a `/live` probe sent mid-upload waited 35.9s. All of these now run via `asyncio.to_thread`.
+
+### ✅ FIXED — Statement jobs stuck RUNNING forever after a restart
+Jobs run in-process (BackgroundTasks, one uvicorn worker), so a restart killed any in-flight job while its document still said RUNNING. Startup (`app.py::_fail_interrupted_statement_jobs`) now fails every QUEUED/RUNNING statement job and its statement with "interrupted by a server restart - please upload again". Only valid while exactly one backend process uses a given database: a second process starting against the same DB (a second uvicorn worker, or `pytest` pointed at a live dev database instead of its own `MONGODB_DB_NAME`, as CI does) would fail the first one's in-flight jobs. Moving to a real queue (Celery is already wired, see 16.5) or a heartbeat-based staleness check removes that constraint.
+
+### ✅ FIXED — Nearly every merchant reported as a recurring payment
+`features/periodicity.py` scored identical timestamps (the same statement uploaded more than once, by one or several users) as a perfectly regular schedule: zero-day gaps returned a score of 1.0, marking 69 of 92 merchants "recurring". It now scores distinct timestamps only and treats sub-daily average gaps as not periodic; `_recurring_payments` also requires 3+ occurrences within the statement itself. Stored behaviour patterns are refreshed by `POST /v1/pipelines/behavior/run-all`; a statement's persisted analytics only change when it is re-processed.
+
+### ✅ FIXED — CI had been red on `main`
+The pytest job never set `ENVIRONMENT`, so it defaulted to "production" and HTTPS enforcement rejected every TestClient request (400 `https_required`); `test_api.py` also hardcoded an API key CI doesn't use. Ruff was installed unpinned (a newer release added 36 findings), `pypdf 6.15.0` had three advisories, and the security workflow used retired action versions (`upload-artifact@v3`, CodeQL v2), invalid dependency-check flags and a deprecated Semgrep action.
+
 ### Newly reachable (previously orphaned) pipelines — addressed via manual-trigger endpoints
 **New file**: `routers/pipelines.py` (mounted at `/v1/pipelines`, same auth as every other router)
 Behavior profiling, the embedding-write pipeline, the decay sweep, and the knowledge graph builder were fully implemented but had zero callers anywhere in the repo (§16.3 previously listed these as four separate "never runs automatically" issues). None of these have a natural home yet (no Celery/cron scheduler exists in this repo), so rather than inventing scheduling infrastructure, each is now exposed as a manually-triggerable endpoint:

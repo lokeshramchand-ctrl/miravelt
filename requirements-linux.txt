@@ -17,7 +17,7 @@ prometheus-fastapi-instrumentator==8.1.0  # 7.0.0 breaks under the newer starlet
 
 httpx==0.28.1
 
-pypdf==6.15.0  # 6.14.2 has 2 open DoS advisories, see requirements.txt
+pypdf==6.16.1  # 6.15.0 has 3 open advisories (PYSEC-2026-3910/3911/3913), see requirements.txt
 pdfplumber==0.11.10
 python-multipart==0.0.32
 

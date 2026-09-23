@@ -14,7 +14,12 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from core.cache import cache
 from core.config import settings
 from core.error_handlers import register_exception_handlers
-from core.middleware import BodySizeLimitMiddleware, HTTPSEnforcementMiddleware, RequestIDMiddleware, SecurityHeadersMiddleware
+from core.middleware import (
+    BodySizeLimitMiddleware,
+    HTTPSEnforcementMiddleware,
+    RequestIDMiddleware,
+    SecurityHeadersMiddleware,
+)
 from core.ollama_client import get_ollama_host
 from core.rate_limiter import setup_rate_limiting
 from core.security import validate_admin_key, validate_api_key
@@ -24,6 +29,8 @@ from database.milvus import vector_db
 from database.mongo import db
 from feedback.api_router import router as feedback_router
 from milvus.insert_vectors import vector_store
+from repositories.job_repository import job_repo
+from repositories.statement_repository import statement_repo
 
 # Routers
 from routers import admin, analytics, app_updates, auth, devices, jobs, memory, pipelines, rag, statements, users, v1
@@ -69,6 +76,21 @@ async def _milvus_reconnect_loop(uri: str, interval: int = 15):
             logger.info("Milvus reconnected successfully in background.")
 
 
+async def _fail_interrupted_statement_jobs() -> None:
+    """Statement processing runs in this process, so a restart kills whatever
+    was mid-flight. Fail those jobs (and their statements) now, so the app
+    shows "upload again" instead of polling a job nothing is running."""
+    message = "Processing was interrupted by a server restart. Please upload this statement again."
+    try:
+        statement_ids = await job_repo.fail_interrupted_statement_jobs(message)
+        for statement_id in statement_ids:
+            await statement_repo.mark_failed(statement_id, message)
+        if statement_ids:
+            logger.warning("Failed %d statement job(s) interrupted by the last shutdown.", len(statement_ids))
+    except Exception:
+        logger.exception("Could not clean up interrupted statement jobs - continuing startup.")
+
+
 # Lifespan
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -77,6 +99,7 @@ async def lifespan(app: FastAPI):
     # MongoDB
     await db.connect(uri=settings.MONGODB_URI, db_name=settings.MONGODB_DB_NAME)
     await db.ensure_indexes()
+    await _fail_interrupted_statement_jobs()
 
     # Milvus
     vector_db.connect(uri=settings.MILVUS_URI)

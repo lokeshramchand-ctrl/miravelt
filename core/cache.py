@@ -1,7 +1,8 @@
 import json
 import logging
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable
+from typing import Any
 
 import redis.asyncio as aioredis
 

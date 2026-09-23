@@ -1,5 +1,5 @@
-import re
 import logging
+import re
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -13,7 +13,7 @@ class ValidationError(Exception):
 class ValidationRule(str, Enum):
     """Input validation rules."""
     EMAIL = "email"
-    PASSWORD = "password"
+    PASSWORD = "password"  # noqa: S105 - rule name, not a credential
     USERNAME = "username"
     URL = "url"
     IP_ADDRESS = "ip_address"
@@ -91,7 +91,6 @@ class InputValidator:
         has_upper = any(c.isupper() for c in password)
         has_lower = any(c.islower() for c in password)
         has_digit = any(c.isdigit() for c in password)
-        has_special = any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in password)
 
         if not (has_upper and has_lower and has_digit):
             raise ValidationError(
@@ -118,7 +117,7 @@ class InputValidator:
         for keyword in InputValidator.SQL_INJECTION_KEYWORDS:
             if keyword in input_lower:
                 logger.warning(f"Potential SQL injection detected: {input_lower[:50]}")
-                raise ValidationError(f"Invalid characters detected in input")
+                raise ValidationError("Invalid characters detected in input")
 
         if any(char in input_str for char in ["'", '"', ";", "--", "/*", "*/"]):
             logger.warning(f"Suspicious SQL characters detected: {input_str[:50]}")

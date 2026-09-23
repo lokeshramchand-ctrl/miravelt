@@ -1,6 +1,5 @@
 import hashlib
 import hmac
-import json
 import logging
 from datetime import UTC, datetime, timedelta
 
@@ -123,7 +122,6 @@ async def validate_request_signature(request: Request) -> None:
     Raises HTTPException if signature invalid or replay detected.
     """
     from core.config import settings
-    from core.jwt_auth import get_current_user
 
     if not settings.REQUEST_SIGNING_REQUIRED:
         return  # Request signing not enforced
@@ -150,7 +148,7 @@ async def validate_request_signature(request: Request) -> None:
     # For now, use a placeholder signing secret (in production, look this up
     # from the device's signing key stored in the database).
     # TODO: Retrieve device-specific signing secret from database
-    signing_secret = "placeholder-device-signing-secret"
+    signing_secret = "placeholder-device-signing-secret"  # noqa: S105 - known stub, see TODO above
 
     is_valid, error = await request_signing_verifier.verify_request_signature(
         method=request.method,

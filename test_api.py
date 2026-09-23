@@ -32,8 +32,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger("miravelt_test_suite")
 
-# The required Phase 15 authorization header
-VALID_API_KEY = "miravelt_test_key_123"
+# The required Phase 15 authorization header - whatever key this run's
+# environment configured (CI sets its own; a local .env has another).
+VALID_API_KEY = settings.MIRAVELT_API_KEY
 HEADERS = {
     "X-Miravelt-API-Key": VALID_API_KEY,
     "Content-Type": "application/json"
@@ -610,6 +611,25 @@ def test_statement_transactions_pagination_and_filtering(client, auth_user, proc
     assert all(item["transaction_type"] == "CREDIT" for item in credit_data["items"])
     logger.info(f"CREDIT filter returned {credit_data['total']} transactions, all correctly typed.")
 
+def test_statement_transactions_report_how_they_were_categorized(client, auth_user, processed_statement):
+    """Every debit carries the categorization confidence it was filed with
+    (0.95 known merchant, 0.6 name keyword, 0.0 unmatched) so the app can say
+    how sure it is; incoming money has none."""
+    response = client.get(
+        f"/statements/{processed_statement['statement_id']}/transactions",
+        params={"page_size": 100},
+        headers=_auth_headers_no_content_type(auth_user),
+    )
+    assert response.status_code == 200
+    items = response.json()["items"]
+    debits = [t for t in items if t["transaction_type"] == "DEBIT"]
+    credits = [t for t in items if t["transaction_type"] == "CREDIT"]
+    assert debits and credits
+    assert {t["categorization_confidence"] for t in debits} <= {0.0, 0.6, 0.95, 1.0}
+    assert all(t["categorization_confidence"] is None for t in credits)
+    uncategorized = [t for t in debits if t["category"] == "Uncategorized"]
+    assert all(t["categorization_confidence"] == 0.0 for t in uncategorized)
+
 def test_statement_analytics(client, auth_user, processed_statement):
     logger.info("Testing GET /statements/{id}/analytics reflects persisted, precomputed analytics.")
     response = client.get(
@@ -781,6 +801,80 @@ def test_statement_requires_auth(client, processed_statement):
     response = client.get(f"/statements/{processed_statement['statement_id']}", headers=HEADERS)
     assert response.status_code == 401
 
+def test_statement_upload_can_skip_storing_the_pdf(client, auth_user):
+    """keep_original_pdf=false (the app's "Keep original PDFs" switch) keeps
+    the parsed statement but never writes the file itself to GridFS."""
+    with open(MOCK_STATEMENT_PATH, "rb") as f:
+        files = {"file": ("gpay_statement.pdf", f, "application/pdf")}
+        response = client.post(
+            "/statements/upload",
+            files=files,
+            data={"keep_original_pdf": "false"},
+            headers=_auth_headers_no_content_type(auth_user),
+        )
+    assert response.status_code == 202, response.text
+    statement_id = response.json()["statement_id"]
+
+    mongo_client = pymongo.MongoClient(settings.MONGODB_URI)
+    try:
+        doc = mongo_client[settings.MONGODB_DB_NAME].statements.find_one({"_id": ObjectId(statement_id)})
+    finally:
+        mongo_client.close()
+    assert doc is not None
+    assert doc.get("gridfs_file_id") is None
+
+
+def test_startup_fails_statement_jobs_interrupted_by_a_restart(client, auth_user):
+    """Jobs run in-process, so one still RUNNING when the app starts was
+    killed with the previous process - startup must fail it (and its
+    statement) rather than leave it polling as running forever."""
+    from app import _fail_interrupted_statement_jobs
+
+    mongo_client = pymongo.MongoClient(settings.MONGODB_URI)
+    database = mongo_client[settings.MONGODB_DB_NAME]
+    try:
+        statement_id = database.statements.insert_one(
+            {"user_id": auth_user["user_id"], "original_filename": "orphan.pdf", "processing_status": "PROCESSING"}
+        ).inserted_id
+        job_id = database.jobs.insert_one(
+            {
+                "user_id": auth_user["user_id"],
+                "job_type": "STATEMENT_PROCESSING",
+                "resource_type": "statement",
+                "resource_id": str(statement_id),
+                "status": "RUNNING",
+                "stage": "generating_embeddings",
+                "progress_percent": 70,
+            }
+        ).inserted_id
+
+        client.portal.call(_fail_interrupted_statement_jobs)
+
+        job = database.jobs.find_one({"_id": job_id})
+        statement = database.statements.find_one({"_id": statement_id})
+        assert job["status"] == "FAILED"
+        assert "restart" in job["error_message"]
+        assert statement["processing_status"] == "FAILED"
+    finally:
+        database.jobs.delete_many({"resource_id": str(statement_id)})
+        database.statements.delete_one({"_id": statement_id})
+        mongo_client.close()
+
+
+def test_periodicity_ignores_duplicate_uploads_of_the_same_payment():
+    """The same statement uploaded twice stores identical timestamps; those
+    zero-day gaps must not read as a perfectly regular (recurring) merchant."""
+    from features.periodicity import periodicity_extractor
+
+    one_off = [datetime(2026, 1, 5, 10, 0, tzinfo=UTC)] * 4 + [datetime(2026, 3, 9, 18, 0, tzinfo=UTC)] * 4
+    assert periodicity_extractor.calculate_periodicity(one_off)["periodicity_score"] == 0.0
+
+    monthly = [datetime(2026, m, 1, tzinfo=UTC) for m in range(1, 7)] * 2
+    result = periodicity_extractor.calculate_periodicity(monthly)
+    assert result["periodicity_score"] > 0.85
+    assert result["is_likely_subscription"] is True
+
+
 def test_statement_upload_rejects_non_pdf(client, auth_user):
     logger.info("Testing upload validation: a non-PDF file is rejected.")
     files = {"file": ("not_a_statement.txt", b"hello world", "text/plain")}
@@ -839,11 +933,19 @@ def test_users_me_and_patch(client, auth_user):
 # no Shorebird/Play Store account required.
 # =====================================================================
 
+# Multipart uploads must not carry HEADERS' JSON Content-Type: it replaces
+# the multipart boundary header httpx sets, and the server then sees no form
+# fields at all (422 "Field required" for every one of them).
+MULTIPART_HEADERS = {"X-Miravelt-API-Key": VALID_API_KEY}
+
 def _publish_release(client, version_code, version_name="1.0.0", apk_bytes=b"fake-apk-bytes-for-testing", filename="app.apk"):
     files = {"apk": (filename, io.BytesIO(apk_bytes), "application/vnd.android.package-archive")}
     data = {"version_code": str(version_code), "version_name": version_name, "release_notes": "Test release"}
     return client.post(
-        "/app/releases", files=files, data=data, headers={**HEADERS, "X-Miravelt-Admin-Key": "test-admin-key-for-app-updates"}
+        "/app/releases",
+        files=files,
+        data=data,
+        headers={**MULTIPART_HEADERS, "X-Miravelt-Admin-Key": "test-admin-key-for-app-updates"},
     )
 
 def test_app_updates_latest_version_404_before_any_release(client, monkeypatch):
@@ -856,11 +958,15 @@ def test_app_updates_latest_version_404_before_any_release(client, monkeypatch):
     response = client.get("/app/latest-version", params={"platform": "ios"}, headers=HEADERS)
     assert response.status_code in (404, 422)  # 422 if "ios" isn't a modeled AppPlatform value
 
-def test_app_updates_publish_requires_admin_key(client):
+def test_app_updates_publish_requires_admin_key(client, monkeypatch):
+    # An admin key must be *configured* for this to be a 403 - with none at
+    # all the endpoint is disabled outright (503, see
+    # test_pipeline_endpoints_disabled_without_admin_key).
+    monkeypatch.setattr(settings, "ADMIN_API_KEY", "test-admin-key-for-app-updates")
     logger.info("Testing POST /app/releases rejects a plain API key with no admin key.")
     files = {"apk": ("app.apk", io.BytesIO(b"bytes"), "application/vnd.android.package-archive")}
     data = {"version_code": "1", "version_name": "1.0.0"}
-    response = client.post("/app/releases", files=files, data=data, headers=HEADERS)
+    response = client.post("/app/releases", files=files, data=data, headers=MULTIPART_HEADERS)
     assert response.status_code == 403
     logger.info("Publish correctly rejected without a valid admin key.")
 
