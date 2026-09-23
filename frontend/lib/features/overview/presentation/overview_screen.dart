@@ -22,6 +22,7 @@ import '../../../shared/widgets/skeleton.dart';
 import '../../auth/domain/user.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../auth/presentation/auth_state.dart';
+import '../../statements/domain/job.dart';
 import '../../statements/domain/statement.dart';
 import '../../statements/presentation/period_providers.dart';
 import 'period_switcher_sheet.dart';
@@ -353,8 +354,8 @@ class _CategoryBreakdown extends ConsumerWidget {
       ),
       error: (e, _) => const SizedBox.shrink(),
       data: (analytics) {
-        if (analytics == null || analytics.categoryBreakdown.isEmpty) return const SizedBox.shrink();
-        final sorted = [...analytics.categoryBreakdown]..sort((a, b) => b.totalAmount.compareTo(a.totalAmount));
+        if (analytics == null || analytics.spendingBreakdown.isEmpty) return const SizedBox.shrink();
+        final sorted = [...analytics.spendingBreakdown]..sort((a, b) => b.totalAmount.compareTo(a.totalAmount));
         final totalOfShown = analytics.totalSpend;
         final maxAmount = sorted.first.totalAmount == 0 ? 1 : sorted.first.totalAmount;
         final visible = expanded ? sorted : sorted.take(4).toList();
@@ -399,12 +400,21 @@ class _CategoryBreakdown extends ConsumerWidget {
   }
 }
 
-class _ProcessingPlaceholder extends StatelessWidget {
+class _ProcessingPlaceholder extends ConsumerWidget {
   const _ProcessingPlaceholder({required this.period});
   final Statement period;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Follow the job while this is on screen: periodsProvider is a one-shot
+    // fetch, so without this the placeholder outlives the analysis itself.
+    final jobId = period.currentJobId;
+    if (jobId != null) {
+      ref.listen(jobPollProvider(jobId), (_, next) {
+        final status = next.valueOrNull?.status;
+        if (status == JobStatus.completed || status == JobStatus.failed) ref.invalidate(periodsProvider);
+      });
+    }
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.gutter),

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/notifications/local_notifications_service.dart';
-import '../../../core/providers/feature_providers.dart';
+import '../../../core/providers/settings_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
@@ -34,6 +34,18 @@ class _AnalysingScreenState extends ConsumerState<AnalysingScreen> {
   bool _notifyRequested = false;
   bool _notifiedDone = false;
 
+  @override
+  void initState() {
+    super.initState();
+    // Profile > "Analysis finished" is the standing opt-in; the button below
+    // stays as the one-off opt-in for someone who has it switched off.
+    if (ref.read(notifyAnalysisFinishedProvider)) {
+      LocalNotificationsService.instance.requestPermission().then((granted) {
+        if (mounted && granted) setState(() => _notifyRequested = true);
+      });
+    }
+  }
+
   Future<void> _requestNotify() async {
     final messenger = ScaffoldMessenger.of(context);
     final granted = await LocalNotificationsService.instance.requestPermission();
@@ -57,7 +69,7 @@ class _AnalysingScreenState extends ConsumerState<AnalysingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final jobAsync = ref.watch(_jobPollProvider(widget.jobId));
+    final jobAsync = ref.watch(jobPollProvider(widget.jobId));
 
     return Scaffold(
       backgroundColor: AppColors.ink900,
@@ -226,7 +238,3 @@ class _ErrorBody extends StatelessWidget {
     );
   }
 }
-
-final _jobPollProvider = StreamProvider.autoDispose.family<Job, String>((ref, jobId) {
-  return ref.watch(jobsRepositoryProvider).poll(jobId, interval: const Duration(seconds: 2));
-});

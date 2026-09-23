@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/feature_providers.dart';
+import '../../auth/presentation/auth_controller.dart';
+import '../../auth/presentation/auth_state.dart';
 import '../domain/insight.dart';
 import '../domain/job.dart';
 import '../domain/statement.dart';
@@ -14,7 +16,15 @@ import '../domain/statement_analytics.dart';
 /// the default" (most recent COMPLETED period) - see [currentPeriodProvider].
 final selectedPeriodIdProvider = StateProvider<String?>((ref) => null);
 
+/// Keyed on the signed-in user: the router watches this from launch, so
+/// without the dependency it would cache the signed-out result (or the last
+/// account's periods) straight through a sign-in.
 final periodsProvider = FutureProvider<List<Statement>>((ref) async {
+  final userId = ref.watch(authControllerProvider.select((auth) {
+    final state = auth.valueOrNull;
+    return state is AuthAuthenticated ? state.user.id : null;
+  }));
+  if (userId == null) return const [];
   final repo = ref.watch(statementsRepositoryProvider);
   final res = await repo.list(page: 1, pageSize: 50, sortBy: 'uploaded_at', sortOrder: 'desc');
   return res.items;
@@ -27,6 +37,13 @@ final periodsProvider = FutureProvider<List<Statement>>((ref) async {
 /// resetting to "loading") every time the sheet rebuilds.
 final jobSnapshotProvider = FutureProvider.autoDispose.family<Job, String>((ref, jobId) {
   return ref.watch(jobsRepositoryProvider).get(jobId);
+});
+
+/// Live job progress, polled until the job finishes - shared by the Analysing
+/// screen and Overview's "still analysing" placeholder, so both stop polling
+/// once nothing is listening (`autoDispose`).
+final jobPollProvider = StreamProvider.autoDispose.family<Job, String>((ref, jobId) {
+  return ref.watch(jobsRepositoryProvider).poll(jobId, interval: const Duration(seconds: 2));
 });
 
 final currentPeriodProvider = Provider<Statement?>((ref) {

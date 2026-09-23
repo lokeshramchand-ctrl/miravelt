@@ -39,13 +39,25 @@ Android's Developer Options), not gated by `kDebugMode` - it's reachable in rele
 QA on a release APK can point at a staging/local backend without a debug build. There is no
 separate Ollama/Milvus setting: the app never talks to those directly (see `ARCHITECTURE.md`), only
 to whichever backend is active, so pointing at a different backend is the only lever the client has.
-Plain `http://` only reaches `10.0.2.2`/`localhost`/`127.0.0.1` (see `network_security_config.xml` /
-`Info.plist`'s ATS exceptions) - a custom URL to any other host needs `https://`. The one value that
-stays build-time only is `MIRAVELT_API_KEY` (`--dart-define`, no usable default - falls back to a
-`miravelt_test_key_123` placeholder otherwise, see `lib/core/config/app_config.dart`).
+On Android, `network_security_config.xml` permits cleartext app-wide (it can't express "private LAN
+ranges"), so a Custom `http://192.168.x.y:9850/` works; see that file for the tradeoff. The Localhost
+preset's `10.0.2.2` only exists inside the Android emulator - on a physical phone use Custom with the
+host's LAN address, or `adb reverse tcp:9850 tcp:9850` plus Custom `http://localhost:9850/` (the
+sheet says this when Localhost is picked). Switching backends signs out *first*, so the current
+session's tokens are never sent to the newly-selected host. The one value that stays build-time only
+is `MIRAVELT_API_KEY` (`--dart-define`, no usable default - falls back to a `miravelt_test_key_123`
+placeholder otherwise, see `lib/core/config/app_config.dart`); Developer settings' BUILD section
+flags a build that shipped with the placeholder.
 
-Local HTTP (not HTTPS) to `10.0.2.2`/`localhost`/`127.0.0.1` is explicitly allowlisted for this
-reason; every other host must be HTTPS.
+## Launch and branding
+
+The router starts on `/splash` (not `/login`) and holds there while the stored session is checked,
+so a signed-in user never sees the login form flash. `periodsProvider` is keyed on the signed-in
+user id - the router reads it to pick Overview vs onboarding, and without that key it would carry a
+signed-out (or previous account's) result through a sign-in. The app's logo mark is deliberately
+not shown inside the app - splash and onboarding use the "Miravelt" wordmark only, and
+`values-v31`/`values-night-v31` blank the Android 12+ system splash icon (it would otherwise draw
+the launcher icon on every launch).
 
 ## Architecture
 

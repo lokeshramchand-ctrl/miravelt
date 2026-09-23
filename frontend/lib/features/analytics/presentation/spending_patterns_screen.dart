@@ -55,6 +55,10 @@ class _MoMTrendCard extends ConsumerWidget {
       error: (e, _) => ErrorRetry(message: 'Could not load month-over-month trend.', onRetry: () => ref.invalidate(momTrendProvider)),
       data: (mom) {
         final deltaPercent = mom.momGrowthPercentage;
+        // This endpoint compares calendar months, not uploaded periods - with
+        // no transactions in either month there is no trend to show, and a
+        // green "▼ 0%" would read as spending having dropped.
+        final noData = mom.currentSpend == 0 && mom.previousSpend == 0;
         return Container(
           padding: const EdgeInsets.all(17),
           decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.hairlineLight), borderRadius: BorderRadius.circular(AppRadius.card)),
@@ -63,6 +67,12 @@ class _MoMTrendCard extends ConsumerWidget {
             children: [
               Text('MONTH OVER MONTH', style: AppTypography.microLabelTracked11.copyWith(color: AppColors.onLightFaint)),
               const SizedBox(height: 10),
+              if (noData)
+                Text(
+                  'No spending recorded this calendar month or last. Month-over-month compares calendar months, so it fills in once a statement covers them.',
+                  style: AppTypography.footnote12.copyWith(color: AppColors.onLightMuted),
+                )
+              else ...[
               Row(
                 children: [
                   Text(formatCurrency(mom.currentSpend), style: AppTypography.heroAmount34.copyWith(color: AppColors.onLight)),
@@ -77,6 +87,7 @@ class _MoMTrendCard extends ConsumerWidget {
               ),
               const SizedBox(height: 6),
               Text('vs ${formatCurrency(mom.previousSpend)} last period', style: AppTypography.footnote12.copyWith(color: AppColors.onLightMuted)),
+              ],
             ],
           ),
         );

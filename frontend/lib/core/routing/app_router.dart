@@ -7,6 +7,7 @@ import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/auth_state.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
+import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/legal/presentation/privacy_policy_screen.dart';
 import '../../features/legal/presentation/terms_of_service_screen.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
@@ -16,6 +17,7 @@ import '../../features/profile/presentation/manage_periods_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/signals/presentation/recurring_screen.dart';
 import '../../features/signals/presentation/signals_screen.dart';
+import '../../features/statements/domain/statement.dart';
 import '../../features/statements/presentation/period_providers.dart';
 import '../../features/upload/presentation/analysing_screen.dart';
 import '../../features/upload/presentation/rejected_screen.dart';
@@ -33,15 +35,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   ref.onDispose(refreshNotifier.dispose);
 
   return GoRouter(
-    initialLocation: '/login',
+    // Starts on the splash, not /login: a signed-in user must never see the
+    // login form flash up while their stored session is being checked.
+    initialLocation: '/splash',
     refreshListenable: refreshNotifier,
     redirect: (context, state) {
       final loc = state.matchedLocation;
+      final onSplash = loc == '/splash';
       final onAuthPages = loc == '/login' || loc == '/register';
 
       final authAsync = ref.read(authControllerProvider);
       if (authAsync.isLoading && !authAsync.hasValue) {
-        return onAuthPages ? null : '/login';
+        // Cold start: hold on the splash. A sign-in from the login form also
+        // passes through here, and must stay on the form (its button spins).
+        return onSplash || onAuthPages ? null : '/splash';
       }
 
       final authState = authAsync.valueOrNull;
@@ -49,21 +56,37 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return onAuthPages ? null : '/login';
       }
 
-      // Authenticated from here on.
+      // Authenticated from here on. periodsProvider is keyed on the signed-in
+      // user, so it reloads on every sign-in - wait for that fresh result
+      // (not a previous user's, or the signed-out empty list) before deciding
+      // between onboarding and overview.
       final periodsAsync = ref.read(periodsProvider);
-      if (periodsAsync.isLoading && !periodsAsync.hasValue) {
-        return onAuthPages ? null : null;
+      if (periodsAsync.isLoading && (onSplash || onAuthPages || !periodsAsync.hasValue)) {
+        return null;
       }
-      final hasPeriods = (periodsAsync.valueOrNull ?? const []).isNotEmpty;
+      // A failed load is not "no periods": send them to Overview, whose own
+      // error state offers a retry, rather than into first-run onboarding.
+      if (periodsAsync.hasError && !periodsAsync.hasValue) {
+        return onSplash || onAuthPages ? '/shell/overview' : null;
+      }
+      final periods = periodsAsync.valueOrNull ?? const <Statement>[];
+      final hasPeriods = periods.isNotEmpty;
 
-      if (onAuthPages) {
+      if (onSplash || onAuthPages) {
         return hasPeriods ? '/shell/overview' : '/onboarding';
       }
-      if (loc == '/onboarding' && hasPeriods) return '/shell/overview';
+      // Only a *finished* period pulls someone off onboarding. A first upload
+      // makes the list non-empty the moment it is accepted, and redirecting
+      // then would tear down the upload sheet before it opens the Analysing
+      // screen - which takes them to Overview itself once the job completes.
+      if (loc == '/onboarding' && periods.any((p) => p.processingStatus == ProcessingStatus.completed)) {
+        return '/shell/overview';
+      }
       if (loc.startsWith('/shell') && !hasPeriods) return '/onboarding';
       return null;
     },
     routes: [
+      GoRoute(path: '/splash', builder: (context, state) => const SplashScreen()),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(path: '/register', builder: (context, state) => const RegisterScreen()),
       GoRoute(path: '/onboarding', builder: (context, state) => const OnboardingScreen()),

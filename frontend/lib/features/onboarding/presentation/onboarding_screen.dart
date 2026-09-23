@@ -21,22 +21,7 @@ class OnboardingScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 26,
-                    height: 26,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [AppColors.accent, AppColors.accentDim]),
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-                    child: Text('V', style: AppTypography.badge10.copyWith(color: AppColors.accentInk, fontSize: 12)),
-                  ),
-                  const SizedBox(width: 8),
-                  Text('Miravelt', style: AppTypography.wordmark14.copyWith(color: AppColors.onDark)),
-                ],
-              ),
+              Text('Miravelt', style: AppTypography.wordmark14.copyWith(color: AppColors.onDark)),
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(

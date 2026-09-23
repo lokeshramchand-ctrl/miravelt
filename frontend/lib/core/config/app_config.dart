@@ -8,11 +8,11 @@
 /// docs/API_REFERENCE.md §0) - it's a static value the app ships/configures
 /// with, the same way the backend operator holds it.
 abstract final class AppConfig {
-  static const String apiKey = String.fromEnvironment(
-    'MIRAVELT_API_KEY',
-    defaultValue:
-        'miravelt_test_key_123', // or remove if you don't want a fallback
-  );
+  static const String apiKey = String.fromEnvironment('MIRAVELT_API_KEY', defaultValue: placeholderApiKey);
+
+  /// What [apiKey] falls back to when no key was passed at build time -
+  /// surfaced in Developer settings so a keyless release build is obvious.
+  static const String placeholderApiKey = 'miravelt_test_key_123';
 
   /// Pre-fills the login form with a seeded local test account
   /// (lo@gmail.com) so sign-in during development is one tap. Debug-only:

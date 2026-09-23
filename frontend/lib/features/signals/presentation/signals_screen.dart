@@ -12,6 +12,7 @@ import '../../../shared/widgets/error_retry.dart';
 import '../../../shared/widgets/signal_card.dart';
 import '../../../shared/widgets/skeleton.dart';
 import '../../statements/domain/insight.dart';
+import '../../statements/domain/statement_analytics.dart';
 import '../../statements/presentation/period_providers.dart';
 
 enum _SignalFilter { all, watch, good }
@@ -55,7 +56,7 @@ class _SignalsScreenState extends ConsumerState<SignalsScreen> {
               error: (e, _) => const SizedBox.shrink(),
               data: (analytics) {
                 if (analytics == null) return const SizedBox.shrink();
-                final sorted = [...analytics.categoryBreakdown]..sort((a, b) => b.totalAmount.compareTo(a.totalAmount));
+                final sorted = [...analytics.spendingBreakdown]..sort((a, b) => b.totalAmount.compareTo(a.totalAmount));
                 final top = sorted.take(2).map((e) => e.category).join(' and ');
                 final share = analytics.totalSpend == 0 ? 0 : (sorted.take(2).fold<double>(0, (m, e) => m + e.totalAmount) / analytics.totalSpend * 100).round();
                 return Container(
@@ -79,7 +80,7 @@ class _SignalsScreenState extends ConsumerState<SignalsScreen> {
                             const TextSpan(text: ' this period and kept '),
                             TextSpan(text: formatCurrency(analytics.totalIncome), style: AppTypography.amountMedium17.copyWith(color: AppColors.onDark)),
                             const TextSpan(text: ' coming in.'),
-                            if (sorted.isNotEmpty) TextSpan(text: ' $top ${sorted.length > 1 ? 'are' : 'is'} $share% of everything.'),
+                            if (sorted.isNotEmpty) TextSpan(text: ' $top ${sorted.length > 1 ? 'are' : 'is'} $share% of your spending.'),
                           ],
                         ),
                       ),
