@@ -17,7 +17,7 @@ import { useScrollState } from "@/components/sites/becomeautonomous-com-5026bacf
  * (see `smooth-scroll.tsx`), so for them the tab pills directly set the
  * slide progress instead of a scroll target.
  */
-const PIN_TOP_OFFSET = 16; // matches the panel's `top-4` fallback
+const PIN_TOP_OFFSET = 24; // matches the panel's `top-0` fallback
 const HOLD_VH_PER_PANEL = 70; // scroll distance (vh) dedicated to each panel-to-panel slide
 
 function clampPin(scroll: number, pinStart: number, pinEnd: number) {
@@ -101,8 +101,10 @@ export function ThinkingSection() {
     let holdDistance = 0;
 
     const measure = () => {
-      const docTop = panel.getBoundingClientRect().top + ctx.scrollState.current.current;
-      holdDistance = window.innerHeight * (HOLD_VH_PER_PANEL / 100) * (TABS.length - 1);
+      const docTop =
+        panel.getBoundingClientRect().top + ctx.scrollState.current.current;
+      holdDistance =
+        window.innerHeight * (HOLD_VH_PER_PANEL / 100) * (TABS.length - 1);
       pinStart = docTop - PIN_TOP_OFFSET;
       pinEnd = pinStart + holdDistance;
       section.style.paddingBottom = `${holdDistance}px`;
@@ -117,9 +119,12 @@ export function ThinkingSection() {
       const scroll = ctx.scrollState.current.current;
       const ty = clampPin(scroll, pinStart, pinEnd);
       panel.style.transform = `translate3d(0, ${ty}px, 0)`;
-      const progress = holdDistance > 0 ? (ty / holdDistance) * (TABS.length - 1) : 0;
+      const progress =
+        holdDistance > 0 ? (ty / holdDistance) * (TABS.length - 1) : 0;
       applyVisual(progress);
-      const nearest = Math.round(clamp01(progress / (TABS.length - 1)) * (TABS.length - 1));
+      const nearest = Math.round(
+        clamp01(progress / (TABS.length - 1)) * (TABS.length - 1),
+      );
       setActive((prev) => (prev === nearest ? prev : nearest));
       rafId = requestAnimationFrame(tick);
     };
@@ -142,33 +147,34 @@ export function ThinkingSection() {
   };
 
   return (
-    <div ref={sectionRef} className="relative py-16 md:py-24">
-      <div className="mx-auto max-w-[1100px] px-4 md:px-8">
+    <div ref={sectionRef} className="relative">
+      <div
+        ref={panelRef}
+        className={cn(
+          "relative mx-3 mt-8 mb-1.5 h-[calc(100vh-2.375rem)] overflow-hidden rounded-[28px] bg-[#020203] p-6 sm:mx-4 sm:mt-10 sm:mb-2 sm:h-[calc(100vh-3rem)] sm:p-8 md:mx-6 md:mt-12 md:mb-3 md:h-[calc(100vh-3.75rem)] md:rounded-[40px] md:p-12",
+          !isActive && "sticky top-0",
+        )}
+      >
         <div
-          ref={panelRef}
-          className={cn(
-            "relative overflow-hidden rounded-[28px] bg-[#020203] p-6 md:rounded-[40px] md:p-12",
-            !isActive && "sticky top-4"
-          )}
-        >
-          <div
-            ref={colorRef}
-            className="pointer-events-none absolute inset-x-0 top-0 h-full transition-none"
-            style={{ backgroundColor: mixColor(0) }}
-          />
-          <div className="gradient-akanezora-bg pointer-events-none absolute inset-x-0 top-0 h-full opacity-25" />
-          <div className="gradient-akanezora-noise pointer-events-none absolute inset-x-0 top-0 h-full" />
-          <nav className="relative flex justify-center">
-            <div className="inline-flex items-center gap-1 rounded-full bg-white/10 p-1.5">
+          ref={colorRef}
+          className="pointer-events-none absolute inset-x-0 top-0 h-full transition-none"
+          style={{ backgroundColor: mixColor(0) }}
+        />
+        <div className="gradient-akanezora-bg pointer-events-none absolute inset-x-0 top-0 h-full opacity-25" />
+        <div className="gradient-akanezora-noise pointer-events-none absolute inset-x-0 top-0 h-full" />
+
+        <div className="relative flex h-full flex-col items-center justify-center gap-8 overflow-y-auto py-6 sm:gap-10 md:gap-14">
+          <nav className="flex shrink-0 justify-center">
+            <div className="inline-flex items-center gap-1 rounded-full bg-white/10 p-1 sm:p-1.5">
               {TABS.map((t, i) => (
                 <button
                   key={t.label}
                   onClick={() => handleTabClick(i)}
                   className={cn(
-                    "rounded-full px-6 py-3.5 text-[15px] font-medium transition-colors duration-300 md:px-8",
+                    "rounded-full px-4 py-2.5 text-[13px] font-medium transition-colors duration-300 sm:px-6 sm:py-3.5 sm:text-[15px] md:px-8",
                     i === active
                       ? "bg-white text-[#020203]"
-                      : "text-white/70 hover:text-white"
+                      : "text-white/70 hover:text-white",
                   )}
                 >
                   {t.label}
@@ -177,27 +183,40 @@ export function ThinkingSection() {
             </div>
           </nav>
 
-          <div className="relative mt-14 md:mt-20">
-            <p className="text-center text-[15px] text-white/50 md:text-[16px]">
-              Ask about any transaction and get an answer grounded in your own data
+          <div className="w-full shrink-0">
+            <p className="text-center text-[13px] text-white/50 sm:text-[15px] md:text-[16px]">
+              Ask about any transaction and get an answer grounded in your own
+              data
             </p>
 
-            <div className="mt-10 overflow-hidden">
-              <div ref={trackRef} className="flex" style={{ width: `${TABS.length * 100}%` }}>
+            <div className="mt-6 overflow-hidden sm:mt-10">
+              <div
+                ref={trackRef}
+                className="flex"
+                style={{ width: `${TABS.length * 100}%` }}
+              >
                 {TABS.map((t) => (
-                  <div key={t.label} className="shrink-0 px-4" style={{ width: `${100 / TABS.length}%` }}>
-                    <div className="mx-auto max-w-[720px] space-y-6">
+                  <div
+                    key={t.label}
+                    className="shrink-0 px-4"
+                    style={{ width: `${100 / TABS.length}%` }}
+                  >
+                    <div className="mx-auto max-w-[720px] space-y-4 sm:space-y-6">
                       <div className="flex items-start gap-3">
-                        <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-[13px] text-white">
+                        <span className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/10 text-[12px] text-white sm:h-7 sm:w-7 sm:text-[13px]">
                           &rdquo;
                         </span>
-                        <p className="text-[19px] leading-snug text-white md:text-[22px]">{t.user}</p>
+                        <p className="text-[16px] leading-snug text-white sm:text-[19px] md:text-[22px]">
+                          {t.user}
+                        </p>
                       </div>
                       <div className="flex items-start gap-3">
-                        <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-[13px] text-white">
+                        <span className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/10 text-[12px] text-white sm:h-7 sm:w-7 sm:text-[13px]">
                           ✦
                         </span>
-                        <p className="text-[16px] leading-relaxed text-white/70 md:text-[18px]">{t.ai}</p>
+                        <p className="text-[14px] leading-relaxed text-white/70 sm:text-[16px] md:text-[18px]">
+                          {t.ai}
+                        </p>
                       </div>
                     </div>
                   </div>
