@@ -7,8 +7,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-diatype), "Helvetica Neue", Arial, sans-serif;
-  --font-body: var(--font-diatype), "Helvetica Neue", Arial, sans-serif;
+  --font-sans: var(--font-inter), "Helvetica Neue", Arial, sans-serif;
+  --font-body: var(--font-inter), "Helvetica Neue", Arial, sans-serif;
   --font-mono: var(--font-diatype-mono), "Courier New", monospace;
   --font-heading: var(--font-sans);
   --color-ink: #020203;
