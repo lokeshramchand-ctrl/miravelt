@@ -91,13 +91,16 @@ uninstall first (which clears the app's stored session and settings).
 
 ## Icons and avatars
 
-Launcher icons on both platforms are generated from `../assets/upfront_icon.png` by
+Launcher icons on both platforms are generated from `../assets/Frame.png` by
 `tool/generate_app_icons.py` (needs Pillow, run from the repo root) - edit the source art and
-rerun it rather than hand-editing the bitmaps. It writes the iOS `AppIcon.appiconset` slots
-flattened onto `#0D0F15` (iOS rejects alpha in app icons), plus Android's adaptive layers
-(`mipmap-anydpi-v26` + `ic_launcher_foreground.png`, art kept inside the 66dp safe zone) and
-the legacy/round bitmaps. The background colour is `AppColors.ink900`, duplicated in
-`values/ic_launcher_background.xml` - keep the two in sync.
+rerun it rather than hand-editing the bitmaps. The source is a flat mark on a solid black canvas
+(no real alpha); the script keys the near-black out to transparency before compositing. It writes
+the iOS `AppIcon.appiconset` slots flattened onto `#0D0F15` (iOS rejects alpha in app icons), plus
+Android's adaptive layers (`mipmap-anydpi-v26` + `ic_launcher_foreground.png`, art kept inside the
+66dp safe zone) and the legacy/round bitmaps. The background colour is `AppColors.ink900`,
+duplicated in `values/ic_launcher_background.xml` - keep the two in sync. The admin-dashboard's
+favicon set is generated from the same `assets/Frame.png` by
+`admin-dashboard/tool/generate_favicons.py`.
 
 The *user* avatar is one of the nine illustrations in `assets/avatars/`, assigned by
 `lib/core/avatars/user_avatars.dart` from a stable FNV-1a hash of the user id (not stored
