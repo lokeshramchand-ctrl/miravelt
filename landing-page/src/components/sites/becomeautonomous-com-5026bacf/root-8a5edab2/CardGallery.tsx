@@ -247,7 +247,7 @@ export function CardGallery() {
                   <p className="font-mono text-[11px] uppercase tracking-wide text-[#707785]">
                     {card.statLabel}
                   </p>
-                  <p className="mt-1 text-[30px] text-[#fcfcfd]">{card.statValue}</p>
+                  <p className="mt-1 text-[30px] font-medium text-[#fcfcfd]">{card.statValue}</p>
                   <button className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#fcfcfd] py-3.5 text-[15px] font-medium text-[#020203] transition-transform hover:scale-[1.02]">
                     {card.cta}
                     <ArrowRightIcon className="h-4 w-4" />
@@ -262,13 +262,13 @@ export function CardGallery() {
                       <p className="font-mono text-[11px] uppercase tracking-wide text-[#707785]">
                         {card.statLabel}
                       </p>
-                      <p className="mt-1 text-[24px] text-[#fcfcfd]">{card.statValue}</p>
+                      <p className="mt-1 text-[24px] font-medium text-[#fcfcfd]">{card.statValue}</p>
                     </div>
                     <div>
                       <p className="font-mono text-[11px] uppercase tracking-wide text-[#707785]">
                         {card.statLabel2}
                       </p>
-                      <p className="mt-1 text-[24px] text-[#fcfcfd]">{card.statValue2}</p>
+                      <p className="mt-1 text-[24px] font-medium text-[#fcfcfd]">{card.statValue2}</p>
                     </div>
                   </div>
                   <button className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#fcfcfd] py-3.5 text-[15px] font-medium text-[#020203] transition-transform hover:scale-[1.02]">
