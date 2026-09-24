@@ -12,7 +12,7 @@ export function CardsRow({
           <Reveal key={card.number} delay={i * 100}>
             <div className="flex h-full min-h-[280px] flex-col justify-between rounded-[28px] bg-[#fcfcfd] p-8 md:min-h-[360px] md:rounded-[40px] md:p-10">
               <span className="font-mono text-[13px] text-[#a8acb3]">{card.number}</span>
-              <p className="max-w-[420px] text-[26px] font-normal leading-[1.25] text-[#020203] md:text-[34px]">
+              <p className="max-w-[420px] text-[26px] font-medium leading-[1.25] text-[#020203] md:text-[34px]">
                 {card.text}
               </p>
             </div>

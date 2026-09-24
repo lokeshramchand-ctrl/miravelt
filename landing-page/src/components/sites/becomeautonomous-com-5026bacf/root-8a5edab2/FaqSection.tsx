@@ -12,7 +12,7 @@ export function FaqSection() {
   return (
     <div className="mx-auto max-w-[1100px] px-4 py-16 md:px-8 md:py-24">
       <Reveal>
-        <h2 className="text-[42px] font-normal text-[#020203] md:text-[57px]">FAQ</h2>
+        <h2 className="text-[42px] font-medium text-[#020203] md:text-[57px]">FAQ</h2>
         <div className="mt-6 border-t border-black/10">
           {FAQS.map((item, i) => {
             const isOpen = open === i;
@@ -22,7 +22,7 @@ export function FaqSection() {
                   onClick={() => setOpen(isOpen ? null : i)}
                   className="flex w-full items-center justify-between gap-4 py-6 text-left md:py-8"
                 >
-                  <span className="text-[28px] font-normal text-[#020203] md:text-[42px]">
+                  <span className="text-[28px] font-medium text-[#020203] md:text-[42px]">
                     {item.q}
                   </span>
                   <ChevronIcon
