@@ -1,4 +1,4 @@
-import { AutonomousMonogram } from "@/components/sites/becomeautonomous-com-5026bacf/shared/icons";
+import Image from "next/image";
 
 export function Footer() {
   return (
@@ -45,7 +45,7 @@ export function Footer() {
 
       <div className="mt-10 flex flex-col items-start justify-between gap-4 border-t border-black/10 pt-6 md:flex-row md:items-center">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#020203] text-white">
-          <AutonomousMonogram className="h-5 w-5" />
+          <Image src="/images/brand-mark-light.png" alt="" width={20} height={20} className="h-5 w-5" />
         </div>
         <div className="flex flex-1 flex-col gap-1 text-[13px] text-[#020203]/50 md:flex-row md:items-center md:gap-4">
           <span>Copyright © 2026 Miravelt. All rights reserved.</span>
