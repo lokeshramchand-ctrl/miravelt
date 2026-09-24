@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import localFont from "next/font/local";
 import { SmoothScrollProvider } from "@/components/sites/becomeautonomous-com-5026bacf/shared/smooth-scroll";
 import {
@@ -11,30 +12,9 @@ import {
 } from "@/lib/brand";
 import "./globals.css";
 
-const diatype = localFont({
-  variable: "--font-diatype",
-  src: [
-    {
-      path: "../../public/sites/becomeautonomous-com-5026bacf/root-8a5edab2/fonts/diatype-300.woff2",
-      weight: "300",
-      style: "normal",
-    },
-    {
-      path: "../../public/sites/becomeautonomous-com-5026bacf/root-8a5edab2/fonts/diatype-400.woff2",
-      weight: "400",
-      style: "normal",
-    },
-    {
-      path: "../../public/sites/becomeautonomous-com-5026bacf/root-8a5edab2/fonts/diatype-500.woff2",
-      weight: "500",
-      style: "normal",
-    },
-    {
-      path: "../../public/sites/becomeautonomous-com-5026bacf/root-8a5edab2/fonts/diatype-700.woff2",
-      weight: "700",
-      style: "normal",
-    },
-  ],
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
 });
 
 const diatypeMono = localFont({
@@ -159,7 +139,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${diatype.variable} ${diatypeMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${diatypeMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <script
