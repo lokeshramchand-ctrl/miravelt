@@ -1,9 +1,9 @@
-"""Regenerate the Android and iOS launcher icons from ../assets/upfront_icon.png.
+"""Regenerate the Android and iOS launcher icons from ../assets/Frame.png.
 
     pip install pillow
     python frontend/tool/generate_app_icons.py        # run from the repo root
 
-The source is a 1024px RGBA illustration with a transparent background, which
+The source is a flat mark exported on a solid black canvas (no real alpha), which
 neither platform can use directly:
 
 * iOS rejects alpha in app icons (the 1024px marketing icon especially), so
@@ -24,7 +24,7 @@ import os
 from PIL import Image, ImageDraw
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SOURCE = os.path.join(REPO_ROOT, "assets", "upfront_icon.png")
+SOURCE = os.path.join(REPO_ROOT, "assets", "Frame.png")
 ANDROID_RES = os.path.join(REPO_ROOT, "frontend", "android", "app", "src", "main", "res")
 IOS_APPICON = os.path.join(
     REPO_ROOT, "frontend", "ios", "Runner", "Assets.xcassets", "AppIcon.appiconset"
@@ -48,10 +48,21 @@ ANDROID_DENSITIES = {
 }
 
 
+def _key_out_black(img, threshold=16):
+    """Sources exported on a solid black canvas carry no real alpha (every
+    pixel is opaque). Treat near-black as transparent so the art composites
+    onto BACKGROUND like a proper cutout instead of painting over it."""
+    mask = img.convert("L").point(lambda p: 0 if p <= threshold else 255)
+    img.putalpha(mask)
+    return img
+
+
 def load_artwork():
     """The source cropped to its opaque bounds, so scaling is about the art
     rather than about however much empty margin the export happened to have."""
     art = Image.open(SOURCE).convert("RGBA")
+    if art.getchannel("A").getextrema() == (255, 255):
+        art = _key_out_black(art)
     return art.crop(art.getbbox())
 
 
