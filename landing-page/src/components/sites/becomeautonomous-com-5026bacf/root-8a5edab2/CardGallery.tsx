@@ -117,7 +117,7 @@ const CARDS: GalleryCard[] = [
     body: "A recurring charge from a streaming service showed up for the first time this month. It's now tracked alongside everything else you're billed for on a schedule.",
     kind: "stat",
     statLabel: "MONTHLY SUBSCRIPTIONS",
-    statValue: "$142",
+    statValue: "₹142",
     cta: "Review subscriptions",
   },
   {
@@ -141,7 +141,7 @@ const CARDS: GalleryCard[] = [
     body: "Dining is running well above your usual monthly pace, concentrated in the last nine days. Nothing looks miscategorized — it's a genuine shift.",
     kind: "stat",
     statLabel: "DINING THIS MONTH",
-    statValue: "$612",
+    statValue: "₹612",
     cta: "See the detail",
   },
   {
