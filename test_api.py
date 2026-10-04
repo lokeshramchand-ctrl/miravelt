@@ -291,7 +291,7 @@ def test_analytics_anomaly_check(client):
     response = client.post("/v1/analytics/anomaly/check?merchant=Uber&amount=99999", headers=HEADERS)
     assert response.status_code == 200
     is_anomaly = response.json().get("is_anomaly")
-    logger.info(f"Anomaly Engine flagged $99,999 Uber ride as anomaly: {is_anomaly}")
+    logger.info(f"Anomaly Engine flagged ₹99,999 Uber ride as anomaly: {is_anomaly}")
 
 # =====================================================================
 # PHASE 10: FEEDBACK & ACTIVE LEARNING
