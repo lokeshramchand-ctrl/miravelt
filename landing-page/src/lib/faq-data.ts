@@ -17,7 +17,8 @@ export const FAQS = [
   },
   {
     q: "Who's behind it?",
-    a: "Lokesh",
+    a: "Miravelt was designed, built and is run by Lokesh, who started it because tracking where money actually goes shouldn't take an evening with a spreadsheet.",
+    highlight: "Lokesh",
     href: "https://lokeshrc.me",
   },
-] as { q: string; a: string; href?: string }[];
+] as { q: string; a: string; highlight?: string; href?: string }[];

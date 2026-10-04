@@ -38,15 +38,19 @@ export function FaqSection() {
                 >
                   <div className="min-h-0">
                     <p className="max-w-[720px] pb-8 text-[17px] leading-relaxed text-[#0B1220]/60 md:text-[19px]">
-                      {item.href ? (
-                        <a
-                          href={item.href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-bold text-[#0B1220] underline underline-offset-2"
-                        >
-                          {item.a}
-                        </a>
+                      {item.highlight && item.a.includes(item.highlight) ? (
+                        <>
+                          {item.a.slice(0, item.a.indexOf(item.highlight))}
+                          <a
+                            href={item.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-bold text-[#0B1220] underline underline-offset-2"
+                          >
+                            {item.highlight}
+                          </a>
+                          {item.a.slice(item.a.indexOf(item.highlight) + item.highlight.length)}
+                        </>
                       ) : (
                         item.a
                       )}
