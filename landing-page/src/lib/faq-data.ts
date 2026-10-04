@@ -17,6 +17,7 @@ export const FAQS = [
   },
   {
     q: "Who's behind it?",
-    a: "A small team building the categorization and behavioral-intelligence layer personal finance tools have always needed but rarely gotten right.",
+    a: "Lokesh",
+    href: "https://lokeshrc.me",
   },
-];
+] as { q: string; a: string; href?: string }[];

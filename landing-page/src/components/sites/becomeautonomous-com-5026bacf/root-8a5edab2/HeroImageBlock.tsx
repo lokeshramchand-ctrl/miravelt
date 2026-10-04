@@ -64,7 +64,7 @@ export function HeroImageBlock({ src, alt }: { src: string; alt: string }) {
   return (
     <div className="mx-auto max-w-[1352px] px-4 py-6 md:px-8 md:py-10">
       <Reveal>
-        <div ref={frameRef} className="relative overflow-hidden rounded-[32px] bg-[#d2d4d9] md:rounded-[52px]">
+        <div ref={frameRef} className="relative overflow-hidden rounded-[32px] bg-[#CBD2DC] md:rounded-[52px]">
           <div ref={artworkRef} className="h-full w-full" style={{ willChange: "transform" }}>
             <Image
               src={src}

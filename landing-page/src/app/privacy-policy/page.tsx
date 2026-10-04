@@ -19,7 +19,7 @@ function SubSection({
 }) {
   return (
     <div>
-      <h3 className="mt-6 mb-2 text-[19px] font-bold text-[#707785]">
+      <h3 className="mt-6 mb-2 text-[19px] font-bold text-[#66707E]">
         {title}
       </h3>
       {children}
@@ -38,7 +38,7 @@ function Section({
 }) {
   return (
     <section id={id} className="mb-10">
-      <h2 className="mb-4 text-[18px] font-medium tracking-[-0.025em] text-[#020203] md:text-[20px]">
+      <h2 className="mb-4 text-[18px] font-medium tracking-[-0.025em] text-[#0B1220] md:text-[20px]">
         {title}
       </h2>
       {children}
@@ -48,18 +48,18 @@ function Section({
 
 export default function PrivacyPolicyPage() {
   return (
-    <main className="flex min-h-screen w-full flex-col items-center bg-[#f5f5f7] px-4 py-16 md:px-4 md:py-12">
+    <main className="flex min-h-screen w-full flex-col items-center bg-[#F2F4F7] px-4 py-16 md:px-4 md:py-12">
       <Header />
 
-      <h1 className="w-full max-w-[800px] text-left text-[60px] leading-[1] font-normal tracking-[-0.055em] text-[#020203] md:mb-4">
+      <h1 className="w-full max-w-[800px] text-left text-[60px] leading-[1] font-normal tracking-[-0.055em] text-[#0B1220] md:mb-4">
         Privacy Policy
       </h1>
-      <p className="mb-6 w-full max-w-[800px] text-left text-[14px] text-[#707785] md:mb-8">
+      <p className="mb-6 w-full max-w-[800px] text-left text-[14px] text-[#66707E] md:mb-8">
         Last Updated: September 10, 2026
       </p>
 
-      <div className="w-full max-w-[800px] rounded-[32px] bg-[#fcfcfd] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.05)] md:rounded-[52px] md:p-[52px]">
-        <div className="font-sans text-[15px] leading-[1.5] text-[#707785] md:text-[16px] [&_strong]:text-[#020203] [&_a]:underline [&_a]:underline-offset-[0.14em] [&_li]:mb-2 [&_li]:leading-[1.5] [&_p]:mb-4 [&_ul]:my-4 [&_ul]:list-disc [&_ul]:pl-6">
+      <div className="w-full max-w-[800px] rounded-[32px] bg-[#FAFBFC] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.05)] md:rounded-[52px] md:p-[52px]">
+        <div className="font-sans text-[15px] leading-[1.5] text-[#66707E] md:text-[16px] [&_strong]:text-[#0B1220] [&_a]:underline [&_a]:underline-offset-[0.14em] [&_li]:mb-2 [&_li]:leading-[1.5] [&_p]:mb-4 [&_ul]:my-4 [&_ul]:list-disc [&_ul]:pl-6">
           <Section id="gmail" title="Gmail connection and privacy">
             <p>
               This section applies when you connect Gmail to Miravelt. It

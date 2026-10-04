@@ -112,7 +112,7 @@ export function Hero() {
     <div className="mx-auto max-w-[1352px] px-4 md:px-8">
       <div
         ref={frameRef}
-        className="relative overflow-hidden rounded-[32px] bg-[#d2d4d9] opacity-0 md:rounded-[52px]"
+        className="relative overflow-hidden rounded-[32px] bg-[#CBD2DC] opacity-0 md:rounded-[52px]"
         style={{ willChange: "transform, opacity" }}
       >
         <div ref={artworkRef} className="h-full w-full" style={{ willChange: "transform" }}>

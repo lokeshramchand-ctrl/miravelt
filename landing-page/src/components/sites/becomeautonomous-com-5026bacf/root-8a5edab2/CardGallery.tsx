@@ -195,7 +195,7 @@ function DonutChart() {
               cy="60"
               r={CHART_RADIUS}
               fill="none"
-              stroke={i === 0 ? "#fcfcfd" : "rgba(252,252,253,0.35)"}
+              stroke={i === 0 ? "#FAFBFC" : "rgba(250,251,252,0.35)"}
               strokeWidth={i === 0 ? 10 : 8}
               strokeDasharray={`${dash} ${CHART_CIRCUMFERENCE - dash}`}
               strokeDashoffset={-((CHART_OFFSETS[i] / 100) * CHART_CIRCUMFERENCE)}
@@ -203,7 +203,7 @@ function DonutChart() {
           );
         })}
       </svg>
-      <div className="absolute right-full top-0 flex flex-col items-end gap-1 pr-3 font-mono text-[10px] text-[#fcfcfd]/70">
+      <div className="absolute right-full top-0 flex flex-col items-end gap-1 pr-3 font-mono text-[10px] text-[#FAFBFC]/70">
         {CHART_SEGMENTS.map((seg) => (
           <span key={seg.label}>
             {seg.label} {seg.value}%
@@ -229,13 +229,13 @@ export function CardGallery() {
           {CARDS.map((card) => (
             <div
               key={card.label + card.time}
-              className="flex h-[420px] w-[320px] shrink-0 flex-col justify-between rounded-[28px] bg-[#020203] p-7 md:h-[400px] md:w-[360px] md:rounded-[32px] md:p-8"
+              className="flex h-[420px] w-[320px] shrink-0 flex-col justify-between rounded-[28px] bg-[#0B1220] p-7 md:h-[400px] md:w-[360px] md:rounded-[32px] md:p-8"
             >
               <div>
-                <p className="font-mono text-[11px] uppercase tracking-wide text-[#707785]">
+                <p className="font-mono text-[11px] uppercase tracking-wide text-[#66707E]">
                   {card.label} · {card.time}
                 </p>
-                <p className="mt-4 text-[17px] leading-snug text-[#e8e9eb] md:text-[18px]">
+                <p className="mt-4 text-[17px] leading-snug text-[#E3E7ED] md:text-[18px]">
                   {card.body}
                 </p>
               </div>
@@ -244,11 +244,11 @@ export function CardGallery() {
 
               {card.kind === "stat" && (
                 <div>
-                  <p className="font-mono text-[11px] uppercase tracking-wide text-[#707785]">
+                  <p className="font-mono text-[11px] uppercase tracking-wide text-[#66707E]">
                     {card.statLabel}
                   </p>
-                  <p className="mt-1 text-[30px] font-medium text-[#fcfcfd]">{card.statValue}</p>
-                  <button className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#fcfcfd] py-3.5 text-[15px] font-medium text-[#020203] transition-transform hover:scale-[1.02]">
+                  <p className="mt-1 text-[30px] font-medium text-[#FAFBFC]">{card.statValue}</p>
+                  <button className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#FAFBFC] py-3.5 text-[15px] font-medium text-[#0B1220] transition-transform hover:scale-[1.02]">
                     {card.cta}
                     <ArrowRightIcon className="h-4 w-4" />
                   </button>
@@ -259,19 +259,19 @@ export function CardGallery() {
                 <div>
                   <div className="flex gap-6">
                     <div>
-                      <p className="font-mono text-[11px] uppercase tracking-wide text-[#707785]">
+                      <p className="font-mono text-[11px] uppercase tracking-wide text-[#66707E]">
                         {card.statLabel}
                       </p>
-                      <p className="mt-1 text-[24px] font-medium text-[#fcfcfd]">{card.statValue}</p>
+                      <p className="mt-1 text-[24px] font-medium text-[#FAFBFC]">{card.statValue}</p>
                     </div>
                     <div>
-                      <p className="font-mono text-[11px] uppercase tracking-wide text-[#707785]">
+                      <p className="font-mono text-[11px] uppercase tracking-wide text-[#66707E]">
                         {card.statLabel2}
                       </p>
-                      <p className="mt-1 text-[24px] font-medium text-[#fcfcfd]">{card.statValue2}</p>
+                      <p className="mt-1 text-[24px] font-medium text-[#FAFBFC]">{card.statValue2}</p>
                     </div>
                   </div>
-                  <button className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#fcfcfd] py-3.5 text-[15px] font-medium text-[#020203] transition-transform hover:scale-[1.02]">
+                  <button className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#FAFBFC] py-3.5 text-[15px] font-medium text-[#0B1220] transition-transform hover:scale-[1.02]">
                     {card.cta}
                     <ArrowRightIcon className="h-4 w-4" />
                   </button>
