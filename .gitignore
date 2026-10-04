@@ -37,3 +37,7 @@ node_modules/
 
 # Local-only dev test account credentials (see DEV_TEST_ACCOUNT.txt) - never commit
 DEV_TEST_ACCOUNT.txt
+
+# Personal portfolio source file (lives in the Downloads folder, never committed)
+Miravelt-Portfolio-Source.md
+*Portfolio-Source.md

@@ -26,7 +26,7 @@ const faqJsonLd = {
 
 export default function Home() {
   return (
-    <main className="bg-[#f2f2f2]">
+    <main className="bg-[#EEF1F6]">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}

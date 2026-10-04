@@ -22,7 +22,7 @@ export function CtaButton({ className, dark = false }: { className?: string; dar
       onKeyDown={(e) => e.key === "Enter" && handleOpen()}
       className={cn(
         "relative flex h-14 items-center rounded-full transition-all duration-300 ease-out cursor-pointer overflow-hidden",
-        dark ? "bg-[#fcfcfd] text-[#020203]" : "bg-[#fcfcfd] text-[#020203] shadow-[0_8px_30px_rgba(0,0,0,0.12)]",
+        dark ? "bg-[#FAFBFC] text-[#0B1220]" : "bg-[#FAFBFC] text-[#0B1220] shadow-[0_8px_30px_rgba(0,0,0,0.12)]",
         expanded ? "w-[300px] px-2" : "w-[220px] justify-center px-6",
         className
       )}
@@ -44,7 +44,7 @@ export function CtaButton({ className, dark = false }: { className?: string; dar
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onClick={(e) => e.stopPropagation()}
-            className="flex-1 bg-transparent text-[15px] text-[#020203] placeholder:text-[#707785] outline-none"
+            className="flex-1 bg-transparent text-[15px] text-[#0B1220] placeholder:text-[#66707E] outline-none"
           />
           <button
             type="button"
@@ -53,7 +53,7 @@ export function CtaButton({ className, dark = false }: { className?: string; dar
             onClick={(e) => e.stopPropagation()}
             className={cn(
               "flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors",
-              email ? "bg-[#020203] text-white" : "bg-[#e5e6e8] text-[#a8acb3]"
+              email ? "bg-[#0B1220] text-white" : "bg-[#E1E5EB] text-[#9AA3B2]"
             )}
           >
             <ArrowUpIcon className="h-4 w-4" />

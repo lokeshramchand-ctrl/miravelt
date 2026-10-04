@@ -12,7 +12,7 @@ export function FaqSection() {
   return (
     <div className="mx-auto max-w-[1100px] px-4 py-16 md:px-8 md:py-24">
       <Reveal>
-        <h2 className="text-[42px] font-medium text-[#020203] md:text-[57px]">FAQ</h2>
+        <h2 className="text-[42px] font-medium text-[#0B1220] md:text-[57px]">FAQ</h2>
         <div className="mt-6 border-t border-black/10">
           {FAQS.map((item, i) => {
             const isOpen = open === i;
@@ -22,12 +22,12 @@ export function FaqSection() {
                   onClick={() => setOpen(isOpen ? null : i)}
                   className="flex w-full items-center justify-between gap-4 py-6 text-left md:py-8"
                 >
-                  <span className="text-[28px] font-medium text-[#020203] md:text-[42px]">
+                  <span className="text-[28px] font-medium text-[#0B1220] md:text-[42px]">
                     {item.q}
                   </span>
                   <ChevronIcon
                     className={cn(
-                      "h-6 w-6 shrink-0 text-[#020203] transition-transform duration-300",
+                      "h-6 w-6 shrink-0 text-[#0B1220] transition-transform duration-300",
                       isOpen && "rotate-180"
                     )}
                   />
@@ -37,8 +37,19 @@ export function FaqSection() {
                   style={{ gridTemplateRows: isOpen ? "1fr" : "0fr" }}
                 >
                   <div className="min-h-0">
-                    <p className="max-w-[720px] pb-8 text-[17px] leading-relaxed text-[#020203]/60 md:text-[19px]">
-                      {item.a}
+                    <p className="max-w-[720px] pb-8 text-[17px] leading-relaxed text-[#0B1220]/60 md:text-[19px]">
+                      {item.href ? (
+                        <a
+                          href={item.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-bold text-[#0B1220] underline underline-offset-2"
+                        >
+                          {item.a}
+                        </a>
+                      ) : (
+                        item.a
+                      )}
                     </p>
                   </div>
                 </div>

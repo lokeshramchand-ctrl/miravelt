@@ -151,7 +151,7 @@ export function ThinkingSection() {
       <div
         ref={panelRef}
         className={cn(
-          "relative mx-3 mt-8 mb-1.5 h-[calc(100vh-2.375rem)] overflow-hidden rounded-[28px] bg-[#020203] p-6 sm:mx-4 sm:mt-10 sm:mb-2 sm:h-[calc(100vh-3rem)] sm:p-8 md:mx-6 md:mt-12 md:mb-3 md:h-[calc(100vh-3.75rem)] md:rounded-[40px] md:p-12",
+          "relative mx-3 mt-8 mb-1.5 h-[calc(100vh-2.375rem)] overflow-hidden rounded-[28px] bg-[#0B1220] p-6 sm:mx-4 sm:mt-10 sm:mb-2 sm:h-[calc(100vh-3rem)] sm:p-8 md:mx-6 md:mt-12 md:mb-3 md:h-[calc(100vh-3.75rem)] md:rounded-[40px] md:p-12",
           !isActive && "sticky top-0",
         )}
       >
@@ -173,7 +173,7 @@ export function ThinkingSection() {
                   className={cn(
                     "rounded-full px-4 py-2.5 text-[13px] font-medium transition-colors duration-300 sm:px-6 sm:py-3.5 sm:text-[15px] md:px-8",
                     i === active
-                      ? "bg-white text-[#020203]"
+                      ? "bg-white text-[#0B1220]"
                       : "text-white/70 hover:text-white",
                   )}
                 >
