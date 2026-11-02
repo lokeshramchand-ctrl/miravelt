@@ -10,6 +10,7 @@ import '../../../shared/widgets/avatar_chip.dart';
 import '../../../shared/widgets/bottom_sheet_scaffold.dart';
 import '../../statements/domain/transaction.dart';
 import '../../statements/presentation/period_providers.dart';
+import '../domain/explain_outcome.dart';
 
 const _kTransactionCategories = [
   'Food', 'Travel', 'Entertainment', 'Bills', 'Friends', 'Education', 'Healthcare', 'Subscription', 'Shopping', 'Utility', 'Income', 'Unknown',
@@ -30,6 +31,22 @@ class _TransactionSheetBody extends ConsumerStatefulWidget {
 class _TransactionSheetBodyState extends ConsumerState<_TransactionSheetBody> {
   bool _submitting = false;
   String? _feedbackResult;
+  bool _explainLoading = false;
+  ExplainOutcome? _explainOutcome;
+
+  Future<void> _requestExplanation() async {
+    setState(() => _explainLoading = true);
+    try {
+      final outcome = await ref.read(explainRepositoryProvider).explain(
+            transactionText: _explainTransactionText(widget.transaction),
+          );
+      setState(() => _explainOutcome = outcome);
+    } catch (_) {
+      setState(() => _explainOutcome = const ExplainOutcome.unavailable("Couldn't reach the explanation service."));
+    } finally {
+      if (mounted) setState(() => _explainLoading = false);
+    }
+  }
 
   Future<void> _submitFeedback(String correctedCategory) async {
     setState(() => _submitting = true);
@@ -178,6 +195,12 @@ class _TransactionSheetBodyState extends ConsumerState<_TransactionSheetBody> {
             ],
           ),
         ),
+        const SizedBox(height: 12),
+        _ExplainPanel(
+          loading: _explainLoading,
+          outcome: _explainOutcome,
+          onRequest: txn.transactionType == TransactionType.credit ? null : _requestExplanation,
+        ),
         const SizedBox(height: 18),
         if (_feedbackResult != null)
           Center(child: Text(_feedbackResult!, textAlign: TextAlign.center, style: AppTypography.footnote12.copyWith(color: AppColors.accentDim)))
@@ -219,6 +242,73 @@ class _TransactionSheetBodyState extends ConsumerState<_TransactionSheetBody> {
           ?trailing,
           if (trailing == null)
             Text(value, style: (mono ? AppTypography.meta12 : AppTypography.rowLabel14).copyWith(color: AppColors.onLight)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Free-text description POST /v1/explain grounds its retrieval on
+/// (routers/rag.py's `transaction_text` field) - not a transaction id, since
+/// the endpoint has no per-user scoping and works purely from the text.
+String _explainTransactionText(Transaction txn) {
+  final amount = formatCurrency(txn.amount.abs());
+  final when = formatFullTimestamp(txn.timestamp);
+  final merchant = txn.merchant ?? 'an unknown payee';
+  if (txn.transactionType == TransactionType.credit) {
+    return 'Received $amount from $merchant on $when.';
+  }
+  final category = txn.category ?? 'Uncategorized';
+  return 'Paid $amount to $merchant on $when, categorized as $category.';
+}
+
+/// A deeper, grounded explanation on top of "Why this category" - fetched
+/// on demand (never auto, see explain_repository.dart) since it costs a
+/// rate-limited LLM call. Deliberately a separate, additive panel rather
+/// than replacing "Why this category": that card is already shipped and
+/// instant; this one is richer but slower and can come back empty.
+class _ExplainPanel extends StatelessWidget {
+  const _ExplainPanel({required this.loading, required this.outcome, required this.onRequest});
+
+  final bool loading;
+  final ExplainOutcome? outcome;
+  final VoidCallback? onRequest;
+
+  @override
+  Widget build(BuildContext context) {
+    if (outcome == null) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton(
+          onPressed: loading ? null : onRequest,
+          style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+          child: loading
+              ? SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accentDim))
+              : Text('Ask for a deeper explanation', style: AppTypography.buttonLabel12.copyWith(color: AppColors.accentDim)),
+        ),
+      );
+    }
+
+    if (!outcome!.isAvailable) {
+      return Text(outcome!.unavailableReason!, style: AppTypography.footnote12.copyWith(color: AppColors.onLightMuted));
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: AppColors.hairlineLight.withValues(alpha: 0.35), borderRadius: BorderRadius.circular(14)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('GROUNDED EXPLANATION', style: AppTypography.microLabelTracked105.copyWith(color: AppColors.onLightFaint)),
+              const Spacer(),
+              if (outcome!.confidence != null)
+                Text(outcome!.confidence!, style: AppTypography.microLabel11.copyWith(color: AppColors.onLightFaint)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(outcome!.explanation!, style: AppTypography.footnote12.copyWith(color: AppColors.onLight, height: 1.5)),
         ],
       ),
     );
