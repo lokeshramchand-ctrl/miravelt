@@ -75,18 +75,29 @@ class JobRepository:
     async def fail_stale_running_jobs(self, older_than_minutes: int, error_message: str) -> list[str]:
         """Time-based replacement for the old restart-based sweep (statement
         processing used to run in-process, so an API restart meant "still
-        RUNNING" => "was just killed" - see app.py's removed
-        _fail_interrupted_statement_jobs). Now that processing runs in
-        separate Celery workers, an API restart orphans nothing; this instead
-        catches a job truly abandoned by a crashed/killed worker, without
-        touching one that's just taking a while - see
-        tasks/statement_tasks.py::sweep_stale_statement_jobs, which calls
-        this periodically via Celery beat."""
+        RUNNING or QUEUED" => "was just killed" - see app.py's removed
+        _fail_interrupted_statement_jobs, which checked both statuses for
+        exactly that reason). Now that processing runs in separate Celery
+        workers, an API restart orphans nothing; this instead catches a job
+        truly abandoned, without touching one that's just taking a while -
+        see tasks/statement_tasks.py::sweep_stale_statement_jobs, which calls
+        this periodically via Celery beat. Two distinct ways a job gets
+        abandoned, both covered:
+        - RUNNING past the cutoff: a worker crashed/was killed mid-task
+          (statement_service.process_statement's own except-block already
+          marks it FAILED on any ordinary exception - this is the backstop
+          for when the worker process itself dies, not just the task).
+        - QUEUED past the cutoff: the task message was never delivered to
+          any worker at all (lost, or no worker listening on the
+          "statements" queue) - nothing ever ran, so there was never an
+          exception for anything to catch."""
         cutoff = datetime.now(UTC) - timedelta(minutes=older_than_minutes)
         query = {
             "job_type": JobType.STATEMENT_PROCESSING.value,
-            "status": JobStatus.RUNNING.value,
-            "started_at": {"$lt": cutoff},
+            "$or": [
+                {"status": JobStatus.RUNNING.value, "started_at": {"$lt": cutoff}},
+                {"status": JobStatus.QUEUED.value, "created_at": {"$lt": cutoff}},
+            ],
         }
         statement_ids = [doc["resource_id"] async for doc in db.jobs.find(query, {"resource_id": 1})]
         if statement_ids:

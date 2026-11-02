@@ -39,22 +39,27 @@ class StatementService:
 
     async def process_statement(self, statement_id: str, job_id: str, full_text: str) -> None:
         start_time = time.monotonic()
-        statement = await statement_repo.get_by_id(statement_id)
-        if statement is None:
-            logger.error("Statement %s vanished before processing could start.", statement_id)
-            return
-
-        claimed = await job_repo.claim_and_mark_running(job_id, "parsing")
-        if not claimed:
-            # A redelivered Celery task (tasks/statement_tasks.py's
-            # acks_late + task_reject_on_worker_lost) whose job is already
-            # RUNNING or finished - reprocessing here could create duplicate
-            # transactions, so this is left for the periodic stale-job sweep
-            # rather than retried inline.
-            logger.info("Job %s already claimed or finished - skipping duplicate delivery.", job_id)
-            return
-
         try:
+            # get_by_id and the job claim are inside this try too (they
+            # weren't originally) - a job that fails before ever reaching
+            # RUNNING would otherwise stay QUEUED forever with no started_at,
+            # which the stale-job sweep (fail_stale_running_jobs, filtered on
+            # RUNNING) would never catch.
+            statement = await statement_repo.get_by_id(statement_id)
+            if statement is None:
+                logger.error("Statement %s vanished before processing could start.", statement_id)
+                return
+
+            claimed = await job_repo.claim_and_mark_running(job_id, "parsing")
+            if not claimed:
+                # A redelivered Celery task (tasks/statement_tasks.py's
+                # acks_late + task_reject_on_worker_lost) whose job is already
+                # RUNNING or finished - reprocessing here could create
+                # duplicate transactions, so this is left for the periodic
+                # stale-job sweep rather than retried inline.
+                logger.info("Job %s already claimed or finished - skipping duplicate delivery.", job_id)
+                return
+
             await statement_repo.mark_processing(statement_id)
 
             # Synchronous parsing/categorizing runs on a worker thread so the

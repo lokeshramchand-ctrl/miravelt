@@ -929,64 +929,65 @@ def test_statement_upload_can_skip_storing_the_pdf(client, auth_user):
 def test_stale_running_statement_jobs_are_failed_by_the_sweep(client, auth_user):
     """Statement processing now runs in Celery workers, not the API process
     (tasks/statement_tasks.py), so an API restart no longer orphans a job -
-    the replacement safety net is time-based: a job RUNNING well past
-    STATEMENT_STALE_JOB_TIMEOUT_MINUTES is a worker that crashed or got
-    hard-time-limit-killed, and the periodic sweep_stale_statement_jobs
-    fails it. A RUNNING job that's merely recent must be left alone - this
-    is time-based recovery, not "RUNNING is always suspect"."""
+    the replacement safety net is time-based, covering two distinct ways a
+    job gets abandoned (job_repository.py::fail_stale_running_jobs):
+    RUNNING well past the timeout (a worker crashed or got hard-time-limit-
+    killed mid-task) and QUEUED well past the timeout (the task message was
+    never delivered to any worker at all, so nothing ever ran to raise an
+    exception for anything to catch). A job that's merely recent in either
+    status must be left alone - this is time-based recovery, not "anything
+    not COMPLETED is suspect"."""
     from tasks.statement_tasks import _sweep_stale_statement_jobs
 
     mongo_client = pymongo.MongoClient(settings.MONGODB_URI)
     database = mongo_client[settings.MONGODB_DB_NAME]
     stale_cutoff = datetime.now(UTC) - timedelta(minutes=settings.STATEMENT_STALE_JOB_TIMEOUT_MINUTES + 5)
-    try:
-        stale_statement_id = database.statements.insert_one(
-            {"user_id": auth_user["user_id"], "original_filename": "stale.pdf", "processing_status": "PROCESSING"}
-        ).inserted_id
-        stale_job_id = database.jobs.insert_one(
-            {
-                "user_id": auth_user["user_id"],
-                "job_type": "STATEMENT_PROCESSING",
-                "resource_type": "statement",
-                "resource_id": str(stale_statement_id),
-                "status": "RUNNING",
-                "stage": "generating_embeddings",
-                "progress_percent": 70,
-                "started_at": stale_cutoff,
-            }
-        ).inserted_id
 
-        recent_statement_id = database.statements.insert_one(
-            {"user_id": auth_user["user_id"], "original_filename": "recent.pdf", "processing_status": "PROCESSING"}
+    def _insert(filename: str, status: str, *, started_at=None, created_at=None):
+        statement_id = database.statements.insert_one(
+            {"user_id": auth_user["user_id"], "original_filename": filename, "processing_status": "PROCESSING"}
         ).inserted_id
-        recent_job_id = database.jobs.insert_one(
-            {
-                "user_id": auth_user["user_id"],
-                "job_type": "STATEMENT_PROCESSING",
-                "resource_type": "statement",
-                "resource_id": str(recent_statement_id),
-                "status": "RUNNING",
-                "stage": "generating_embeddings",
-                "progress_percent": 70,
-                "started_at": datetime.now(UTC),
-            }
-        ).inserted_id
+        job_doc = {
+            "user_id": auth_user["user_id"],
+            "job_type": "STATEMENT_PROCESSING",
+            "resource_type": "statement",
+            "resource_id": str(statement_id),
+            "status": status,
+            "progress_percent": 0 if status == "QUEUED" else 70,
+            "created_at": created_at or datetime.now(UTC),
+        }
+        if started_at is not None:
+            job_doc["started_at"] = started_at
+        job_id = database.jobs.insert_one(job_doc).inserted_id
+        return statement_id, job_id
+
+    try:
+        stale_running_stmt, stale_running_job = _insert("stale_running.pdf", "RUNNING", started_at=stale_cutoff)
+        recent_running_stmt, recent_running_job = _insert("recent_running.pdf", "RUNNING", started_at=datetime.now(UTC))
+        stale_queued_stmt, stale_queued_job = _insert("stale_queued.pdf", "QUEUED", created_at=stale_cutoff)
+        recent_queued_stmt, recent_queued_job = _insert("recent_queued.pdf", "QUEUED", created_at=datetime.now(UTC))
 
         client.portal.call(_sweep_stale_statement_jobs)
 
-        stale_job = database.jobs.find_one({"_id": stale_job_id})
-        stale_statement = database.statements.find_one({"_id": stale_statement_id})
-        assert stale_job["status"] == "FAILED"
-        assert "failed" in stale_job["error_message"].lower()
-        assert stale_statement["processing_status"] == "FAILED"
+        for stmt_id, job_id in [(stale_running_stmt, stale_running_job), (stale_queued_stmt, stale_queued_job)]:
+            job = database.jobs.find_one({"_id": job_id})
+            statement = database.statements.find_one({"_id": stmt_id})
+            assert job["status"] == "FAILED", f"expected {job_id} to be failed by the sweep"
+            assert "failed" in job["error_message"].lower()
+            assert statement["processing_status"] == "FAILED"
 
-        recent_job = database.jobs.find_one({"_id": recent_job_id})
-        recent_statement = database.statements.find_one({"_id": recent_statement_id})
-        assert recent_job["status"] == "RUNNING"
-        assert recent_statement["processing_status"] == "PROCESSING"
+        for stmt_id, job_id, expected_status in [
+            (recent_running_stmt, recent_running_job, "RUNNING"),
+            (recent_queued_stmt, recent_queued_job, "QUEUED"),
+        ]:
+            job = database.jobs.find_one({"_id": job_id})
+            statement = database.statements.find_one({"_id": stmt_id})
+            assert job["status"] == expected_status, f"expected {job_id} to be left alone"
+            assert statement["processing_status"] == "PROCESSING"
     finally:
-        database.jobs.delete_many({"resource_id": {"$in": [str(stale_statement_id), str(recent_statement_id)]}})
-        database.statements.delete_many({"_id": {"$in": [stale_statement_id, recent_statement_id]}})
+        all_statement_ids = [stale_running_stmt, recent_running_stmt, stale_queued_stmt, recent_queued_stmt]
+        database.jobs.delete_many({"resource_id": {"$in": [str(sid) for sid in all_statement_ids]}})
+        database.statements.delete_many({"_id": {"$in": all_statement_ids}})
 
 
 def test_claim_and_mark_running_is_atomic(client, auth_user):
