@@ -860,14 +860,16 @@ def test_activation_metrics_engine_runs_against_live_data(client, auth_user, pro
     directly rather than through the admin route itself, since promoting a
     test user to admin has no self-serve path to script against (see
     admin-dashboard/CLAUDE.md) - this still runs against the same live test
-    database the rest of this module has already populated."""
-    import asyncio
-
+    database the rest of this module has already populated. Runs the engine
+    via client.portal.call(...), not asyncio.run() - the Motor client is
+    bound to TestClient's own event loop (set up by its lifespan), so a
+    fresh loop from asyncio.run() can't use it ("attached to a different
+    loop")."""
     from analytics.activation_metrics import activation_metrics_engine
 
     client.post(f"/statements/{processed_statement['statement_id']}/viewed", headers=_auth_headers_no_content_type(auth_user))
 
-    result = asyncio.run(activation_metrics_engine.compute())
+    result = client.portal.call(activation_metrics_engine.compute)
     assert 0.0 <= result["activation_rate_24h"] <= 1.0
     assert 0.0 <= result["return_use_rate"] <= 1.0
     assert result["sample_size"]["total_users"] >= 1
