@@ -199,6 +199,39 @@ services:
           cpus: "0.1"
           memory: 128m
 
+  # ---- Redis (optional, commented out by default) ----
+  # Same posture as Mongo/Milvus/Ollama: this file assumes Redis is already
+  # running somewhere externally-managed, with REDIS_URI pointed at it - see
+  # the comment on miravelt-backend's REDIS_URI above. If you don't have one
+  # yet and want this compose file to run it instead, uncomment this block
+  # and set REDIS_URI=redis://redis:6379/0 in your .env. Lightweight enough
+  # (one container + one volume) that running it here is a reasonable
+  # default if you have no other opinion on where Redis should live.
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: miravelt-redis
+  #   restart: always
+  #   volumes:
+  #     - redis_data:/data
+  #   networks:
+  #     - coolify
+  #   security_opt:
+  #     - no-new-privileges:true
+  #   cap_drop:
+  #     - ALL
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: "0.5"
+  #         memory: 256m
+  #       reservations:
+  #         cpus: "0.1"
+  #         memory: 64m
+
 networks:
   coolify:
     external: true
+
+# Uncomment alongside the redis service block above.
+# volumes:
+#   redis_data:

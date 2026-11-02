@@ -50,7 +50,11 @@ MONGODB_URI, MILVUS_URI, EMBED_MODEL, LLM_MODEL, MIRAVELT_API_KEY, JWT_SECRET_KE
 
 `REDIS_URI` is **newly required** as of this change — it used to be optional (caching/rate-limit
 only). Statement upload now dispatches via Celery and will `503` without a reachable broker, so
-treat Redis with the same seriousness as Mongo from here on.
+treat Redis with the same seriousness as Mongo from here on. If there's no Redis in the homelab
+yet, `docker-compose_production.yaml` has a ready-to-uncomment `redis` service at the bottom of
+the file (off by default, matching this file's "externally managed infra" default for
+Mongo/Milvus/Ollama) — uncomment it and its `redis_data` volume if you'd rather this compose file
+run it than point at something else.
 
 Strongly recommended, not enforced by a startup check:
 
