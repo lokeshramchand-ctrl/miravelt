@@ -18,7 +18,8 @@ unrelated task, and the exact list of things to stop and ask about before changi
 before making any cross-cutting change.** `PRD.md` says what the product does and what is shipped
 vs. open; `DESIGN_SYSTEM.md` holds the mobile app's tokens, components and UI rules.
 `docs/README.md` indexes the full documentation set (architecture, API reference, data model,
-phase-by-phase internals, auth, testing, known issues).
+phase-by-phase internals, auth, testing, known issues). `HOMELAB_CHECKLIST.md` is the operator
+checklist for running this in a self-hosted Coolify homelab.
 
 ## Commands
 
@@ -36,12 +37,14 @@ uvicorn app:app --reload --host 0.0.0.0 --port 8000   # run locally (needs Mongo
 # Whole stack (Mongo + Milvus + Ollama + backend) in Docker:
 docker compose -f docker-compose_local.yaml up --build
 
-pytest test_api.py -v                                 # full suite - requires a live MongoDB at $MONGODB_URI, nothing is mocked
+pytest test_api.py -v                                 # full suite - requires a live MongoDB at $MONGODB_URI
+                                                        # and a reachable Redis at $REDIS_URI, nothing is mocked
 pytest test_api.py -v -k test_categorize_valid_payload # single test
 # Run it like CI does: ENFORCE_HTTPS=false (TestClient speaks http://), no ADMIN_API_KEY, and
-# ideally MONGODB_DB_NAME pointing at a throwaway DB - app startup fails any in-flight statement
-# job in its DB (see ARCHITECTURE.md §3), including a running dev server's.
-ENFORCE_HTTPS=false ADMIN_API_KEY= MONGODB_DB_NAME=miravelt_test pytest test_api.py -v
+# ideally MONGODB_DB_NAME pointing at a throwaway DB. REDIS_URI must point at a real, reachable
+# Redis - POST /statements/upload dispatches via Celery (tasks/statement_tasks.py) and needs a
+# broker to even return 202, same hard dependency as MongoDB now (see ARCHITECTURE.md §3).
+ENFORCE_HTTPS=false ADMIN_API_KEY= MONGODB_DB_NAME=miravelt_test REDIS_URI=redis://localhost:6379/0 pytest test_api.py -v
 bash scripts/test_pipeline.sh                          # manual curl-driven E2E smoke test against a running server
 
 ruff check .                                           # lint - CI and pre-commit pin ruff 0.16.8; keep both in step

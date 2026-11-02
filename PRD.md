@@ -166,6 +166,8 @@ accounts; desktop drag-and-drop upload; donut or pie charts (a deliberate design
    deterministic insights cover the gap, but LLM-written signals need a properly sized host.
 5. **Categorisation coverage:** payments to individuals (a large share of UPI spend) stay
    Uncategorized by design; user corrections are the path to better coverage.
-6. **Processing is in-process** (FastAPI background tasks, one worker). A restart loses in-flight
-   jobs (they are failed cleanly), and horizontal scaling needs a task queue first.
+6. ~~**Processing is in-process** (FastAPI background tasks, one worker). A restart loses in-flight
+   jobs (they are failed cleanly), and horizontal scaling needs a task queue first.~~ **Resolved** —
+   statement processing now runs via Celery/Redis (`tasks/statement_tasks.py`), so multiple
+   backend API replicas are safe; see `ARCHITECTURE.md` §3 and `HOMELAB_CHECKLIST.md`.
 7. **Theme setting** does nothing visible until the design adds a dark reading surface.

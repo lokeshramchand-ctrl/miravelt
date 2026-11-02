@@ -1,18 +1,28 @@
 """
 Celery application: task queue + beat scheduler for miravelt-backend's batch
-pipelines (routers/pipelines.py) and the retraining-queue executor
-(feedback/retraining_queue.py) - both previously manual-trigger-only, and a
-TODO respectively (docs/16-known-issues-tech-debt.md §16.5).
+pipelines (routers/pipelines.py), the retraining-queue executor
+(feedback/retraining_queue.py), and statement processing
+(tasks/statement_tasks.py, dispatched from routers/statements.py).
 
-Never imported by app.py - this runs as two separate OS processes, started
-explicitly wherever this backend is deployed:
+This module *is* imported by the API process now (transitively, via
+routers/statements.py -> tasks.statement_tasks -> here) so it can call
+`.delay()` to enqueue a statement for processing - that's a lightweight,
+lazy-connected publish to Redis (like core/cache.py's client), not task
+execution. Task *execution* - run_async(), the worker's own event loop and
+Mongo/Milvus connections set up below - only ever happens in separate
+`celery worker`/`celery beat` OS processes, started explicitly wherever this
+backend is deployed:
 
-    celery -A tasks.celery_app worker --loglevel=info
-    celery -A tasks.celery_app beat --loglevel=info
+    celery -A tasks.celery_app worker --loglevel=info -Q celery       # pipelines + retraining
+    celery -A tasks.celery_app worker --loglevel=info -Q statements   # statement processing
+    celery -A tasks.celery_app beat --loglevel=info                   # singleton - never run more than one
 
-Requires REDIS_URI to be set; see docker-compose_local.yaml /
-docker-compose_production.yaml for the `celery-worker` / `celery-beat`
-service definitions that already wire this up.
+Two separate worker queues so a burst of statement uploads never delays a
+scheduled clustering run, and vice versa (see task_routes below). Requires
+REDIS_URI to be set (now a hard dependency - core/config.py); see
+docker-compose_local.yaml / docker-compose_production.yaml for the
+`celery-worker` / `celery-worker-statements` / `celery-beat` service
+definitions that already wire this up.
 """
 import asyncio
 import logging
@@ -30,9 +40,9 @@ logger = logging.getLogger(__name__)
 
 celery_app = Celery(
     "miravelt",
-    broker=settings.REDIS_URI or "redis://localhost:6379/0",
-    backend=settings.REDIS_URI or "redis://localhost:6379/0",
-    include=["tasks.pipeline_tasks", "tasks.retraining_tasks"],
+    broker=settings.REDIS_URI,
+    backend=settings.REDIS_URI,
+    include=["tasks.pipeline_tasks", "tasks.retraining_tasks", "tasks.statement_tasks"],
 )
 
 celery_app.conf.update(
@@ -46,9 +56,19 @@ celery_app.conf.update(
     # silently killed mid-run, but also shouldn't hang a worker forever if
     # Mongo/Milvus/Ollama wedge - matches the "fail eventually, don't hang
     # forever" posture of this app's other timeouts (core/config.py's
-    # MONGODB_*_TIMEOUT_MS).
+    # MONGODB_*_TIMEOUT_MS). Statement processing overrides this with a much
+    # tighter per-task limit (tasks/statement_tasks.py) since a real user is
+    # waiting on it, unlike these batch jobs.
     task_soft_time_limit=1800,
     task_time_limit=2100,
+    # Keeps statement processing off the pipelines'/retraining's default
+    # queue (and vice versa) - each gets its own `celery worker -Q ...`
+    # process (see docker-compose_*.yaml), so load on one never delays the
+    # other.
+    task_routes={
+        "tasks.statement_tasks.process_statement_task": {"queue": "statements"},
+        "tasks.statement_tasks.sweep_stale_statement_jobs": {"queue": "statements"},
+    },
 )
 
 celery_app.conf.beat_schedule = {
@@ -75,6 +95,10 @@ celery_app.conf.beat_schedule = {
     "retraining-queue-check": {
         "task": "tasks.retraining_tasks.check_and_trigger_retraining",
         "schedule": timedelta(minutes=settings.RETRAINING_CHECK_INTERVAL_MINUTES),
+    },
+    "statement-stale-job-sweep": {
+        "task": "tasks.statement_tasks.sweep_stale_statement_jobs",
+        "schedule": timedelta(minutes=settings.STATEMENT_STALE_JOB_SWEEP_INTERVAL_MINUTES),
     },
 }
 

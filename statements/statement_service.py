@@ -44,9 +44,18 @@ class StatementService:
             logger.error("Statement %s vanished before processing could start.", statement_id)
             return
 
+        claimed = await job_repo.claim_and_mark_running(job_id, "parsing")
+        if not claimed:
+            # A redelivered Celery task (tasks/statement_tasks.py's
+            # acks_late + task_reject_on_worker_lost) whose job is already
+            # RUNNING or finished - reprocessing here could create duplicate
+            # transactions, so this is left for the periodic stale-job sweep
+            # rather than retried inline.
+            logger.info("Job %s already claimed or finished - skipping duplicate delivery.", job_id)
+            return
+
         try:
             await statement_repo.mark_processing(statement_id)
-            await job_repo.mark_running(job_id, "parsing")
 
             # Synchronous parsing/categorizing runs on a worker thread so the
             # single-process server keeps answering other requests meanwhile.

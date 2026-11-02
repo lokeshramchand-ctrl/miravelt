@@ -29,8 +29,6 @@ from database.milvus import vector_db
 from database.mongo import db
 from feedback.api_router import router as feedback_router
 from milvus.insert_vectors import vector_store
-from repositories.job_repository import job_repo
-from repositories.statement_repository import statement_repo
 
 # Routers
 from routers import admin, analytics, app_updates, auth, devices, jobs, memory, pipelines, rag, statements, users, v1
@@ -76,21 +74,6 @@ async def _milvus_reconnect_loop(uri: str, interval: int = 15):
             logger.info("Milvus reconnected successfully in background.")
 
 
-async def _fail_interrupted_statement_jobs() -> None:
-    """Statement processing runs in this process, so a restart kills whatever
-    was mid-flight. Fail those jobs (and their statements) now, so the app
-    shows "upload again" instead of polling a job nothing is running."""
-    message = "Processing was interrupted by a server restart. Please upload this statement again."
-    try:
-        statement_ids = await job_repo.fail_interrupted_statement_jobs(message)
-        for statement_id in statement_ids:
-            await statement_repo.mark_failed(statement_id, message)
-        if statement_ids:
-            logger.warning("Failed %d statement job(s) interrupted by the last shutdown.", len(statement_ids))
-    except Exception:
-        logger.exception("Could not clean up interrupted statement jobs - continuing startup.")
-
-
 # Lifespan
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -99,7 +82,12 @@ async def lifespan(app: FastAPI):
     # MongoDB
     await db.connect(uri=settings.MONGODB_URI, db_name=settings.MONGODB_DB_NAME)
     await db.ensure_indexes()
-    await _fail_interrupted_statement_jobs()
+    # Statement processing no longer runs in this process (see
+    # tasks/statement_tasks.py), so a restart here no longer orphans any
+    # job - the old startup sweep that used to live here was removed along
+    # with that assumption. A job truly abandoned by a crashed Celery
+    # worker is instead caught by tasks/statement_tasks.py's periodic,
+    # time-based sweep_stale_statement_jobs.
 
     # Milvus
     vector_db.connect(uri=settings.MILVUS_URI)
@@ -270,20 +258,23 @@ async def _check_dependencies() -> tuple[str, dict, dict]:
         services["ollama"] = "error"
         details["ollama"] = "Ollama health check failed - see server logs."
 
-    # Informational only, like Milvus/Ollama above - caching and the
-    # scheduler/task queue (tasks/celery_app.py) both degrade to "disabled"
-    # rather than the app failing, so Redis never gates /ready either.
-    if not settings.REDIS_URI:
-        services["redis"] = "not_configured"
-        details["redis"] = "REDIS_URI unset - caching, distributed rate limiting, and the Celery task queue/scheduler are disabled."
-    elif cache.is_connected:
-        services["redis"] = "connected"
-        details["redis"] = "Cache client configured."
-    else:
+    # Redis now gates /ready alongside MongoDB: statement upload dispatches
+    # via Celery (tasks/statement_tasks.py), which needs a reachable broker -
+    # an unreachable Redis means the core product flow is actually down, not
+    # just caching/rate-limit storage (core/config.py's REDIS_URI comment).
+    try:
+        if await cache.ping():
+            services["redis"] = "connected"
+            details["redis"] = "Active ping successful."
+        else:
+            services["redis"] = "error"
+            details["redis"] = "Redis client not configured or unreachable - see server logs."
+    except Exception:
+        logger.exception("Dependency check: Redis ping failed")
         services["redis"] = "error"
-        details["redis"] = "REDIS_URI set but client failed to initialize - see server logs."
+        details["redis"] = "Redis health check failed - see server logs."
 
-    overall_status = "healthy" if all(v in ("connected", "not_configured") for v in services.values()) else "degraded"
+    overall_status = "healthy" if all(v == "connected" for v in services.values()) else "degraded"
     return overall_status, services, details
 
 
@@ -295,11 +286,13 @@ async def liveness():
 @app.get("/ready", tags=["System"])
 async def readiness():
     _, services, _ = await _check_dependencies()
-    # MongoDB is this app's one hard dependency for correctness (every write
-    # path needs it); Milvus/Ollama degrade specific features gracefully
-    # (see rag/retriever.py, milvus/insert_vectors.py) rather than failing
-    # the whole app, so they don't gate readiness.
-    is_ready = services.get("mongodb") == "connected"
+    # MongoDB and Redis are this app's hard dependencies now: every write
+    # path needs Mongo, and statement upload needs Redis to dispatch its
+    # Celery task (tasks/statement_tasks.py). Milvus/Ollama still degrade
+    # specific features gracefully (see rag/retriever.py,
+    # milvus/insert_vectors.py) rather than failing the whole app, so they
+    # don't gate readiness.
+    is_ready = services.get("mongodb") == "connected" and services.get("redis") == "connected"
     return JSONResponse(
         status_code=200 if is_ready else 503,
         content={"status": "ready" if is_ready else "not_ready", "services": services},

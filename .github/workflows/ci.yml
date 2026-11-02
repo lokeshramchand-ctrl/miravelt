@@ -80,10 +80,24 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      # Statement upload now dispatches via Celery (tasks/statement_tasks.py)
+      # instead of in-process BackgroundTasks, so POST /statements/upload
+      # needs a reachable broker to even return 202 - test_api.py's
+      # processed_statement fixture exercises that real dispatch.
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       MONGODB_URI: "mongodb://localhost:27017/?authSource=admin"
       MONGODB_DB_NAME: "miravelt_ci"
       MILVUS_URI: "http://localhost:19530"
+      REDIS_URI: "redis://localhost:6379/0"
       EMBED_MODEL: "nomic-embed-text"
       LLM_MODEL: "llama3"
       MIRAVELT_API_KEY: "ci_test_key"

@@ -68,6 +68,17 @@ class CacheClient:
         except Exception:
             logger.warning("Redis DELETE failed for keys=%s.", keys, exc_info=True)
 
+    async def ping(self) -> bool:
+        """Active reachability check, for app.py's /ready (Redis is now a
+        hard dependency - core/config.py - not just an optional cache)."""
+        if self._client is None:
+            return False
+        try:
+            return bool(await self._client.ping())
+        except Exception:
+            logger.warning("Redis PING failed.", exc_info=True)
+            return False
+
     @property
     def is_connected(self) -> bool:
         return self._client is not None

@@ -129,9 +129,9 @@ services:
   # ---- Redis (cache + Celery broker/backend) ----
   # Backs core/cache.py's response caching, core/rate_limiter.py's
   # distributed rate-limit storage, and tasks/celery_app.py's broker.
-  # Optional at the app level (REDIS_URI unset just disables those - see
-  # core/config.py), but required for celery-worker/celery-beat below to do
-  # anything.
+  # Required (core/config.py) - statement upload dispatches via Celery
+  # (tasks/statement_tasks.py), so miravelt-backend itself now needs this
+  # reachable too, not just the celery-worker*/celery-beat services below.
   redis:
     image: redis:7-alpine
     container_name: redis
@@ -193,12 +193,14 @@ services:
     cap_drop:
       - ALL
 
-  # ---- Celery worker + beat (tasks/celery_app.py) ----
-  # Same image as miravelt-backend, different entrypoint - these run the
-  # scheduled batch pipelines (routers/pipelines.py) and the retraining
-  # executor (feedback/retraining_queue.py) instead of serving HTTP.
-  # Requires REDIS_URI (set in .env, pointing at redis:6379 on this network)
-  # - see .env.example.
+  # ---- Celery workers + beat (tasks/celery_app.py) ----
+  # Same image as miravelt-backend, different entrypoint/queue - celery-worker
+  # runs the scheduled batch pipelines (routers/pipelines.py) + the
+  # retraining executor (feedback/retraining_queue.py) on the default
+  # "celery" queue; celery-worker-statements runs statement processing
+  # (tasks/statement_tasks.py) on its own "statements" queue, kept separate
+  # so one never delays the other. Requires REDIS_URI (set in .env, pointing
+  # at redis:6379 on this network) - see .env.example.
   celery-worker:
     build:
       context: .
@@ -219,7 +221,39 @@ services:
       MONGODB_URI: mongodb://mongodb:27017
       MILVUS_URI: http://milvus:19530
       OLLAMA_URI: http://ollama:11434
-    command: celery -A tasks.celery_app worker --loglevel=info --concurrency=2
+    command: celery -A tasks.celery_app worker --loglevel=info --concurrency=2 -Q celery
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      milvus:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+    tmpfs:
+      - /tmp
+      - /var/tmp
+      - /run
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  celery-worker-statements:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: miravelt-celery-worker-statements
+    working_dir: /app
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017
+      MILVUS_URI: http://milvus:19530
+      OLLAMA_URI: http://ollama:11434
+    command: celery -A tasks.celery_app worker --loglevel=info --concurrency=2 -Q statements
     depends_on:
       mongodb:
         condition: service_healthy

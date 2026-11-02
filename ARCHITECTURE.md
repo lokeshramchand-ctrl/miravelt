@@ -8,21 +8,22 @@ Two deployables, one shared backend contract:
 
 ```
 Flutter app (frontend/)   ─┐
-                            ├─ X-Miravelt-API-Key + JWT ──▶  FastAPI monolith (app.py)  ──▶  MongoDB (system of record)
-Next.js admin-dashboard   ─┘  (BFF, server-only)                  │                  ──▶  Milvus (vector search)
-                                                                    └────────────────  ──▶  Ollama (embeddings + LLM generation)
+                            ├─ X-Miravelt-API-Key + JWT ──▶  FastAPI (app.py, N replicas ok)  ──▶  MongoDB (system of record)
+Next.js admin-dashboard   ─┘  (BFF, server-only)                  │              │        ──▶  Milvus (vector search)
+                                                                    │              └──────  ──▶  Ollama (embeddings + LLM generation)
+                                                                    └─ enqueues ─▶  Redis  ──▶  Celery workers (statements / pipelines) + beat
 ```
 
-- **`app.py`** is a single FastAPI process (one uvicorn worker) — routers, ML engines, and statement processing all run in the same Python process, same container. Statement processing runs via `fastapi.BackgroundTasks` in-process. Celery + Redis exist only for the *batch* pipelines' schedule, and only when `REDIS_URI` is set (§3); they never run statement processing.
+- **`app.py`** is a FastAPI process — routers and ML engines run in the same Python process, same container, and **more than one replica of it is now safe** (see below). Statement processing and the batch pipelines both run as Celery tasks against Redis (`tasks/celery_app.py`, `tasks/statement_tasks.py`, `tasks/pipeline_tasks.py`) — `REDIS_URI` is a required setting, not optional, because statement upload depends on it to dispatch.
 - **`admin-dashboard/`** is a separate Next.js app acting as a **BFF (backend-for-frontend)**, not a second backend. It holds no business logic and no direct datastore access — every page/action calls the FastAPI backend over HTTP.
 - **`frontend/`** is the Flutter mobile client, the actual product surface end users touch.
-- **MongoDB** is the one hard dependency — `/ready` fails without it. **Milvus** and **Ollama** degrade specific features (RAG, embeddings) gracefully rather than failing the app (`app.py`'s `_check_dependencies`).
+- **MongoDB and Redis** are both hard dependencies now — `/ready` fails without either (Redis because statement upload needs it to dispatch via Celery). **Milvus** and **Ollama** still degrade specific features (RAG, embeddings) gracefully rather than failing the app (`app.py`'s `_check_dependencies`).
 
 ## 2. Who's responsible for what
 
 | Area | Owns | Lives in |
 |---|---|---|
-| Ingestion | Raw text/PDF → categorized transaction | `routers/v1.py`, `statements/`, `engines/rule_engine.py` |
+| Ingestion | Raw text/PDF → categorized transaction | `routers/v1.py`, `statements/`, `engines/rule_engine.py`, `tasks/statement_tasks.py` (Celery dispatch) |
 | Merchant resolution | Noisy bank/UPI text → canonical merchant | `services/merchant_resolver.py` |
 | Memory / trust | Merchant familiarity state (EPHEMERAL→TEMPORARY→PERMANENT→ARCHIVED) | `memory/` |
 | Behavioral intelligence | Feature extraction, clustering, anomaly/subscription detection | `behaviour/`, `features/`, `clustering/`, `analytics/` |
@@ -44,12 +45,12 @@ Each of these has exactly one home. If you find yourself duplicating merchant re
 - **Two auth keys, not one.** `MIRAVELT_API_KEY` ships inside every client app binary and is trivially extractable — it authenticates "this is the real app," nothing more. `ADMIN_API_KEY` gates `routers/pipelines.py` and release publishing precisely *because* it must never be reachable by anything holding only the client key. Don't collapse these, and don't let `ADMIN_API_KEY` fall back to `MIRAVELT_API_KEY` (`core/config.py` comment is explicit about this).
 - **Every router still requires `X-Miravelt-API-Key` even when a JWT is also required.** The two checks are independent and both enforced — a valid JWT without the API key is rejected before the handler runs. This is intentional defense-in-depth, not redundancy to remove.
 - **No CORS middleware unless `CORS_ORIGINS` is set.** Closed-by-default, same posture as the API key. It only got turned on once the admin dashboard (a browser client) needed to call the API directly — the mobile app never needed it.
-- **Liveness vs. readiness are split** so a hung Mongo/Milvus/Ollama dependency never fails liveness and triggers a restart-loop that won't fix anything. Only MongoDB gates `/ready`; Milvus/Ollama don't, because those features are designed to degrade, not crash the app.
+- **Liveness vs. readiness are split** so a hung Mongo/Redis/Milvus/Ollama dependency never fails liveness and triggers a restart-loop that won't fix anything. MongoDB and Redis both gate `/ready` now; Milvus/Ollama don't, because those features are designed to degrade, not crash the app.
 - **`/v1/explain` refuses to call Ollama with no retrieved context** (`rag/retriever.py` → `"NO_CONTEXT_AVAILABLE"` short-circuit). This is the system's core hallucination-prevention guarantee — never route around it by letting the generator run on empty context "just to return something."
-- **Batch pipelines (`behaviour`, `clustering`, `memory/decay_engine`, `graphs`) are reachable both manually (`/v1/pipelines/*`) and on a schedule.** `tasks/celery_app.py` + `tasks/pipeline_tasks.py` run the same engine functions on a beat schedule (`core/config.py`'s `PIPELINE_*_INTERVAL_MINUTES`) via a Celery worker/beat process pair — see `docker-compose_local.yaml`'s `celery-worker`/`celery-beat` services. This requires `REDIS_URI` to be set; unset, everything degrades to manual-trigger-only, same as before. Still don't add a *second* scheduling mechanism (e.g. APScheduler, a raw cron entry calling the API) — this is now the one home for it, matching §2's "each responsibility has exactly one home."
+- **Batch pipelines (`behaviour`, `clustering`, `memory/decay_engine`, `graphs`) are reachable both manually (`/v1/pipelines/*`) and on a schedule.** `tasks/celery_app.py` + `tasks/pipeline_tasks.py` run the same engine functions on a beat schedule (`core/config.py`'s `PIPELINE_*_INTERVAL_MINUTES`) via a Celery worker/beat process pair — see `docker-compose_local.yaml`'s `celery-worker`/`celery-beat` services. `REDIS_URI` is required now (statement processing below also depends on it). Still don't add a *second* scheduling mechanism (e.g. APScheduler, a raw cron entry calling the API) — this is now the one home for it, matching §2's "each responsibility has exactly one home."
 - **Repositories exist for users, refresh tokens, statements, jobs, transactions, app releases and merchant profiles** (`repositories/`). A few places still query `database.mongo.db.<collection>` directly — `routers/v1.py`, `routers/pipelines.py`, and the analytics/behaviour engines' aggregation pipelines. That is documented tech debt, not a pattern to copy: new persistent-state work goes through a repository.
-- **Statement processing is in-process, so startup fails orphaned jobs.** A restart kills whatever `BackgroundTasks` job was running while its document still says RUNNING. `app.py::_fail_interrupted_statement_jobs` marks every QUEUED/RUNNING statement job (and its statement) FAILED at startup. This is only correct while **exactly one backend process uses a given database** — a second uvicorn worker, or a test run pointed at a live dev database, would fail the other process's in-flight jobs. Moving processing onto a real queue removes the constraint.
-- **Synchronous work never runs on the event loop.** pdfplumber extraction in the upload handler, transaction parsing in the pipeline, and the blocking pymilvus client all go through `asyncio.to_thread`. On a single-process server a few seconds of CPU on the loop freezes every other request (measured: a `/live` probe waited 35.9s during an upload).
+- **Statement processing runs as a Celery task, not in the API process.** `routers/statements.py` dispatches `tasks.statement_tasks.process_statement_task.delay(...)` to its own `"statements"` queue, separate from the batch pipelines' queue (its own dedicated worker, see `docker-compose_*.yaml`). This removes the old "exactly one backend process" constraint - **multiple `miravelt-backend` replicas are now safe**, since none of them execute processing themselves, only enqueue it. A worker crash mid-job doesn't silently lose or double-process it: `acks_late`/`task_reject_on_worker_lost` let the broker redeliver, and `job_repository.py::claim_and_mark_running` is an atomic `QUEUED -> RUNNING` guard so a redelivery can't reprocess a job another delivery already claimed - an orphaned job is instead caught by a time-based periodic sweep (`tasks.statement_tasks.sweep_stale_statement_jobs`), not retried inline. **Celery `beat` itself must stay a singleton** - never run more than one replica of it, or every scheduled job (pipelines, retraining check, the stale-job sweep) fires once per replica. See `HOMELAB_CHECKLIST.md` for the deployment-side checklist.
+- **Synchronous work never runs on the event loop.** pdfplumber extraction in the upload handler, transaction parsing in the pipeline, and the blocking pymilvus client all go through `asyncio.to_thread`. A few seconds of CPU on one replica's loop still freezes every other request on *that* replica (measured: a `/live` probe waited 35.9s during an upload) - this is unrelated to the statement-processing/Celery change above and still holds per-process.
 - **Statement insights never come back empty because the LLM failed.** `insights/statement_insights.py` asks Ollama first and falls back to deterministic insights computed from the persisted analytics — same grounding rule, no invented figures.
 - **`category_breakdown` includes Income on purpose** (`docs/23-statements-pipeline.md`). Every "where the money went" / "% of spending" view must exclude it — the app uses `StatementAnalytics.spendingBreakdown` — or shares exceed 100%.
 - **Periodicity counts distinct timestamps.** `behavior_patterns` pools a merchant's transactions across all statements and users, so re-uploaded statements produce identical timestamps; `features/periodicity.py` de-duplicates them, and a statement's recurring payments also need 3+ occurrences within that statement.
@@ -128,7 +129,7 @@ Stop and name the conflict, show what it affects, and propose the smallest fix t
 - Introduce a new background-job/scheduling mechanism as a side effect of an unrelated feature (this is a real infra decision the repo has explicitly deferred — see `docs/16-known-issues-tech-debt.md` §16.5).
 - Send a backend secret, admin key, or raw JWT to the browser in the admin dashboard.
 - Change the two-key auth model (client key vs. admin key vs. per-user JWT) in a way that collapses the distinction in §3.
-- Run more than one backend process against the same database (extra uvicorn workers, a second replica) — the startup job sweep (§3) assumes one.
+- Run more than one replica of `miravelt-celery-beat` — it's the one scheduler (§3); two replicas means every scheduled job fires twice. (Multiple `miravelt-backend` API replicas are explicitly fine now — see §3's statement-processing entry.)
 - Put blocking or CPU-heavy work directly in an `async` handler or pipeline step instead of `asyncio.to_thread`.
 
 ## Related documents
@@ -137,6 +138,7 @@ Stop and name the conflict, show what it affects, and propose the smallest fix t
 - `docs/16-known-issues-tech-debt.md` — what's fixed vs. intentionally still open
 - `docs/22-authentication.md` — full auth/token lifecycle
 - `docs/23-statements-pipeline.md` — statement ingestion pipeline detail
+- `HOMELAB_CHECKLIST.md` — operator checklist for deploying/running this in a self-hosted Coolify homelab
 - `PRD.md` — what the product does and what's shipped vs. open
 - `DESIGN_SYSTEM.md` — the mobile app's tokens, components and rules
 - `admin-dashboard/README.md` — dashboard-specific conventions

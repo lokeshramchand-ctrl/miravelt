@@ -1,5 +1,5 @@
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -28,11 +28,18 @@ class JobRepository:
         doc["_id"] = str(doc["_id"])
         return Job(**doc)
 
-    async def mark_running(self, job_id: str, stage: str) -> None:
-        await db.jobs.update_one(
-            {"_id": ObjectId(job_id)},
+    async def claim_and_mark_running(self, job_id: str, stage: str) -> bool:
+        """Atomic claim: only transitions QUEUED -> RUNNING, and only the
+        caller that actually performs that transition gets True back. Needed
+        now that a Celery task can be redelivered after a worker crash
+        (acks_late + task_reject_on_worker_lost, see
+        tasks/statement_tasks.py) - a redelivered task must never reprocess
+        a job another delivery already claimed (duplicate transactions)."""
+        result = await db.jobs.update_one(
+            {"_id": ObjectId(job_id), "status": JobStatus.QUEUED.value},
             {"$set": {"status": JobStatus.RUNNING.value, "stage": stage, "started_at": datetime.now(UTC)}},
         )
+        return result.modified_count > 0
 
     async def update_progress(self, job_id: str, stage: str, progress_percent: int) -> None:
         await db.jobs.update_one(
@@ -65,15 +72,21 @@ class JobRepository:
             },
         )
 
-    async def fail_interrupted_statement_jobs(self, error_message: str) -> list[str]:
-        """Marks every still-QUEUED/RUNNING statement job FAILED and returns
-        their statement ids. Only valid at process startup: jobs run in-process
-        (fastapi BackgroundTasks, one uvicorn worker - see the Dockerfile), so
-        any job still "in flight" when the process starts was killed with the
-        previous one and would otherwise poll as running forever."""
+    async def fail_stale_running_jobs(self, older_than_minutes: int, error_message: str) -> list[str]:
+        """Time-based replacement for the old restart-based sweep (statement
+        processing used to run in-process, so an API restart meant "still
+        RUNNING" => "was just killed" - see app.py's removed
+        _fail_interrupted_statement_jobs). Now that processing runs in
+        separate Celery workers, an API restart orphans nothing; this instead
+        catches a job truly abandoned by a crashed/killed worker, without
+        touching one that's just taking a while - see
+        tasks/statement_tasks.py::sweep_stale_statement_jobs, which calls
+        this periodically via Celery beat."""
+        cutoff = datetime.now(UTC) - timedelta(minutes=older_than_minutes)
         query = {
             "job_type": JobType.STATEMENT_PROCESSING.value,
-            "status": {"$in": [JobStatus.QUEUED.value, JobStatus.RUNNING.value]},
+            "status": JobStatus.RUNNING.value,
+            "started_at": {"$lt": cutoff},
         }
         statement_ids = [doc["resource_id"] async for doc in db.jobs.find(query, {"resource_id": 1})]
         if statement_ids:

@@ -63,6 +63,11 @@ class Settings(BaseSettings):
     MONGODB_CONNECT_TIMEOUT_MS: int = 5000
     MONGODB_REQUIRE_TLS: bool = True
     MONGODB_VALIDATE_TLS_CERTIFICATE: bool = True
+    # Explicit, tunable cap rather than Motor's unconfigured default (100) -
+    # matters once more than one backend replica is running (see
+    # tasks/statement_tasks.py / ARCHITECTURE.md §3): N replicas x this value
+    # is the real ceiling on simultaneous connections to MongoDB.
+    MONGODB_MAX_POOL_SIZE: int = 50
     # Security: Input validation and request constraints
     MAX_STRING_FIELD_LENGTH: int = 500
     MAX_USERNAME_LENGTH: int = 128
@@ -84,15 +89,18 @@ class Settings(BaseSettings):
     REQUEST_SIGNATURE_MAX_AGE_SECONDS: int = 60  # Maximum age of request timestamp
 
     # Task queue / scheduler / cache (Redis + Celery - core/cache.py,
-    # tasks/celery_app.py). Optional: the FastAPI process never hard-depends
-    # on Redis for anything - an unset REDIS_URI just means response caching
-    # and distributed rate-limit storage silently no-op (core/cache.py,
-    # core/rate_limiter.py) and the batch pipelines in routers/pipelines.py
-    # stay manual-trigger-only, same as before this existed. Run
-    # `celery -A tasks.celery_app worker` / `... beat` as separate processes
-    # against this same URI to actually get scheduling + the retraining
-    # queue executor - see docs/16-known-issues-tech-debt.md §16.5.
-    REDIS_URI: str | None = None
+    # tasks/celery_app.py). Required, not optional: statement processing
+    # (statements/statement_service.py) dispatches via Celery
+    # (tasks/statement_tasks.py::process_statement_task.delay(...)) instead
+    # of in-process FastAPI BackgroundTasks, specifically so multiple
+    # backend API replicas can run safely against the same MongoDB
+    # (ARCHITECTURE.md §3) - that dispatch needs a reachable broker, so an
+    # unset/unreachable Redis now breaks the core upload flow, not just
+    # caching/distributed rate limiting (core/cache.py, core/rate_limiter.py).
+    # Still run `celery -A tasks.celery_app worker -Q statements` /
+    # `... worker -Q celery` / `... beat` as separate processes against this
+    # same URI - see docker-compose_local.yaml / docker-compose_production.yaml.
+    REDIS_URI: str
     CACHE_ENABLED: bool = True
     CACHE_DEFAULT_TTL_SECONDS: int = 300
 
@@ -107,6 +115,14 @@ class Settings(BaseSettings):
     PIPELINE_GRAPH_INTERVAL_MINUTES: int = 720  # 12h
     PIPELINE_CLUSTERING_INTERVAL_MINUTES: int = 1440  # 24h
     RETRAINING_CHECK_INTERVAL_MINUTES: int = 30
+    # Time-based replacement for the old restart-based "fail jobs still
+    # running when the API process starts" sweep (removed - statement
+    # processing no longer lives in the API process, so an API restart no
+    # longer orphans anything). A job genuinely abandoned by a crashed/
+    # killed Celery worker is caught instead by how long it's been RUNNING -
+    # see tasks/statement_tasks.py::sweep_stale_statement_jobs.
+    STATEMENT_STALE_JOB_TIMEOUT_MINUTES: int = 20
+    STATEMENT_STALE_JOB_SWEEP_INTERVAL_MINUTES: int = 5
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

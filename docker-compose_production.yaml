@@ -24,14 +24,14 @@ services:
       - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
       - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-15}
       - JWT_REFRESH_TOKEN_EXPIRE_DAYS=${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-30}
-      # Optional, same as every other dependency in this file - an empty
-      # value just leaves caching/distributed rate limiting disabled (see
-      # core/config.py). Required for the miravelt-celery-worker/-beat services
-      # below to do anything; point it at a managed/self-hosted Redis, same
-      # pattern as MONGODB_URI/MILVUS_URI above (no Redis container is
-      # started by this file - production points at externally managed
-      # infrastructure, not a compose-local one, same as Mongo/Milvus/Ollama).
-      - REDIS_URI=${REDIS_URI:-}
+      # Required (core/config.py) - statement upload dispatches via Celery
+      # (tasks/statement_tasks.py), which needs a reachable broker, so this
+      # is no longer just a caching/rate-limiting nice-to-have. Point it at
+      # a managed/self-hosted Redis, same pattern as MONGODB_URI/MILVUS_URI
+      # above (no Redis container is started by this file - production
+      # points at externally managed infrastructure, not a compose-local
+      # one, same as Mongo/Milvus/Ollama).
+      - REDIS_URI=${REDIS_URI:?REDIS_URI must be set}
     ports:
       - "9850:8000"
     restart: always
@@ -71,20 +71,27 @@ services:
           cpus: "0.5"
           memory: 512m
 
-  # ---- Celery worker + beat (tasks/celery_app.py) ----
-  # Same image as miravelt-backend, different command - these run the
-  # scheduled batch pipelines (routers/pipelines.py) and the retraining
-  # executor (feedback/retraining_queue.py) instead of serving HTTP. Both
-  # are no-ops if REDIS_URI is left unset: `celery beat` will idle with an
-  # unreachable broker and `celery worker` will just never receive a task,
-  # neither crash-loops the deployment, but nothing runs either - this is
-  # meaningful infrastructure to actually get automatic scheduling, not a
-  # decoration. Omit these two services entirely if you don't want a
-  # scheduler running yet.
+  # ---- Celery workers + beat (tasks/celery_app.py) ----
+  # Same image as miravelt-backend, different command/queue. Three services,
+  # not one worker handling everything, so load on one never delays another:
+  #   - miravelt-celery-worker: scheduled batch pipelines
+  #     (routers/pipelines.py) + the retraining executor
+  #     (feedback/retraining_queue.py), queue "celery" (Celery's default).
+  #   - miravelt-celery-worker-statements: statement processing
+  #     (tasks/statement_tasks.py), queue "statements" - this is now on the
+  #     critical path for every statement upload (routers/statements.py
+  #     dispatches to it instead of in-process BackgroundTasks), not an
+  #     optional extra. Tune STATEMENT_WORKER_CONCURRENCY against your
+  #     actual Ollama throughput (scripts/stress_test.py) before trusting a
+  #     number - a single GPU-backed Ollama instance is the real ceiling,
+  #     not this worker.
+  #   - miravelt-celery-beat: the one scheduler (ARCHITECTURE.md §6/§8) -
+  #     never run more than one replica of this service, or every
+  #     scheduled job fires once per replica.
   miravelt-celery-worker:
     build: .
     container_name: miravelt-celery-worker
-    command: celery -A tasks.celery_app worker --loglevel=info --concurrency=2
+    command: celery -A tasks.celery_app worker --loglevel=info --concurrency=2 -Q celery
     environment:
       - MONGODB_URI=${MONGODB_URI:?MONGODB_URI must be set}
       - MONGODB_DB_NAME=${MONGODB_DB_NAME:-miravelt}
@@ -116,6 +123,45 @@ services:
         reservations:
           cpus: "0.25"
           memory: 256m
+
+  miravelt-celery-worker-statements:
+    build: .
+    container_name: miravelt-celery-worker-statements
+    command: celery -A tasks.celery_app worker --loglevel=info --concurrency=${STATEMENT_WORKER_CONCURRENCY:-2} -Q statements
+    environment:
+      - MONGODB_URI=${MONGODB_URI:?MONGODB_URI must be set}
+      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-miravelt}
+      - MILVUS_URI=${MILVUS_URI:?MILVUS_URI must be set}
+      - OLLAMA_URI=${OLLAMA_URI:-}
+      - OLLAMA_HOSTS=${OLLAMA_HOSTS:-}
+      - EMBED_MODEL=${EMBED_MODEL:?EMBED_MODEL must be set}
+      - LLM_MODEL=${LLM_MODEL:?LLM_MODEL must be set}
+      - MIRAVELT_API_KEY=${MIRAVELT_API_KEY:?MIRAVELT_API_KEY must be set}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
+      - REDIS_URI=${REDIS_URI:?REDIS_URI must be set}
+    restart: always
+    networks:
+      - coolify
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
+      - /run
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # Larger than the pipeline worker: this is on the critical path for
+    # every statement upload and does the PDF parsing + Ollama insight call
+    # per job. Still a starting default - tune against real load.
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2g
+        reservations:
+          cpus: "0.5"
+          memory: 512m
 
   miravelt-celery-beat:
     build: .

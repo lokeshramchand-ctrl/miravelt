@@ -2,7 +2,7 @@ import asyncio
 import logging
 from datetime import datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 
 from core.config import settings
 from core.jwt_auth import get_current_user
@@ -34,7 +34,7 @@ from statements.pdf_parser import (
     UnsupportedStatementError,
     statement_parser,
 )
-from statements.statement_service import statement_service
+from tasks import statement_tasks
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +90,6 @@ def _inspect_statement_pdf(raw_bytes: bytes, password: str | None):
 @limiter.limit("10/minute")
 async def upload_statement(
     request: Request,
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(..., description="A Google Pay 'Transaction statement' PDF"),
     password: str | None = Form(None, description="PDF password, if the statement is password-protected"),
     keep_original_pdf: bool = Form(
@@ -161,7 +160,17 @@ async def upload_statement(
     )
     await statement_repo.set_job(statement.id, job.id)
 
-    background_tasks.add_task(statement_service.process_statement, statement.id, job.id, full_text)
+    try:
+        statement_tasks.process_statement_task.delay(statement.id, job.id, full_text)
+    except Exception as e:
+        # Broker unreachable - don't leave the client polling a job nothing
+        # will ever pick up. The Statement/Job docs already exist, so retry
+        # is on the caller (re-upload), not automatic here.
+        logger.exception("Could not dispatch statement %s for processing - broker unreachable.", statement.id)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Processing queue is currently unavailable. Please try again shortly.",
+        ) from e
 
     logger.info("Statement %s queued for processing (job %s).", statement.id, job.id)
     return StatementUploadResponse(statement_id=statement.id, job_id=job.id, status=statement.processing_status)

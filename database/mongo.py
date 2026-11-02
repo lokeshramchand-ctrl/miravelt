@@ -56,6 +56,7 @@ class MongoDB:
         client_options = {
             "serverSelectionTimeoutMS": settings.MONGODB_SERVER_SELECTION_TIMEOUT_MS,
             "connectTimeoutMS": settings.MONGODB_CONNECT_TIMEOUT_MS,
+            "maxPoolSize": settings.MONGODB_MAX_POOL_SIZE,
         }
         if settings.MONGODB_REQUIRE_TLS:
             client_options["tls"] = True

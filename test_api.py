@@ -18,6 +18,8 @@ from app import app
 from core.config import settings
 from core.jwt_auth import create_access_token
 from core.rate_limiter import limiter
+from statements.pdf_parser import statement_parser
+from statements.statement_service import statement_service
 
 MOCK_STATEMENT_PATH = os.path.join(os.path.dirname(__file__), "mock", "gpay_statement_20260101_20260630.pdf")
 
@@ -580,16 +582,27 @@ def _upload_mock_statement(client, auth_user, password=None):
 
 @pytest.fixture(scope="module")
 def processed_statement(client, auth_user):
-    """Uploads the real mock statement once for this module. TestClient runs
-    FastAPI BackgroundTasks synchronously as part of the request/response
-    cycle, so by the time this returns, statement_service.process_statement
-    has already completed (or failed) - the same established pattern already
-    relied on by test_feedback_triggers_retraining_queue's background task."""
+    """Uploads the real mock statement once for this module. Statement
+    processing dispatches via Celery now (tasks/statement_tasks.py), not
+    in-process BackgroundTasks - the upload call below still exercises that
+    real process_statement_task.delay(...) dispatch against the test Redis
+    (routers/statements.py would 503 if it couldn't), proving the wiring
+    works. What it doesn't do is wait for a real Celery worker to pick the
+    task up - no such worker runs in this test suite - so this simulates
+    that worker directly, via the same client.portal.call(...) async-bridge
+    already used elsewhere in this file, calling the exact function the
+    worker would (statement_service.process_statement)."""
     logger.info("Uploading the real mock Google Pay statement for the statement-pipeline test module.")
     response = _upload_mock_statement(client, auth_user)
     assert response.status_code == 202, response.text
     body = response.json()
-    return {"statement_id": body["statement_id"], "job_id": body["job_id"]}
+    statement_id, job_id = body["statement_id"], body["job_id"]
+
+    with open(MOCK_STATEMENT_PATH, "rb") as f:
+        full_text = statement_parser.extract_text(f.read(), None)
+    client.portal.call(statement_service.process_statement, statement_id, job_id, full_text)
+
+    return {"statement_id": statement_id, "job_id": job_id}
 
 def test_statement_upload_returns_202(client, auth_user):
     logger.info("Testing statement upload accepts the real mock PDF and returns 202.")
@@ -913,40 +926,98 @@ def test_statement_upload_can_skip_storing_the_pdf(client, auth_user):
     assert doc.get("gridfs_file_id") is None
 
 
-def test_startup_fails_statement_jobs_interrupted_by_a_restart(client, auth_user):
-    """Jobs run in-process, so one still RUNNING when the app starts was
-    killed with the previous process - startup must fail it (and its
-    statement) rather than leave it polling as running forever."""
-    from app import _fail_interrupted_statement_jobs
+def test_stale_running_statement_jobs_are_failed_by_the_sweep(client, auth_user):
+    """Statement processing now runs in Celery workers, not the API process
+    (tasks/statement_tasks.py), so an API restart no longer orphans a job -
+    the replacement safety net is time-based: a job RUNNING well past
+    STATEMENT_STALE_JOB_TIMEOUT_MINUTES is a worker that crashed or got
+    hard-time-limit-killed, and the periodic sweep_stale_statement_jobs
+    fails it. A RUNNING job that's merely recent must be left alone - this
+    is time-based recovery, not "RUNNING is always suspect"."""
+    from tasks.statement_tasks import _sweep_stale_statement_jobs
+
+    mongo_client = pymongo.MongoClient(settings.MONGODB_URI)
+    database = mongo_client[settings.MONGODB_DB_NAME]
+    stale_cutoff = datetime.now(UTC) - timedelta(minutes=settings.STATEMENT_STALE_JOB_TIMEOUT_MINUTES + 5)
+    try:
+        stale_statement_id = database.statements.insert_one(
+            {"user_id": auth_user["user_id"], "original_filename": "stale.pdf", "processing_status": "PROCESSING"}
+        ).inserted_id
+        stale_job_id = database.jobs.insert_one(
+            {
+                "user_id": auth_user["user_id"],
+                "job_type": "STATEMENT_PROCESSING",
+                "resource_type": "statement",
+                "resource_id": str(stale_statement_id),
+                "status": "RUNNING",
+                "stage": "generating_embeddings",
+                "progress_percent": 70,
+                "started_at": stale_cutoff,
+            }
+        ).inserted_id
+
+        recent_statement_id = database.statements.insert_one(
+            {"user_id": auth_user["user_id"], "original_filename": "recent.pdf", "processing_status": "PROCESSING"}
+        ).inserted_id
+        recent_job_id = database.jobs.insert_one(
+            {
+                "user_id": auth_user["user_id"],
+                "job_type": "STATEMENT_PROCESSING",
+                "resource_type": "statement",
+                "resource_id": str(recent_statement_id),
+                "status": "RUNNING",
+                "stage": "generating_embeddings",
+                "progress_percent": 70,
+                "started_at": datetime.now(UTC),
+            }
+        ).inserted_id
+
+        client.portal.call(_sweep_stale_statement_jobs)
+
+        stale_job = database.jobs.find_one({"_id": stale_job_id})
+        stale_statement = database.statements.find_one({"_id": stale_statement_id})
+        assert stale_job["status"] == "FAILED"
+        assert "failed" in stale_job["error_message"].lower()
+        assert stale_statement["processing_status"] == "FAILED"
+
+        recent_job = database.jobs.find_one({"_id": recent_job_id})
+        recent_statement = database.statements.find_one({"_id": recent_statement_id})
+        assert recent_job["status"] == "RUNNING"
+        assert recent_statement["processing_status"] == "PROCESSING"
+    finally:
+        database.jobs.delete_many({"resource_id": {"$in": [str(stale_statement_id), str(recent_statement_id)]}})
+        database.statements.delete_many({"_id": {"$in": [stale_statement_id, recent_statement_id]}})
+
+
+def test_claim_and_mark_running_is_atomic(client, auth_user):
+    """A redelivered Celery task (acks_late + task_reject_on_worker_lost,
+    tasks/statement_tasks.py) must never reprocess a job another delivery
+    already claimed - the first claim_and_mark_running call on a QUEUED job
+    must succeed, and every call after it on the same job must return
+    False, never re-claim it."""
+    from repositories.job_repository import job_repo
 
     mongo_client = pymongo.MongoClient(settings.MONGODB_URI)
     database = mongo_client[settings.MONGODB_DB_NAME]
     try:
-        statement_id = database.statements.insert_one(
-            {"user_id": auth_user["user_id"], "original_filename": "orphan.pdf", "processing_status": "PROCESSING"}
-        ).inserted_id
         job_id = database.jobs.insert_one(
             {
                 "user_id": auth_user["user_id"],
                 "job_type": "STATEMENT_PROCESSING",
                 "resource_type": "statement",
-                "resource_id": str(statement_id),
-                "status": "RUNNING",
-                "stage": "generating_embeddings",
-                "progress_percent": 70,
+                "resource_id": "does-not-matter-for-this-test",
+                "status": "QUEUED",
+                "progress_percent": 0,
             }
         ).inserted_id
 
-        client.portal.call(_fail_interrupted_statement_jobs)
+        first_claim = client.portal.call(job_repo.claim_and_mark_running, str(job_id), "parsing")
+        second_claim = client.portal.call(job_repo.claim_and_mark_running, str(job_id), "parsing")
 
-        job = database.jobs.find_one({"_id": job_id})
-        statement = database.statements.find_one({"_id": statement_id})
-        assert job["status"] == "FAILED"
-        assert "restart" in job["error_message"]
-        assert statement["processing_status"] == "FAILED"
+        assert first_claim is True
+        assert second_claim is False
     finally:
-        database.jobs.delete_many({"resource_id": str(statement_id)})
-        database.statements.delete_one({"_id": statement_id})
+        database.jobs.delete_one({"_id": job_id})
         mongo_client.close()
 
 
