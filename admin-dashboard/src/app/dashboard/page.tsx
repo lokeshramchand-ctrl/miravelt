@@ -7,6 +7,12 @@ interface Overview {
   jobs_by_status: Record<string, number>;
   statements_by_status: Record<string, number>;
   latest_releases: Record<string, { version_name: string; version_code: number; uploaded_at: string }>;
+  activation_metrics: {
+    activation_rate_24h: number;
+    median_seconds_to_insight: number | null;
+    return_use_rate: number;
+    sample_size: { total_users: number; users_with_a_statement: number };
+  };
 }
 
 export default async function OverviewPage() {
@@ -26,6 +32,29 @@ export default async function OverviewPage() {
       <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
         <StatusBreakdownCard title="Jobs by status" counts={overview.jobs_by_status} />
         <StatusBreakdownCard title="Statements by status" counts={overview.statements_by_status} />
+      </div>
+
+      <div className="mt-8">
+        <h2 className="mb-3 text-sm font-semibold text-zinc-900 dark:text-zinc-100">Activation funnel</h2>
+        <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
+          Sample: {overview.activation_metrics.sample_size.users_with_a_statement} of{" "}
+          {overview.activation_metrics.sample_size.total_users} users have uploaded a statement.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard
+            label="Activated within 24h"
+            value={`${Math.round(overview.activation_metrics.activation_rate_24h * 100)}%`}
+          />
+          <StatCard
+            label="Median time to insight"
+            value={
+              overview.activation_metrics.median_seconds_to_insight === null
+                ? "—"
+                : formatSeconds(overview.activation_metrics.median_seconds_to_insight)
+            }
+          />
+          <StatCard label="Return use (2+ periods)" value={`${Math.round(overview.activation_metrics.return_use_rate * 100)}%`} />
+        </div>
       </div>
 
       <div className="mt-8">
@@ -53,13 +82,21 @@ export default async function OverviewPage() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
       <p className="text-sm text-zinc-500 dark:text-zinc-400">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{value.toLocaleString()}</p>
+      <p className="mt-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
+        {typeof value === "number" ? value.toLocaleString() : value}
+      </p>
     </div>
   );
+}
+
+function formatSeconds(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+  return `${(seconds / 3600).toFixed(1)}h`;
 }
 
 function StatusBreakdownCard({ title, counts }: { title: string; counts: Record<string, number> }) {
