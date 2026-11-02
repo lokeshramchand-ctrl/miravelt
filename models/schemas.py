@@ -372,6 +372,12 @@ class Statement(CoreModel):
     processing_completed_at: datetime | None = None
     processing_duration_ms: int | None = None
 
+    # Set once, the first time the client shows this period's Overview - the
+    # only backend-visible signal for "time to insight" (upload -> first
+    # viewed), since viewing a screen otherwise leaves no server-side trace.
+    # See repositories/statement_repository.py::mark_first_viewed.
+    first_viewed_at: datetime | None = None
+
 
 class Job(CoreModel):
     id: str | None = Field(alias="_id", default=None)

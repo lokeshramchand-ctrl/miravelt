@@ -238,6 +238,43 @@ def test_statement_insights_accept_wrapped_json_and_fall_back_to_computed():
     assert "Food" in computed[0].message and "30%" in computed[0].message
     assert computed[-1].severity.value == "WARNING"
 
+
+def test_recurring_change_insights_detect_price_change_and_new_subscription():
+    """Pure diff against a previous statement's recurring_payments - no
+    LLM, no Mongo, every figure read straight off the two StatementAnalytics
+    objects (see insights/statement_insights.py::_recurring_change_insights)."""
+    from insights.statement_insights import StatementInsightGenerator
+    from models.schemas import RecurringPaymentItem, StatementAnalytics
+
+    previous = StatementAnalytics(
+        recurring_payments=[
+            RecurringPaymentItem(merchant="Netflix", estimated_monthly_cost=199.0, periodicity_score=0.95, occurrences=3),
+            RecurringPaymentItem(merchant="Gym", estimated_monthly_cost=1000.0, periodicity_score=0.9, occurrences=3),
+        ],
+    )
+    current = StatementAnalytics(
+        recurring_payments=[
+            # +50%: a real price change, must surface as WARNING.
+            RecurringPaymentItem(merchant="Netflix", estimated_monthly_cost=299.0, periodicity_score=0.95, occurrences=3),
+            # Unchanged: below threshold, must not surface.
+            RecurringPaymentItem(merchant="Gym", estimated_monthly_cost=1000.0, periodicity_score=0.9, occurrences=3),
+            # Wasn't in the previous statement at all: a new subscription.
+            RecurringPaymentItem(merchant="Spotify", estimated_monthly_cost=119.0, periodicity_score=0.92, occurrences=3),
+        ],
+    )
+
+    insights = StatementInsightGenerator._recurring_change_insights(previous, current)
+    by_type = {i.type: i for i in insights}
+
+    assert set(by_type) == {"recurring_change", "new_recurring"}
+    assert "Netflix" in by_type["recurring_change"].message
+    assert "+50%" in by_type["recurring_change"].message
+    assert by_type["recurring_change"].severity.value == "WARNING"
+    assert "Spotify" in by_type["new_recurring"].message
+    assert by_type["new_recurring"].severity.value == "INFO"
+
+    assert StatementInsightGenerator._recurring_change_insights(None, current) == []
+
 # =====================================================================
 # PHASE 4: MEMORY ENGINE (STATE PROMOTION)
 # =====================================================================
@@ -771,6 +808,58 @@ def test_statement_insights(client, auth_user, processed_statement):
     # Insights may legitimately be empty if Ollama isn't reachable in this
     # environment - the pipeline degrades gracefully rather than failing the
     # whole statement (see insights/statement_insights.py).
+
+def test_statement_mark_viewed_is_idempotent(client, auth_user, processed_statement):
+    """POST .../viewed is the only backend signal for the activation
+    funnel's 'time to insight' metric - the client calls it on every
+    Overview mount, so a repeat call must stay a 204 no-op, never error or
+    reset the first-seen timestamp (see
+    repositories/statement_repository.py::mark_first_viewed)."""
+    logger.info("Testing POST /statements/{id}/viewed is safe to call more than once.")
+    headers = _auth_headers_no_content_type(auth_user)
+    statement_id = processed_statement["statement_id"]
+
+    first = client.post(f"/statements/{statement_id}/viewed", headers=headers)
+    assert first.status_code == 204
+
+    second = client.post(f"/statements/{statement_id}/viewed", headers=headers)
+    assert second.status_code == 204
+
+def test_statement_mark_viewed_rejects_other_users_statement(client, processed_statement):
+    """Same ownership posture as every other /statements/{id}/* route - 404,
+    not 403, for a statement that isn't the caller's (see
+    routers/statements.py::_get_owned_statement)."""
+    logger.info("Testing POST /statements/{id}/viewed 404s for another user's statement.")
+    other_email = f"viewed_idor_{uuid.uuid4().hex[:10]}@example.com"
+    register_res = client.post(
+        "/auth/register", json={"email": other_email, "password": "StrongPassword123!"}, headers=HEADERS
+    )
+    assert register_res.status_code == 201
+    other_token, _ = create_access_token(register_res.json()["id"])
+    other_headers = {**HEADERS, "Authorization": f"Bearer {other_token}"}
+
+    response = client.post(f"/statements/{processed_statement['statement_id']}/viewed", headers=other_headers)
+    assert response.status_code == 404
+
+def test_activation_metrics_engine_runs_against_live_data(client, auth_user, processed_statement):
+    """Smoke test for the engine behind GET /admin/overview's
+    activation_metrics block (analytics/activation_metrics.py). Exercised
+    directly rather than through the admin route itself, since promoting a
+    test user to admin has no self-serve path to script against (see
+    admin-dashboard/CLAUDE.md) - this still runs against the same live test
+    database the rest of this module has already populated."""
+    import asyncio
+
+    from analytics.activation_metrics import activation_metrics_engine
+
+    client.post(f"/statements/{processed_statement['statement_id']}/viewed", headers=_auth_headers_no_content_type(auth_user))
+
+    result = asyncio.run(activation_metrics_engine.compute())
+    assert 0.0 <= result["activation_rate_24h"] <= 1.0
+    assert 0.0 <= result["return_use_rate"] <= 1.0
+    assert result["sample_size"]["total_users"] >= 1
+    assert result["sample_size"]["users_with_a_statement"] >= 1
+    assert result["median_seconds_to_insight"] is not None
 
 def test_statement_list_pagination(client, auth_user, processed_statement):
     logger.info("Testing GET /statements list pagination.")

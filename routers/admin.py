@@ -245,17 +245,21 @@ async def get_overview(
 ):
     """Dashboard landing-page KPIs: counted/aggregated server-side rather
     than shipping full collections to the client just to count them."""
+    from analytics.activation_metrics import activation_metrics_engine
     from repositories.app_release_repository import app_release_repo
     from repositories.job_repository import job_repo
     from repositories.statement_repository import statement_repo
     from repositories.user_repository import user_repo
 
-    total_users, active_users, admin_count, jobs_by_status, statements_by_status = await asyncio.gather(
-        user_repo.count_all(),
-        user_repo.count_active(),
-        user_repo.count_admins(),
-        job_repo.count_by_status(),
-        statement_repo.count_by_status(),
+    total_users, active_users, admin_count, jobs_by_status, statements_by_status, activation_metrics = (
+        await asyncio.gather(
+            user_repo.count_all(),
+            user_repo.count_active(),
+            user_repo.count_admins(),
+            job_repo.count_by_status(),
+            statement_repo.count_by_status(),
+            activation_metrics_engine.compute(),
+        )
     )
 
     latest_releases = await app_release_repo.list_all()
@@ -273,6 +277,7 @@ async def get_overview(
         "jobs_by_status": jobs_by_status,
         "statements_by_status": statements_by_status,
         "latest_releases": latest_by_platform,
+        "activation_metrics": activation_metrics,
     }
 
 

@@ -101,6 +101,10 @@ class StatementsRepository {
     return StatementInsightsResponse.fromJson(response.data!);
   }
 
+  /// Fire-and-forget: the backend's first_viewed_at is set only on the first
+  /// call, so the caller doesn't need to track whether it already fired.
+  Future<void> markViewed(String statementId) => _apiClient.post('/statements/$statementId/viewed');
+
   String _dateOnly(DateTime date) =>
       '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 

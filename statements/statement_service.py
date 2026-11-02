@@ -69,8 +69,14 @@ class StatementService:
             await job_repo.update_progress(job_id, "computing_analytics", 85)
             analytics = await statement_analytics_engine.compute(statement.user_id, statement_id)
 
+            # Previous completed statement, if any - lets the insight
+            # generator report recurring-payment changes from a real diff
+            # instead of only ever describing this statement in isolation.
+            previous_statement = await statement_repo.get_previous_completed(statement.user_id, statement_id)
+            previous_analytics = previous_statement.analytics if previous_statement else None
+
             await job_repo.update_progress(job_id, "generating_insights", 95)
-            insights = await statement_insight_generator.generate(analytics)
+            insights = await statement_insight_generator.generate(analytics, previous_analytics=previous_analytics)
 
             computed_sent = round(
                 sum(t.amount for t in transactions if t.transaction_type == TransactionType.DEBIT), 2

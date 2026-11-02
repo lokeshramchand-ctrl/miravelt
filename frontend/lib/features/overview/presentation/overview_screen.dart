@@ -60,6 +60,9 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen> {
           if (current.processingStatus != ProcessingStatus.completed) {
             return _ProcessingPlaceholder(period: current);
           }
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) markPeriodViewedOnce(ref, current.id);
+          });
           return RefreshIndicator(
             color: AppColors.accent,
             onRefresh: () async {

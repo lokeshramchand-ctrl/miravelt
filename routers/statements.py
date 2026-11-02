@@ -213,6 +213,16 @@ async def delete_statement(statement_id: str, current_user: User = Depends(get_c
     await statement_repo.delete(statement_id)
 
 
+@router.post("/{statement_id}/viewed", status_code=status.HTTP_204_NO_CONTENT)
+async def mark_statement_viewed(statement_id: str, current_user: User = Depends(get_current_user)):
+    """Fired once by the client when a period's Overview is first shown.
+    Powers the admin activation-funnel's "time to insight" metric
+    (analytics/activation_metrics.py) - idempotent, so the client can call
+    it on every Overview mount with no extra bookkeeping on its side."""
+    await _get_owned_statement(statement_id, current_user)
+    await statement_repo.mark_first_viewed(statement_id)
+
+
 @router.get("/{statement_id}/transactions", response_model=TransactionListResponse)
 async def list_statement_transactions(
     statement_id: str,

@@ -9,6 +9,11 @@ from models.schemas import InsightItem, InsightSeverity, StatementAnalytics
 
 logger = logging.getLogger(__name__)
 
+# Below this fractional change in a recurring payment's estimated monthly
+# cost, it's noise (rounding, a slightly different billing date) rather than
+# a real price change worth surfacing.
+_RECURRING_CHANGE_THRESHOLD = 0.10
+
 
 class StatementInsightGenerator:
     """Reuses the Ollama-calling convention already established in
@@ -77,9 +82,62 @@ RULES:
             # fail the whole statement-processing job (see
             # statements/statement_service.py).
             logger.warning("Statement insight generation failed - using computed insights instead.", exc_info=True)
-            return self._computed_insights(analytics)
+            base_insights = self._computed_insights(analytics)
+        else:
+            base_insights = self._to_insight_items(raw_items) or self._computed_insights(analytics)
 
-        return self._to_insight_items(raw_items) or self._computed_insights(analytics)
+        # Always appended, regardless of whether the LLM or the deterministic
+        # fallback produced base_insights above: this is a direct diff of two
+        # already-persisted numbers, never something an LLM invents, so the
+        # grounding guarantee holds even when base_insights came from Ollama.
+        return base_insights + self._recurring_change_insights(previous_analytics, analytics)
+
+    @staticmethod
+    def _recurring_change_insights(
+        previous: StatementAnalytics | None, current: StatementAnalytics
+    ) -> list[InsightItem]:
+        """Diffs this statement's recurring payments against the previous
+        completed statement's (see statements/statement_service.py for how
+        `previous` is fetched). A merchant that newly crosses the recurring
+        threshold, or whose estimated monthly cost moves by more than
+        _RECURRING_CHANGE_THRESHOLD, becomes a signal - every figure here is
+        read straight off StatementAnalytics.recurring_payments, never
+        invented."""
+        if previous is None:
+            return []
+
+        previous_by_merchant = {r.merchant: r for r in previous.recurring_payments}
+        items: list[InsightItem] = []
+        for current_item in current.recurring_payments:
+            prior = previous_by_merchant.get(current_item.merchant)
+            if prior is None:
+                items.append(InsightItem(
+                    type="new_recurring",
+                    message=(
+                        f"{current_item.merchant} looks like a new recurring payment: "
+                        f"₹{current_item.estimated_monthly_cost:,.0f}."
+                    ),
+                    severity=InsightSeverity.INFO,
+                ))
+                continue
+
+            if prior.estimated_monthly_cost <= 0:
+                continue
+            change = (current_item.estimated_monthly_cost - prior.estimated_monthly_cost) / prior.estimated_monthly_cost
+            if abs(change) < _RECURRING_CHANGE_THRESHOLD:
+                continue
+
+            direction = "increased" if change > 0 else "decreased"
+            items.append(InsightItem(
+                type="recurring_change",
+                message=(
+                    f"Your {current_item.merchant} payment {direction} from "
+                    f"₹{prior.estimated_monthly_cost:,.0f} to ₹{current_item.estimated_monthly_cost:,.0f} "
+                    f"({change * 100:+.0f}%)."
+                ),
+                severity=InsightSeverity.WARNING if change > 0 else InsightSeverity.POSITIVE,
+            ))
+        return items
 
     @staticmethod
     def _computed_insights(analytics: StatementAnalytics) -> list[InsightItem]:

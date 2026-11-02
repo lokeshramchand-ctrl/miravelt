@@ -61,6 +61,44 @@ class StatementRepository:
         doc["_id"] = str(doc["_id"])
         return Statement(**doc)
 
+    async def get_previous_completed(self, user_id: str, before_statement_id: str) -> Statement | None:
+        """The completed statement immediately before `before_statement_id`
+        for this user, by upload order - the comparison baseline for
+        insights/statement_insights.py's recurring-payment change detection.
+        Returns None for a user's first statement, which is the correct
+        "nothing to compare against yet" signal, not an error."""
+        try:
+            before_oid = ObjectId(before_statement_id)
+        except (InvalidId, TypeError):
+            return None
+        doc = await db.statements.find_one(
+            {
+                "user_id": user_id,
+                "processing_status": StatementStatus.COMPLETED.value,
+                "_id": {"$ne": before_oid},
+            },
+            sort=[("uploaded_at", -1)],
+        )
+        if not doc:
+            return None
+        doc["_id"] = str(doc["_id"])
+        return Statement(**doc)
+
+    async def mark_first_viewed(self, statement_id: str) -> bool:
+        """Idempotent: the `first_viewed_at: None` filter means only the
+        first call ever matches, so the client can call this every time the
+        Overview screen mounts without it costing a real write or clobbering
+        the original timestamp."""
+        try:
+            oid = ObjectId(statement_id)
+        except (InvalidId, TypeError):
+            return False
+        result = await db.statements.update_one(
+            {"_id": oid, "first_viewed_at": None},
+            {"$set": {"first_viewed_at": datetime.now(UTC)}},
+        )
+        return result.modified_count > 0
+
     async def list_for_user(
         self,
         user_id: str,

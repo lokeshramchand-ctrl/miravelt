@@ -96,6 +96,24 @@ final previousPeriodAnalyticsProvider = FutureProvider<StatementAnalytics?>((ref
   return ref.watch(statementsRepositoryProvider).analytics(previous.id);
 });
 
+/// Statement ids already reported as viewed this session - guards
+/// [markPeriodViewedOnce] against firing the backend call again on every
+/// Overview rebuild for the same period.
+final viewedPeriodIdsProvider = StateProvider<Set<String>>((ref) => {});
+
+/// Reports "this period's Overview was shown" once per statement id, for the
+/// admin activation funnel's "time to insight" metric
+/// (analytics/activation_metrics.py). Safe to call from a widget's build()
+/// via a post-frame callback - this only ever reads/writes local provider
+/// state and fires one best-effort network call, never anything the UI
+/// needs to await.
+void markPeriodViewedOnce(WidgetRef ref, String statementId) {
+  final viewed = ref.read(viewedPeriodIdsProvider);
+  if (viewed.contains(statementId)) return;
+  ref.read(viewedPeriodIdsProvider.notifier).state = {...viewed, statementId};
+  ref.read(statementsRepositoryProvider).markViewed(statementId).catchError((_) {});
+}
+
 /// The most recent period still being processed, if any - drives the
 /// Period switcher's live "ANALYSING · N%" row and the Analysing screen.
 final inProgressPeriodProvider = Provider<Statement?>((ref) {
