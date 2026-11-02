@@ -9,10 +9,15 @@ against the state of the repo after statement processing moved onto Celery/Redis
 ## 0. Before touching Coolify
 
 - [ ] Load-test first, don't guess a number: run `scripts/stress_test.py` against the real
-      homelab box (not this sandbox) to see actual throughput on `/live`/`/health`, then do a
-      real statement upload under concurrency and time how long Ollama actually takes per
-      insight generation. Every concurrency number below is a *starting* default, not a verified
-      ceiling — the GPU-backed Ollama instance is the real bottleneck, not FastAPI.
+      homelab box (not this sandbox) — plain `python scripts/stress_test.py` for raw
+      `/live`/`/health` throughput, then `python scripts/stress_test.py --with-uploads` (set
+      `MIRAVELT_STRESS_BASE_URL`/`MIRAVELT_API_KEY` env vars first) to run real statement uploads
+      through the actual Celery dispatch, timed start-to-`COMPLETED`. That second number — not a
+      guess — is what `STATEMENT_WORKER_CONCURRENCY` should be set from. Note the script's own
+      warning: upload is rate-limited 10/minute *per source IP*, so running it from one machine
+      caps `--upload-total` well before you'd hit Ollama's real ceiling. Every concurrency number
+      below is a *starting* default, not a verified one — the GPU-backed Ollama instance is the
+      real bottleneck, not FastAPI.
 - [ ] Confirm the exact homelab box specs you're deploying onto (CPU cores, RAM, GPU VRAM) so the
       `deploy.resources` blocks in `docker-compose_production.yaml` reflect reality, not the
       placeholder defaults already in the file.
