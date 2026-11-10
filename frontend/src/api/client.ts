@@ -88,7 +88,8 @@ export class ApiClient {
     return `${base}${path.startsWith('/') ? path : `/${path}`}${qs ? `?${qs}` : ''}`;
   }
 
-  private async authHeaders(): Promise<Record<string, string>> {
+  /** The API-key + bearer headers every request carries - also needed by raw downloads that bypass fetch. */
+  async authHeaders(): Promise<Record<string, string>> {
     const headers: Record<string, string> = { 'X-Miravelt-API-Key': appConfig.apiKey };
     const accessToken = await this.deps.tokenStorage.readAccessToken();
     if (accessToken) headers.Authorization = `Bearer ${accessToken}`;

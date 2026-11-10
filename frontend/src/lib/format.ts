@@ -77,3 +77,8 @@ export function parseApiDate(value: string): Date {
 export function toDateOnly(date: Date): string {
   return `${String(date.getFullYear()).padStart(4, '0')}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 }
+
+/** `4 Jun` */
+export function formatDayMonth(date: Date): string {
+  return `${date.getDate()} ${titleCase(MONTHS[date.getMonth()])}`;
+}

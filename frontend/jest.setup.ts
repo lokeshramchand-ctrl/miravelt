@@ -11,3 +11,8 @@ jest.mock('expo-notifications', () => ({
   scheduleNotificationAsync: jest.fn(),
   AndroidImportance: { HIGH: 4 },
 }));
+
+jest.mock('react-native-safe-area-context', () => require('react-native-safe-area-context/jest/mock').default);
+
+// Icon glyphs load asynchronously and would trigger act() warnings; the tests never assert on them.
+jest.mock('@expo/vector-icons', () => ({ MaterialIcons: () => null }));
