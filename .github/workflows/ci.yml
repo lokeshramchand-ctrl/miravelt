@@ -118,25 +118,26 @@ jobs:
       - name: Run test suite
         run: pytest test_api.py -v
 
-  # --- Frontend (Flutter) ---
+  # --- Frontend (React Native / Expo) ---
   frontend:
-    name: Frontend (flutter analyze + test)
+    name: Frontend (tsc + jest)
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - uses: actions/setup-node@v4
         with:
-          flutter-version: "3.44.1"
-          channel: "stable"
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
-        run: flutter pub get
-      - name: Analyze
-        run: flutter analyze
+        run: npm ci --legacy-peer-deps
+      - name: Type-check
+        run: npm run typecheck
       - name: Run test suite
-        run: flutter test
+        run: npm test
 
   # --- Docker build + image hardening/vulnerability checks ---
   docker:

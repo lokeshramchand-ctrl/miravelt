@@ -1,109 +1,78 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-Scoped to `frontend/` - the Flutter mobile client for the Miravelt backend (repo root `../`). See
-`docs/DESIGN_SPEC.md` for the full design spec and `docs/API_REFERENCE.md` for the backend
-contract this app is built against.
+Guidance for working in `frontend/` - the React Native (Expo, TypeScript) mobile client for the
+Miravelt backend (repo root `../`). See `docs/DESIGN_SPEC.md` for the design spec and
+`docs/API_REFERENCE.md` for the backend contract this app is built against. (The app was ported
+from Flutter; the Dart sources remain in git history before the "remove the Flutter client" commit.)
 
 ## Commands
 
 ```bash
-flutter pub get
-flutter run --dart-define=MIRAVELT_API_KEY=your-api-key-here
-flutter analyze                          # should report no issues
-flutter test                              # full widget/unit suite
-flutter test test/features/auth/login_screen_test.dart   # single test file
-flutter build apk --release \
-  --dart-define=MIRAVELT_API_BASE_URL=https://your-production-host \
-  --dart-define=MIRAVELT_API_KEY=your-production-api-key
+npm install --legacy-peer-deps           # the testing library's peer range trips npm's resolver
+npx expo start                           # Metro; use a dev build or emulator (expo-dev-client)
+npm run typecheck                        # tsc --noEmit - should report nothing
+npm test                                 # jest-expo: unit + screen tests
+npx jest __tests__/redirect.test.ts      # single file
+npx expo export --platform android       # proves the whole app bundles (also: ios)
 ```
+
+Native `android/` and `ios/` are generated (`npx expo prebuild`), gitignored, and not committed.
 
 ## Configuration
 
-The app points at one of three backends - `ApiEnvironment` in `lib/core/config/api_environment.dart`:
+Build-time only (`EXPO_PUBLIC_*`, inlined by Metro): `EXPO_PUBLIC_MIRAVELT_API_KEY` (no usable
+default - falls back to the public `miravelt_test_key_123` placeholder, which Developer settings'
+BUILD section flags), `EXPO_PUBLIC_MIRAVELT_API_BASE_URL`, `EXPO_PUBLIC_MIRAVELT_LOCAL_API_BASE_URL`.
 
-| Environment | Default base URL | Override (`--dart-define`) |
-|---|---|---|
-| `production` (release default) | `https://miravelt.deploy.lokeshrc.me/` | `MIRAVELT_API_BASE_URL` |
-| `local` | `http://10.0.2.2:9850/` on Android emulator, `http://localhost:9850/` elsewhere (matches `docker-compose_local.yaml`'s port) | `MIRAVELT_LOCAL_API_BASE_URL` |
-| `custom` | none - a URL a developer types in at runtime, stored via `customApiBaseUrlProvider` | n/a |
+The backend is a **runtime** choice (`src/config/apiEnvironment.ts`, `src/state/settings.ts`):
 
-Which one is active is a **runtime** choice, persisted on-device and switchable from Profile >
-Developer settings > "API server" (switching signs the user out - a session token from one backend
-isn't valid on the other); a fresh install always starts on `production`. `effectiveApiBaseUrlProvider`
-(`lib/core/providers/settings_providers.dart`) is what `apiClientProvider` actually watches - it
-resolves `custom` against the stored override, since `ApiEnvironment.baseUrl` itself only knows the
-two static presets. The Developer settings section is unlocked by tapping its row 5 times (like
-Android's Developer Options), not gated by `kDebugMode` - it's reachable in release builds too, so
-QA on a release APK can point at a staging/local backend without a debug build. There is no
-separate Ollama/Milvus setting: the app never talks to those directly (see `ARCHITECTURE.md`), only
-to whichever backend is active, so pointing at a different backend is the only lever the client has.
-On Android, `network_security_config.xml` permits cleartext app-wide (it can't express "private LAN
-ranges"), so a Custom `http://192.168.x.y:9850/` works; see that file for the tradeoff. The Localhost
-preset's `10.0.2.2` only exists inside the Android emulator - on a physical phone use Custom with the
-host's LAN address, or `adb reverse tcp:9850 tcp:9850` plus Custom `http://localhost:9850/` (the
-sheet says this when Localhost is picked). Switching backends signs out *first*, so the current
-session's tokens are never sent to the newly-selected host. The one value that stays build-time only
-is `MIRAVELT_API_KEY` (`--dart-define`, no usable default - falls back to a `miravelt_test_key_123`
-placeholder otherwise, see `lib/core/config/app_config.dart`); Developer settings' BUILD section
-flags a build that shipped with the placeholder.
+| Environment | Default base URL |
+|---|---|
+| `production` (fresh-install default) | `https://miravelt.deploy.lokeshrc.me/` |
+| `local` | `http://10.0.2.2:9850/` on Android, `http://localhost:9850/` elsewhere |
+| `custom` | a URL typed into Developer settings |
 
-## Launch and branding
-
-The router starts on `/splash` (not `/login`) and holds there while the stored session is checked,
-so a signed-in user never sees the login form flash. `periodsProvider` is keyed on the signed-in
-user id - the router reads it to pick Overview vs onboarding, and without that key it would carry a
-signed-out (or previous account's) result through a sign-in. The app's logo mark is deliberately
-not shown inside the app - splash and onboarding use the "Miravelt" wordmark only, and
-`values-v31`/`values-night-v31` blank the Android 12+ system splash icon (it would otherwise draw
-the launcher icon on every launch).
+Switch it from Profile > Developer settings, unlocked by tapping that row (or the version line on
+the login screen) 5 times; it works in release builds. Switching signs out *first* so tokens are
+never sent to the newly chosen host. `usesCleartextTraffic` is on (via `expo-build-properties`) so a
+LAN `http://192.168.x.y:9850/` works. The app never talks to Ollama/Milvus directly.
 
 ## Architecture
 
-Clean Architecture, feature-first: `lib/features/<feature>/{data,domain,presentation}` (see
-`auth`, `statements`, `analytics`, `app_update` for the full three-layer shape; simpler features
-like `overview`, `signals`, `profile`, `legal`, `onboarding`, `upload` are presentation-only,
-reading from another feature's data layer). Shared cross-feature code lives in `lib/core/`
-(`config`, `network`, `routing`, `storage`, `theme`, `notifications`, `providers`, `utils`) and
-`lib/shared/widgets/`.
+- `app/` - expo-router file routes, each a one-line re-export of a screen in `src/screens/`.
+  `app/_layout.tsx` loads fonts + settings, bootstraps the session, hosts the global sheets/toast and
+  runs `RedirectGate`. `app/(tabs)/_layout.tsx` is the Overview/Signals/Activity shell with the
+  floating pill nav and the launch-time update check.
+- `src/api` - `client.ts` (fetch + XHR upload; API-key/bearer headers; single-flight refresh on 401
+  with one retry; typed errors in `errors.ts`), `repositories.ts`, `mappers.ts` (snake_case ->
+  camelCase + Dates; bare `YYYY-MM-DD` is a *local* date), `instance.ts` (the singleton, reads the
+  base URL from settings per request).
+- `src/state` - zustand: `auth`, `settings` (persisted to AsyncStorage), `session` (selected period),
+  `upload`, `sheets`, `toast`, `appUpdate`. `src/hooks/periods.ts` - TanStack Query hooks (cached
+  until invalidated, no auto-retry).
+- `src/lib/redirect.ts` - `computeRedirect`, the launch/sign-in/onboarding rules as a pure function.
+- `src/components`, `src/theme` (OKLCH tokens computed at load, typography generated from the
+  design), `src/screens`.
+- Tests live in `__tests__/`; `__tests__/support/fakes.ts` has a scripted fake `fetch` and in-memory
+  token storage - reuse them instead of writing new mocks.
 
-- **State management is classic Riverpod** (`Provider`/`FutureProvider`/`NotifierProvider`/
-  `AsyncNotifierProvider`), not the `@riverpod` code generator - a resolved `riverpod_generator` →
-  `analyzer` version conflict made codegen unusable in this environment. Don't reintroduce it
-  without re-solving that conflict.
-- `build.yaml` sets `json_serializable`'s `field_rename: snake` globally, so model classes don't
-  need per-field `@JsonKey(name: ...)` annotations to match the backend's snake_case JSON.
-- Routing is centralized in `lib/core/routing/app_router.dart` / `app_shell.dart`.
-- Tests live under `test/features/<feature>/...`, mirroring `lib/`; `test/support/` holds shared
-  fakes (`fake_http_client_adapter.dart`, `fake_secure_storage_platform.dart`) - reuse these for
-  new tests needing a fake network/storage layer rather than writing new mocks per test.
+Launch: the router starts on `/` (splash) and holds there while the stored session is checked.
+`usePeriods` is keyed on the signed-in user id, and the redirect waits for it before choosing
+Overview vs onboarding. Only a *finished* period pulls someone off onboarding (see the comment in
+`redirect.ts`). The logo mark is deliberately not shown in-app - splash/onboarding use the wordmark.
 
-## Release signing
+## Releases
 
-`android/app/build.gradle.kts` signs release builds with the upload key named in
-`android/key.properties` (gitignored: `storeFile`, `storePassword`, `keyAlias`, `keyPassword`). The
-keystore itself is kept outside the repo so no clean or re-clone can delete it - back it up together
-with `key.properties`; losing it means a Play Console upload-key reset. Without `key.properties` (CI,
-a fresh clone) the release build falls back to the debug key and Gradle warns - fine for testing,
-not publishable. An APK signed with one key can't be installed over one signed with the other:
-uninstall first (which clears the app's stored session and settings).
+Android: `eas build -p android` (credentials in EAS) or `npx expo prebuild` + Gradle with your own
+upload keystore (keep it outside the repo; an APK signed with one key can't be installed over one
+signed with another - uninstall first). `android.versionCode` in `app.json` is the integer the
+in-app updater compares against the backend's `version_code`; bump it per release. The updater
+(Android only) downloads the APK with `expo-file-system` and hands it to the system installer.
 
 ## Icons and avatars
 
-Launcher icons on both platforms are generated from `../assets/Frame.png` by
-`tool/generate_app_icons.py` (needs Pillow, run from the repo root) - edit the source art and
-rerun it rather than hand-editing the bitmaps. The source is a flat mark on a solid black canvas
-(no real alpha); the script keys the near-black out to transparency before compositing. It writes
-the iOS `AppIcon.appiconset` slots flattened onto `#0D0F15` (iOS rejects alpha in app icons), plus
-Android's adaptive layers (`mipmap-anydpi-v26` + `ic_launcher_foreground.png`, art kept inside the
-66dp safe zone) and the legacy/round bitmaps. The background colour is `AppColors.ink900`,
-duplicated in `values/ic_launcher_background.xml` - keep the two in sync. The admin-dashboard's
-favicon set is generated from the same `assets/Frame.png` by
-`admin-dashboard/tool/generate_favicons.py`.
-
-The *user* avatar is one of the nine illustrations in `assets/avatars/`, assigned by
-`lib/core/avatars/user_avatars.dart` from a stable FNV-1a hash of the user id (not stored
-server-side, not random per launch). Render it with `UserAvatar`, which falls back to the
-initials `AvatarChip` when there's no user; `AvatarChip` on its own is still what merchant
-rows use.
+`tool/generate_app_icons.py` (Pillow, run from the repo root) builds `assets/icon.png`,
+`adaptive-icon.png` and `favicon.png` from `../assets/Frame.png` onto `#0D0F15` (`colors.ink900`;
+also set in `app.json`). The user avatar is one of the nine illustrations in `assets/avatars/`,
+chosen by `src/lib/avatars.ts` from a stable FNV-1a hash of the user id (identical to the Flutter
+client's, so existing users keep their face). Render it with `UserAvatar`.

@@ -17,6 +17,7 @@ import { PeriodSwitcherHost } from '../src/components/PeriodSwitcherSheet';
 import { ToastHost } from '../src/components/Toast';
 import { UploadSheetHost } from '../src/components/UploadSheet';
 import { usePeriods } from '../src/hooks/periods';
+import '../src/lib/textScaling';
 import { initNotifications } from '../src/lib/notifications';
 import { queryClient } from '../src/lib/queryClient';
 import { computeRedirect } from '../src/lib/redirect';

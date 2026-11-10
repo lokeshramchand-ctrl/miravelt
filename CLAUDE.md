@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This repo holds three separate deployables sharing one backend contract:
 
 ```
-frontend/           Flutter mobile client (the product surface end users touch)
+frontend/           React Native (Expo) mobile client (the product surface end users touch)
 admin-dashboard/     Next.js BFF (server-only) for operator/admin use
 <repo root>          FastAPI backend (app.py) - single process, MongoDB + Milvus + Ollama
 ```
@@ -74,30 +74,32 @@ Needs the backend running with `ADMIN_API_KEY` set, and its own `.env.local` (`c
 plus a fresh `SESSION_SECRET`. Bootstrap the first admin with `python scripts/create_admin.py
 you@example.com` from the repo root - further admins are promoted from the dashboard's Users page.
 
-### Frontend (Flutter, `frontend/`)
+### Frontend (React Native / Expo, `frontend/`)
 
 ```bash
-flutter pub get
-flutter run --dart-define=MIRAVELT_API_KEY=your-api-key-here
-flutter analyze
-flutter test
-flutter test test/some_test_file.dart   # single test file
-flutter build apk --release --dart-define=MIRAVELT_API_KEY=<key from ../.env>
+npm install --legacy-peer-deps
+npx expo start                           # Metro; open in a dev build / emulator
+npm run typecheck                        # tsc --noEmit, should report nothing
+npm test                                 # jest-expo unit + screen tests
+npx jest __tests__/redirect.test.ts      # single test file
+# Release: EAS Build (or `npx expo prebuild` + Gradle); the API key is baked in at build time
+EXPO_PUBLIC_MIRAVELT_API_KEY=<key from ../.env> npx expo run:android --variant release
 ```
 
-Release builds are signed with the upload key named in `frontend/android/key.properties`
-(gitignored; the keystore lives outside the repo - see `frontend/CLAUDE.md` "Release signing").
+Release builds are signed with an upload key managed through EAS credentials or a local
+`keystore` configured after `expo prebuild` (the native projects are generated, not committed;
+see `frontend/CLAUDE.md`).
 
-`ApiEnvironment` (`lib/core/config/api_environment.dart`) picks `production` vs `local` at
-runtime, not build time; override with `--dart-define=MIRAVELT_API_BASE_URL=...` /
-`MIRAVELT_LOCAL_API_BASE_URL=...`. `MIRAVELT_API_KEY` is build-time only via `--dart-define` and has no
+`ApiEnvironment` (`src/config/apiEnvironment.ts`) picks `production` vs `local` at
+runtime, not build time; override with `EXPO_PUBLIC_MIRAVELT_API_BASE_URL` /
+`EXPO_PUBLIC_MIRAVELT_LOCAL_API_BASE_URL`. `EXPO_PUBLIC_MIRAVELT_API_KEY` is build-time only and has no
 safe default.
 
 ### CI (`.github/workflows/ci.yml`)
 
 Runs, in parallel: `gitleaks` secret scan, `ruff check .`, `pip-audit` against
 `requirements.txt`/`requirements-training.txt`, `pytest test_api.py -v` (against a real `mongo:6.0`
-service container), and `flutter analyze` + `flutter test` in `frontend/`. A Docker job
+service container), and `tsc` + `jest` in `frontend/`. A Docker job
 (hadolint + `docker build` + Trivy scan) runs after lint/test pass. Match these locally before
 opening a PR.
 
@@ -168,9 +170,11 @@ before expiry. Client components must never fetch the backend directly or hold a
 
 ## Frontend architecture
 
-Clean Architecture, feature-first: `lib/features/<feature>/{data,domain,presentation}`. State
-management is classic Riverpod (`Provider`/`FutureProvider`/`NotifierProvider`/
-`AsyncNotifierProvider`) - not the `@riverpod` code generator, which is unusable here due to an
-unresolved `riverpod_generator`/`analyzer` version conflict; don't reintroduce it without
-re-solving that. `build.yaml` sets `json_serializable`'s `field_rename: snake` globally to match
-the backend's snake_case JSON.
+Feature screens live in `src/screens/`, mounted by thin file-based routes in `app/` (expo-router).
+Shared code: `src/api` (fetch client, typed errors, repositories, mappers), `src/domain` (models),
+`src/state` (zustand stores: auth, settings, session, upload), `src/hooks` (TanStack Query hooks for
+periods/analytics/insights), `src/components` (shared widgets), `src/theme` (tokens). Server data
+goes through TanStack Query (cached until invalidated, no auto-retry); on-device and session state
+through zustand. Routing rules (splash/login/onboarding/overview) are the pure function
+`computeRedirect` in `src/lib/redirect.ts`, applied by the root layout. The backend speaks snake_case
+JSON; `src/api/mappers.ts` is the one place that converts it to camelCase models and Dates.
