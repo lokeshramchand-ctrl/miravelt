@@ -7,7 +7,7 @@ This is the one-level-up map. For line-level detail, see `docs/` (`01-architectu
 Two deployables, one shared backend contract:
 
 ```
-Flutter app (frontend/)   ─┐
+React Native app (frontend/)   ─┐
                             ├─ X-Miravelt-API-Key + JWT ──▶  FastAPI (app.py, N replicas ok)  ──▶  MongoDB (system of record)
 Next.js admin-dashboard   ─┘  (BFF, server-only)                  │              │        ──▶  Milvus (vector search)
                                                                     │              └──────  ──▶  Ollama (embeddings + LLM generation)
@@ -16,7 +16,7 @@ Next.js admin-dashboard   ─┘  (BFF, server-only)                  │       
 
 - **`app.py`** is a FastAPI process — routers and ML engines run in the same Python process, same container, and **more than one replica of it is now safe** (see below). Statement processing and the batch pipelines both run as Celery tasks against Redis (`tasks/celery_app.py`, `tasks/statement_tasks.py`, `tasks/pipeline_tasks.py`) — `REDIS_URI` is a required setting, not optional, because statement upload depends on it to dispatch.
 - **`admin-dashboard/`** is a separate Next.js app acting as a **BFF (backend-for-frontend)**, not a second backend. It holds no business logic and no direct datastore access — every page/action calls the FastAPI backend over HTTP.
-- **`frontend/`** is the Flutter mobile client, the actual product surface end users touch.
+- **`frontend/`** is the React Native (Expo) mobile client, the actual product surface end users touch.
 - **MongoDB and Redis** are both hard dependencies now — `/ready` fails without either (Redis because statement upload needs it to dispatch via Celery). **Milvus** and **Ollama** still degrade specific features (RAG, embeddings) gracefully rather than failing the app (`app.py`'s `_check_dependencies`).
 
 ## 2. Who's responsible for what
@@ -35,7 +35,7 @@ Next.js admin-dashboard   ─┘  (BFF, server-only)                  │       
 | Admin dashboard session | Iron-session cookie holding the operator's JWT, server-side only | `admin-dashboard/src/lib/session.ts`, `dal.ts` |
 | Data persistence | MongoDB collections, connection lifecycle | `database/mongo.py`, `repositories/` |
 | Statement processing | PDF → transactions → analytics → insights, job progress | `routers/statements.py` (upload), `statements/statement_service.py`, `insights/`, `repositories/job_repository.py` |
-| Mobile session & routing | Launch splash, auth/period-driven redirects, backend selection | `frontend/lib/core/routing/app_router.dart`, `features/auth/`, `features/developer/` |
+| Mobile session & routing | Launch splash, auth/period-driven redirects, backend selection | `frontend/src/lib/redirect.ts`, `app/_layout.tsx`, `src/state/auth.ts`, `src/components/DeveloperSettings.tsx` |
 | Vector persistence | Milvus collections, embeddings | `database/milvus.py`, `milvus/`, `embeddings/` |
 
 Each of these has exactly one home. If you find yourself duplicating merchant resolution logic, a state-machine transition, or a Mongo query pattern in a second place, that's a signal the boundary is being violated, not that a new variant is needed.
@@ -60,7 +60,7 @@ Each of these has exactly one home. If you find yourself duplicating merchant re
 ## 4. What's allowed to touch what
 
 ```
-Client (Flutter / admin-dashboard browser)
+Client (React Native / admin-dashboard browser)
         │  HTTPS, never holds backend secrets
         ▼
 Next.js Server Actions / Route Handlers  (admin-dashboard only — BFF layer)

@@ -153,7 +153,7 @@ There is no product analytics in the app today, so these need instrumentation fi
 ## 9. Out of scope
 
 Bank account or card linking; statements other than Google Pay; budgets and goals; iOS release
-(the Flutter code builds, but has only been exercised on Android); multi-currency; shared or family
+(the React Native code bundles for iOS, but has only been exercised on Android); multi-currency; shared or family
 accounts; desktop drag-and-drop upload; donut or pie charts (a deliberate design decision).
 
 ## 10. Open issues and risks before launch

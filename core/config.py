@@ -126,6 +126,13 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
+    @field_validator("JWT_ALGORITHM")
+    @classmethod
+    def _jwt_algorithm_allowed(cls, v: str) -> str:
+        if v not in {"HS256", "HS384", "HS512"}:
+            raise ValueError("JWT_ALGORITHM must be one of HS256, HS384, HS512")
+        return v
+
     @field_validator("JWT_SECRET_KEY")
     @classmethod
     def _require_strong_jwt_secret(cls, v: str) -> str:

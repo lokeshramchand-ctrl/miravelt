@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 
+from core.jwt_auth import get_current_user
 from core.rate_limiter import limiter
+from models.schemas import User
 from rag.context_builder import context_builder
 from rag.generator import explanation_generator
 from rag.retriever import context_retriever
@@ -16,7 +18,7 @@ class ExplainRequest(BaseModel):
 
 @router.post("/explain")
 @limiter.limit("20/minute")
-async def explain_transaction(request: Request, payload: ExplainRequest):
+async def explain_transaction(request: Request, payload: ExplainRequest, current_user: User = Depends(get_current_user)):
     """
     RAG Pipeline: Retrieves behavioral vectors and generates a strict, grounded explanation.
     Rate-limited tighter than the default (20/minute) since each call triggers an

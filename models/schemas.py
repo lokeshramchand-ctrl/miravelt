@@ -90,8 +90,8 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=1, max_length=128)
-    device_id: str | None = Field(default=None, description="Unique device identifier for device tracking")
-    device_name: str | None = Field(default=None, description="User-friendly device name")
+    device_id: str | None = Field(default=None, max_length=128, description="Unique device identifier for device tracking")
+    device_name: str | None = Field(default=None, max_length=100, description="User-friendly device name")
     user_agent: str | None = Field(default=None, description="Device user agent string")
     ip_address: str | None = Field(default=None, description="Client IP address")
     attestation_token: str | None = Field(default=None, description="Play Integrity / App Attest token")

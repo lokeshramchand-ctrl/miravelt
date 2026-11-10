@@ -44,3 +44,6 @@ Miravelt-Portfolio-Source.md
 
 # Celery beat runtime state
 celerybeat-schedule*
+
+# Private security audit (lists open weaknesses; repo is public)
+SECURITY_AUDIT.md

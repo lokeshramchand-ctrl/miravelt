@@ -20,14 +20,22 @@ class RetentionManager:
         cutoff_date = datetime.now(UTC) - timedelta(days=retention_days)
 
         # Delete PDFs from statements
-        result = await db.statements.update_many(
-            {"pdf_upload_date": {"$lt": cutoff_date}, "pdf_file_id": {"$exists": True}},
-            {"$unset": {"pdf_file_id": "", "pdf_upload_date": ""}}
-        )
+        expired = await db.statements.find(
+            {"uploaded_at": {"$lt": cutoff_date}, "gridfs_file_id": {"$ne": None}},
+            {"gridfs_file_id": 1},
+        ).to_list(None)
+        deleted = 0
+        for doc in expired:
+            try:
+                await db.gridfs_bucket.delete(doc["gridfs_file_id"])
+            except Exception:
+                logger.warning("GridFS file already gone or undeletable during retention cleanup.")
+            await db.statements.update_one({"_id": doc["_id"]}, {"$set": {"gridfs_file_id": None}})
+            deleted += 1
 
-        logger.info(f"Cleaned up {result.modified_count} statements with expired PDFs")
+        logger.info(f"Cleaned up {deleted} statements with expired PDFs")
 
-        return {"pdfs_deleted": result.modified_count}
+        return {"pdfs_deleted": deleted}
 
     async def cleanup_expired_audit_logs(self, retention_days: int = 90) -> dict[str, int]:
         """Delete audit logs older than retention_days.

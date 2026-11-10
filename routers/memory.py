@@ -1,17 +1,19 @@
-from fastapi import APIRouter, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field
 
+from core.jwt_auth import get_current_user
+from core.security import validate_admin_key
 from memory.memory_manager import memory_manager
 from models.schemas import MerchantProfile
 from repositories.profile_repository import profile_repo
 
-router = APIRouter(prefix="/memory", tags=["Memory Engine"])
+router = APIRouter(prefix="/memory", tags=["Memory Engine"], dependencies=[Depends(get_current_user)])
 
 class MemoryUpdateRequest(BaseModel):
     canonical_name: str = Field(..., min_length=1, max_length=200)
     raw_text: str = Field(..., min_length=1, max_length=2000)
 
-@router.post("/update", response_model=MerchantProfile)
+@router.post("/update", response_model=MerchantProfile, dependencies=[Depends(validate_admin_key)])
 async def update_memory(request: MemoryUpdateRequest):
     """
     Ingests an entity encounter. Updates frequency and calculates state transitions.

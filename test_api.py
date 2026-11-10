@@ -171,10 +171,10 @@ def test_rate_limiter_defense(client, auth_headers):
     ("POS XX9912 STARBUCKS STORE 12", "cleaned_text"),
     ("IMPS/P2A/123456/ZOMATO MEDIA", "cleaned_text")
 ])
-def test_resolution_regex_engine(client, raw_string, expected_match):
+def test_resolution_regex_engine(client, auth_headers, raw_string, expected_match):
     """Tests the resolution engine against multiple transaction formats."""
     logger.info(f"Testing Resolution Engine with raw string: '{raw_string}'")
-    response = client.post("/v1/resolve", json={"text": raw_string}, headers=HEADERS)
+    response = client.post("/v1/resolve", json={"text": raw_string}, headers=auth_headers)
     assert response.status_code == 200
     assert expected_match in response.json()
 
@@ -281,23 +281,25 @@ def test_recurring_change_insights_detect_price_change_and_new_subscription():
 # PHASE 4: MEMORY ENGINE (STATE PROMOTION)
 # =====================================================================
 
-def test_memory_engine_lifecycle(client):
+def test_memory_engine_lifecycle(client, monkeypatch):
     """Tests the entire lifecycle from EPHEMERAL to TEMPORARY state in one flow."""
+    monkeypatch.setattr(settings, "ADMIN_API_KEY", "test-admin-key-for-memory")
+    admin_headers = {**HEADERS, "X-Miravelt-Admin-Key": "test-admin-key-for-memory"}
     unique_merchant = f"Target_{uuid.uuid4().hex[:6]}"
     payload = {"canonical_name": unique_merchant, "raw_text": f"paid {unique_merchant}"}
 
     logger.info(f"Testing Memory State Machine for new entity: {unique_merchant}")
 
     # Encounter 1: Should be EPHEMERAL
-    res1 = client.post("/memory/update", json=payload, headers=HEADERS)
+    res1 = client.post("/memory/update", json=payload, headers=admin_headers)
     assert res1.json()["memory_state"] == "EPHEMERAL"
     logger.info("Encounter 1: State logged as EPHEMERAL")
 
     # Encounter 2
-    client.post("/memory/update", json=payload, headers=HEADERS)
+    client.post("/memory/update", json=payload, headers=admin_headers)
 
     # Encounter 3: Should promote to TEMPORARY
-    res3 = client.post("/memory/update", json=payload, headers=HEADERS)
+    res3 = client.post("/memory/update", json=payload, headers=admin_headers)
     assert res3.json()["memory_state"] == "TEMPORARY"
     logger.info("Encounter 3: Successfully promoted to TEMPORARY")
 
@@ -305,10 +307,10 @@ def test_memory_engine_lifecycle(client):
 # PHASE 5: CONFIDENCE WALL
 # =====================================================================
 
-def test_confidence_evaluator_blocks_hallucinations(client):
+def test_confidence_evaluator_blocks_hallucinations(client, auth_headers):
     logger.info("Testing Confidence Wall with a risky prediction (40% confidence).")
     payload = {"predicted_category": "Travel", "raw_confidence": 0.40}
-    response = client.post("/v1/confidence/evaluate", json=payload, headers=HEADERS)
+    response = client.post("/v1/confidence/evaluate", json=payload, headers=auth_headers)
 
     data = response.json()
     assert data["final_category"] == "Unknown"
@@ -325,9 +327,9 @@ def test_analytics_categories_negative_days(client, auth_headers):
     # The API should gracefully handle it or Pydantic should catch it.
     assert response.status_code in [200, 422]
 
-def test_analytics_anomaly_check(client):
+def test_analytics_anomaly_check(client, auth_headers):
     logger.info("Testing Anomaly Detection (Z-Score) for unusual spending.")
-    response = client.post("/v1/analytics/anomaly/check?merchant=Uber&amount=99999", headers=HEADERS)
+    response = client.post("/v1/analytics/anomaly/check?merchant=Uber&amount=99999", headers=auth_headers)
     assert response.status_code == 200
     is_anomaly = response.json().get("is_anomaly")
     logger.info(f"Anomaly Engine flagged ₹99,999 Uber ride as anomaly: {is_anomaly}")
@@ -353,10 +355,10 @@ def test_feedback_triggers_retraining_queue(client, auth_headers):
 # PHASE 12 & 14: RAG & MLOPS
 # =====================================================================
 
-def test_rag_explanation_safety(client):
+def test_rag_explanation_safety(client, auth_headers):
     logger.info("Testing RAG Explainability Pipeline formatting.")
     payload = {"transaction_text": "Swiggy order", "target_question": "Why?"}
-    response = client.post("/v1/explain", json=payload, headers=HEADERS)
+    response = client.post("/v1/explain", json=payload, headers=auth_headers)
     assert response.status_code in [200, 404, 500]
 
 def test_observability_endpoints(client):
@@ -1211,3 +1213,42 @@ def test_app_updates_download_requires_api_key(client, monkeypatch):
     response = client.get(f"/app/releases/{version_code}/download")
     assert response.status_code in (401, 403)
     logger.info("Profile updated and reflected correctly.")
+
+
+# =====================================================================
+# SECURITY AUDIT REGRESSIONS
+# =====================================================================
+
+@pytest.mark.parametrize("method,path", [
+    ("post", "/v1/explain"),
+    ("post", "/v1/resolve"),
+    ("post", "/v1/confidence/evaluate"),
+    ("post", "/v1/analytics/anomaly/check?merchant=Uber&amount=1"),
+    ("get", "/memory/profile/Swiggy"),
+    ("get", "/memory/state/Swiggy"),
+])
+def test_api_key_alone_cannot_reach_shared_data_endpoints(client, method, path):
+    response = getattr(client, method)(path, headers=HEADERS)
+    assert response.status_code == 401
+
+
+def test_refresh_token_is_single_use(client):
+    email = f"refresh_{uuid.uuid4().hex[:10]}@example.com"
+    password = "StrongPassword123!"
+    assert client.post("/auth/register", json={"email": email, "password": password}, headers=HEADERS).status_code == 201
+    login = client.post("/auth/login", json={"email": email, "password": password}, headers=HEADERS)
+    assert login.status_code == 200
+    token = login.json()["refresh_token"]
+    assert client.post("/auth/refresh", json={"refresh_token": token}, headers=HEADERS).status_code == 200
+    assert client.post("/auth/refresh", json={"refresh_token": token}, headers=HEADERS).status_code == 401
+
+
+def test_invalid_request_id_is_replaced(client):
+    response = client.get("/live", headers={"X-Request-ID": "bad id\nwith newline"})
+    assert response.headers["x-request-id"] != "bad id\nwith newline"
+
+
+def test_log_redaction_hides_credentials():
+    from core.log_redaction import redact
+    assert "s3cret" not in redact("connected mongodb://miravelt:s3cret@host:27017/db")
+    assert "abc.def" not in redact("Authorization: Bearer abc.def")

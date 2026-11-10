@@ -1,59 +1,46 @@
 # Miravelt
 
-A financial analyst in your pocket - a Flutter mobile client for the Miravelt backend. Add a Google Pay statement PDF and Miravelt turns it into a period-based overview, ranked signals, recurring-payment detection, and a searchable transaction activity feed. See `docs/DESIGN_SPEC.md` for the full design spec and `docs/API_REFERENCE.md` for the backend contract this app is built against.
+A financial analyst in your pocket - a React Native (Expo) mobile client for the Miravelt backend. Add a Google Pay statement PDF and Miravelt turns it into a period-based overview, ranked signals, recurring-payment detection, and a searchable transaction activity feed. See `docs/DESIGN_SPEC.md` for the design spec and `docs/API_REFERENCE.md` for the backend contract.
 
 ## Prerequisites
 
-- Flutter SDK matching `environment.sdk` in `pubspec.yaml` (`^3.12.1`).
-- A running instance of the Miravelt backend (see the repo root `../`) reachable from wherever you run the app.
-- An issued `X-Miravelt-API-Key` value for that backend (see the backend's own docs for issuance - there is no client-facing signup for this key).
+- Node.js 20+ (22 recommended) and, for device builds, the Android SDK / Xcode.
+- A running Miravelt backend (see the repo root `../`) reachable from the device.
+- The backend's `X-Miravelt-API-Key` value (no client-facing signup exists for it).
 
 ## Configuration
 
-The app only ever points at one of exactly two backends - see `ApiEnvironment` in `lib/core/config/api_environment.dart`:
+| Variable (build time) | Purpose |
+|---|---|
+| `EXPO_PUBLIC_MIRAVELT_API_KEY` | `X-Miravelt-API-Key` sent on every request. No usable default (falls back to a public placeholder). |
+| `EXPO_PUBLIC_MIRAVELT_API_BASE_URL` | Overrides the deployed backend URL (default `https://miravelt.deploy.lokeshrc.me/`). |
+| `EXPO_PUBLIC_MIRAVELT_LOCAL_API_BASE_URL` | Overrides the Localhost preset (`http://10.0.2.2:9850/` on Android, `http://localhost:9850/` elsewhere). |
 
-| Environment | Default base URL | Override (`--dart-define`) |
-|---|---|---|
-| `ApiEnvironment.production` (release default) | `https://miravelt.deploy.lokeshrc.me/` | `MIRAVELT_API_BASE_URL` |
-| `ApiEnvironment.local` | `http://10.0.2.2:9850/` on the Android emulator, `http://localhost:9850/` elsewhere (matches `docker-compose_local.yaml`'s published port) | `MIRAVELT_LOCAL_API_BASE_URL` |
-
-Which one is active is a **runtime** choice, not just a build-time one: it's persisted on-device and switchable from Developer settings > "API server" in every build, release included - unlock it by tapping the version line on the login screen (or the "Developer settings" row in Profile) five times. A third option, **Custom**, takes any URL. Switching signs you out first, so a session is never sent to a different backend. A fresh install always starts on `production`.
-
-Override the defaults above for a physical device, a different local port (e.g. a bare `uvicorn app:app --reload` on 8000 instead of the full Docker stack on 9850), or a different production host.
-
-The one value that's still build-time only, via `--dart-define=MIRAVELT_API_KEY=...`, is the `X-Miravelt-API-Key` header sent on every request - it has no usable default and must always be passed (falls back to a `miravelt_test_key_123` placeholder otherwise; see `lib/core/config/app_config.dart`).
-
-On Android, cleartext HTTP is permitted app-wide (`network_security_config.xml` explains why: a LAN address like `http://192.168.1.5:9850/` can't be allowlisted by range). On a physical phone, `10.0.2.2` (the Localhost preset) doesn't exist - use Custom with your computer's LAN address, or `adb reverse tcp:9850 tcp:9850` plus Custom `http://localhost:9850/`.
+Put them in `frontend/.env.local` (gitignored). Which backend the app uses is a **runtime** choice: Developer settings > "API server" (Deployed / Localhost / Custom), unlocked by tapping the version line on the login screen or the "Developer settings" row in Profile five times. Switching signs you out first. On a physical phone `10.0.2.2` does not exist - use Custom with your computer's LAN address (e.g. `http://192.168.1.5:9850/`), or `adb reverse tcp:9850 tcp:9850` plus Custom `http://localhost:9850/`. Cleartext HTTP is enabled for exactly this.
 
 ## Running locally
 
 ```
-flutter pub get
-flutter run --dart-define=MIRAVELT_API_KEY=your-api-key-here
+npm install --legacy-peer-deps
+npx expo run:android        # or run:ios - builds a dev client (native modules need it; Expo Go is not enough)
+npx expo start              # then Metro for subsequent runs
 ```
 
-Defaults to the deployed backend; switch to Profile > Developer > "API server" > Localhost once the app is running to target a backend on your own machine instead.
-
-## Building a release APK
+## Checks
 
 ```
-flutter build apk --release \
-  --dart-define=MIRAVELT_API_BASE_URL=https://your-production-host \
-  --dart-define=MIRAVELT_API_KEY=your-production-api-key
+npm run typecheck
+npm test
 ```
 
-Before this is Play-Store-publishable, `android/app/build.gradle.kts`'s release `signingConfig` still needs to be pointed at a real upload keystore - it currently signs with the debug keystore (see the `TODO` there and [Flutter's signing guide](https://docs.flutter.dev/deployment/android#sign-the-app)). The release build type already has R8 minification/resource shrinking enabled.
-
-App icons (`android/app/src/main/res/mipmap-*`, `ios/Runner/Assets.xcassets/AppIcon.appiconset`) are still Flutter's default placeholder - swap in Miravelt's actual mark before shipping.
-
-## Development
+## Building a release
 
 ```
-flutter analyze   # static analysis - should report no issues
-flutter test      # widget/unit tests
+EXPO_PUBLIC_MIRAVELT_API_KEY=<key> eas build -p android --profile production
 ```
 
-Architecture notes for contributors:
-- Clean Architecture, feature-first: `lib/features/<feature>/{data,domain,presentation}`.
-- State management is **classic Riverpod** (`Provider`/`FutureProvider`/`NotifierProvider`/`AsyncNotifierProvider`), not the `@riverpod` code-generator - a resolved `riverpod_generator` → `analyzer` version conflict made codegen unusable in this environment, so don't reintroduce it without re-solving that.
-- `build.yaml` sets `json_serializable`'s `field_rename: snake` globally to match the backend's snake_case JSON without per-field `@JsonKey` annotations.
+or `npx expo prebuild` and build the generated project with Gradle/Xcode. Bump `android.versionCode` in `app.json` for every release you publish through the backend's in-app updater.
+
+## Legal
+
+`docs/PRIVACY_POLICY.md` and `docs/TERMS_OF_SERVICE.md` are the canonical drafts; `src/lib/legalDocuments.ts` is the same content for the in-app screens - update both together.

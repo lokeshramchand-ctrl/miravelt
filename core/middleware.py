@@ -1,4 +1,5 @@
 import logging
+import re
 import uuid
 from contextvars import ContextVar
 
@@ -29,7 +30,9 @@ class RequestIDMiddleware:
             return
 
         headers = dict(scope.get("headers") or [])
-        request_id = headers.get(b"x-request-id", b"").decode() or str(uuid.uuid4())
+        request_id = headers.get(b"x-request-id", b"").decode("ascii", "ignore")
+        if not re.fullmatch(r"[A-Za-z0-9-]{1,64}", request_id):
+            request_id = str(uuid.uuid4())
         scope.setdefault("state", {})
         scope["state"]["request_id"] = request_id
         token = request_id_ctx.set(request_id)

@@ -1,4 +1,4 @@
-"""Regenerate the Android and iOS launcher icons from ../assets/Frame.png.
+"""Regenerate the Expo app icons (assets/icon.png, adaptive-icon.png, favicon) from ../assets/Frame.png.
 
     pip install pillow
     python frontend/tool/generate_app_icons.py        # run from the repo root
@@ -14,7 +14,7 @@ neither platform can use directly:
   canvas or the corners get clipped. Older launchers fall back to the legacy
   square bitmaps, which get their own rounded-rect plate here.
 
-BACKGROUND is AppColors.ink900 (lib/core/theme/app_colors.dart), so the icon
+BACKGROUND is ink900 (src/theme/colors.ts), so the icon
 plate matches the app's own dark surface.
 """
 
@@ -25,10 +25,7 @@ from PIL import Image, ImageDraw
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SOURCE = os.path.join(REPO_ROOT, "assets", "Frame.png")
-ANDROID_RES = os.path.join(REPO_ROOT, "frontend", "android", "app", "src", "main", "res")
-IOS_APPICON = os.path.join(
-    REPO_ROOT, "frontend", "ios", "Runner", "Assets.xcassets", "AppIcon.appiconset"
-)
+OUT = os.path.join(REPO_ROOT, "frontend", "assets")
 
 BACKGROUND = (13, 15, 21)  # #0D0F15 - oklch(0.17 0.012 265), AppColors.ink900
 
@@ -105,52 +102,19 @@ def write_png(image, path):
     print(f"  {os.path.relpath(path, REPO_ROOT)}")
 
 
-def generate_android(art):
-    print("android:")
-    for bucket, (legacy_px, adaptive_px) in ANDROID_DENSITIES.items():
-        mipmap = os.path.join(ANDROID_RES, f"mipmap-{bucket}")
-
-        square = rounded_plate(legacy_px)
-        square.alpha_composite(place(art, legacy_px, LEGACY_SCALE))
-        write_png(square, os.path.join(mipmap, "ic_launcher.png"))
-
-        round_icon = circle_plate(legacy_px)
-        round_icon.alpha_composite(place(art, legacy_px, LEGACY_SCALE))
-        write_png(round_icon, os.path.join(mipmap, "ic_launcher_round.png"))
-
-        # Adaptive foreground: art only, on transparency. The background layer
-        # is a colour resource, so it needs no bitmap.
-        write_png(
-            place(art, adaptive_px, ADAPTIVE_SCALE),
-            os.path.join(mipmap, "ic_launcher_foreground.png"),
-        )
-
-
-def generate_ios(art):
-    print("ios:")
-    with open(os.path.join(IOS_APPICON, "Contents.json"), encoding="utf-8") as fh:
-        contents = json.load(fh)
-
-    # Several slots share a filename across idioms (e.g. 20x20@2x is listed for
-    # both iphone and ipad); render each file once, at its largest requested px.
-    wanted = {}
-    for entry in contents["images"]:
-        filename = entry.get("filename")
-        if not filename:
-            continue
-        points = float(entry["size"].split("x")[0])
-        pixels = round(points * float(entry["scale"].rstrip("x")))
-        wanted[filename] = max(wanted.get(filename, 0), pixels)
-
-    for filename, pixels in sorted(wanted.items(), key=lambda kv: kv[1]):
-        icon = Image.new("RGBA", (pixels, pixels), BACKGROUND + (255,))
-        icon.alpha_composite(place(art, pixels, IOS_SCALE))
-        # Flatten to RGB: iOS app icons must carry no alpha channel at all.
-        write_png(icon.convert("RGB"), os.path.join(IOS_APPICON, filename))
+def main():
+    art = load_artwork()
+    print("expo:")
+    # iOS marketing icon + Android legacy: flattened, no alpha.
+    icon = Image.new("RGBA", (1024, 1024), BACKGROUND + (255,))
+    icon.alpha_composite(place(art, 1024, IOS_SCALE))
+    write_png(icon.convert("RGB"), os.path.join(OUT, "icon.png"))
+    # Android adaptive foreground (background colour is set in app.json).
+    write_png(place(art, 1024, ADAPTIVE_SCALE), os.path.join(OUT, "adaptive-icon.png"))
+    fav = Image.new("RGBA", (48, 48), BACKGROUND + (255,))
+    fav.alpha_composite(place(art, 48, LEGACY_SCALE))
+    write_png(fav, os.path.join(OUT, "favicon.png"))
 
 
 if __name__ == "__main__":
-    artwork = load_artwork()
-    print(f"source {os.path.relpath(SOURCE, REPO_ROOT)} cropped to {artwork.size}")
-    generate_android(artwork)
-    generate_ios(artwork)
+    main()

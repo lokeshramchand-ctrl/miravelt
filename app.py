@@ -123,8 +123,15 @@ app = FastAPI(
     title="Miravelt",
     description="Core engine for raw transaction ingestion and ML routing.",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url=None if settings.ENVIRONMENT == "production" else "/docs",
+    redoc_url=None if settings.ENVIRONMENT == "production" else "/redoc",
+    openapi_url=None if settings.ENVIRONMENT == "production" else "/openapi.json",
 )
+
+from core.log_redaction import install_redaction  # noqa: E402
+
+install_redaction()
 
 # Centralized error handling - every error response (expected or not) comes
 # back as the same JSON envelope, and unhandled exceptions never leak
