@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Icon } from './Icon';
 import { useAppUpdate } from '../state/appUpdate';
 import { colors } from '../theme/colors';
 import { radius } from '../theme/tokens';
@@ -49,42 +49,42 @@ function AppUpdateBody({ onLater }: { onLater: () => void }) {
   return (
     <View>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <View style={{ width: 42, height: 42, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.ink700, borderWidth: 1, borderColor: colors.hairlineDark, borderRadius: radius.field }}>
-          <MaterialIcons name="system-update-alt" size={20} color={colors.accent} />
+        <View style={{ width: 42, height: 42, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface3, borderWidth: 1, borderColor: colors.border, borderRadius: radius.field }}>
+          <Icon name="system-update-alt" size={20} color={colors.signal} />
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={[typography.rowLabel14, { color: colors.onDark, fontSize: 16 }]}>Update available</Text>
-          <Text style={[typography.meta115, { color: colors.onDarkFaint, marginTop: 2 }]}>Version {info.versionName}</Text>
+          <Text style={[typography.rowLabel14, { color: colors.text, fontSize: 16 }]}>Update available</Text>
+          <Text style={[typography.meta115, { color: colors.faint, marginTop: 2 }]}>Version {info.versionName}</Text>
         </View>
       </View>
       {info.releaseNotes ? (
-        <View style={{ marginTop: 16, paddingHorizontal: 15, paddingVertical: 13, backgroundColor: colors.ink800, borderWidth: 1, borderColor: colors.hairlineDark, borderRadius: 14 }}>
-          <Text style={[typography.footnote12, { color: colors.onDarkMuted, lineHeight: 18 }]}>{info.releaseNotes}</Text>
+        <View style={{ marginTop: 16, paddingHorizontal: 15, paddingVertical: 13, backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border, borderRadius: 14 }}>
+          <Text style={[typography.footnote12, { color: colors.muted, lineHeight: 18 }]}>{info.releaseNotes}</Text>
         </View>
       ) : null}
       <View style={{ height: 20 }} />
       {stage === 'downloading' ? (
         <>
           <SweepProgressBar percent={progressPercent} />
-          <Text style={[typography.meta115, { color: colors.onDarkMuted, marginTop: 8 }]}>DOWNLOADING · {Math.round(progressPercent)}%</Text>
+          <Text style={[typography.meta115, { color: colors.muted, marginTop: 8 }]}>DOWNLOADING · {Math.round(progressPercent)}%</Text>
           <View style={{ height: 18 }} />
-          <SecondaryPillButton label="Cancel" foreground={colors.onDarkMuted} borderColor={colors.hairlineDark} onPress={cancelDownload} />
+          <SecondaryPillButton label="Cancel" foreground={colors.muted} borderColor={colors.border} onPress={cancelDownload} />
         </>
       ) : stage === 'readyToInstall' ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="small" color={colors.accent} />
-          <Text style={[typography.footnote12, { color: colors.onDarkMuted, marginLeft: 10 }]}>Opening installer…</Text>
+          <ActivityIndicator size="small" color={colors.signal} />
+          <Text style={[typography.footnote12, { color: colors.muted, marginLeft: 10 }]}>Opening installer…</Text>
         </View>
       ) : (
         <>
           {stage === 'error' && errorMessage ? (
-            <View style={{ marginBottom: 14, paddingHorizontal: 15, paddingVertical: 13, backgroundColor: colors.amberTint, borderRadius: 14 }}>
-              <Text style={[typography.footnote12, { color: colors.amberTextOnTint }]}>{errorMessage}</Text>
+            <View style={{ marginBottom: 14, paddingHorizontal: 15, paddingVertical: 13, backgroundColor: colors.warnSoft, borderRadius: 14 }}>
+              <Text style={[typography.footnote12, { color: colors.warn }]}>{errorMessage}</Text>
             </View>
           ) : null}
           <PrimaryPillButton label="Update now" onPress={() => void downloadAndInstall()} />
           <View style={{ height: 10 }} />
-          <SecondaryPillButton label="Later" foreground={colors.onDarkMuted} borderColor={colors.hairlineDark} onPress={onLater} />
+          <SecondaryPillButton label="Later" foreground={colors.muted} borderColor={colors.border} onPress={onLater} />
         </>
       )}
     </View>

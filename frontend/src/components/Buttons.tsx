@@ -1,8 +1,11 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { colors } from '../theme/colors';
 import { radius } from '../theme/tokens';
 import { typography } from '../theme/typography';
+import { Icon } from './Icon';
+import type { IconName } from './Icon';
+import { PressableScale } from './motion';
 
 interface PrimaryPillButtonProps {
   label: string;
@@ -10,29 +13,41 @@ interface PrimaryPillButtonProps {
   expand?: boolean;
   loading?: boolean;
   disabled?: boolean;
+  icon?: IconName;
   testID?: string;
   style?: StyleProp<ViewStyle>;
 }
 
-/** Full/auto-width filled pill CTA - accent bg, accent-ink text. */
-export function PrimaryPillButton({ label, onPress, expand = true, loading = false, disabled = false, testID, style }: PrimaryPillButtonProps) {
+/** The primary action: a solid ink pill (bencho `.btn-primary`). */
+export function PrimaryPillButton({ label, onPress, expand = true, loading = false, disabled = false, icon, testID, style }: PrimaryPillButtonProps) {
   const inactive = loading || disabled || !onPress;
   return (
-    <Pressable
+    <PressableScale
+      haptic="tap"
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy: loading }}
+      accessibilityLabel={label}
       testID={testID}
+      disabled={inactive}
       onPress={inactive ? undefined : onPress}
       style={({ pressed }) => [
-        styles.primary,
-        expand ? styles.expand : styles.auto,
-        inactive && { opacity: 0.6 },
-        pressed && !inactive && { opacity: 0.85 },
+        base,
+        { backgroundColor: colors.ink, minHeight: 50 },
+        expand ? { alignSelf: 'stretch' } : { alignSelf: 'center', paddingHorizontal: 22 },
+        inactive && !loading && { opacity: 0.45 },
+        pressed && { opacity: 0.88 },
         style,
       ]}
     >
-      {loading ? <ActivityIndicator size="small" color={colors.accentInk} /> : <Text style={[typography.buttonLabel15, { color: colors.accentInk }]}>{label}</Text>}
-    </Pressable>
+      {loading ? (
+        <ActivityIndicator size="small" color={colors.onInk} />
+      ) : (
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {icon ? <Icon name={icon} size={17} color={colors.onInk} style={{ marginRight: 8 }} /> : null}
+          <Text style={[typography.buttonLabel15, { color: colors.onInk }]}>{label}</Text>
+        </View>
+      )}
+    </PressableScale>
   );
 }
 
@@ -40,23 +55,36 @@ interface SecondaryPillButtonProps {
   label: string;
   onPress?: () => void;
   expand?: boolean;
-  foreground: string;
-  borderColor: string;
+  foreground?: string;
+  borderColor?: string;
+  icon?: IconName;
+  tone?: 'default' | 'danger';
   testID?: string;
   style?: StyleProp<ViewStyle>;
 }
 
-/** Outline pill - hairline border, transparent bg. */
-export function SecondaryPillButton({ label, onPress, expand = true, foreground, borderColor, testID, style }: SecondaryPillButtonProps) {
+/** Outline pill on a surface fill (bencho `.btn`); `tone="danger"` for destructive actions. */
+export function SecondaryPillButton({ label, onPress, expand = true, foreground, borderColor, icon, tone = 'default', testID, style }: SecondaryPillButtonProps) {
+  const fg = foreground ?? (tone === 'danger' ? colors.down : colors.text);
   return (
-    <Pressable
+    <PressableScale
+      haptic="tap"
       accessibilityRole="button"
+      accessibilityLabel={label}
       testID={testID}
       onPress={onPress}
-      style={({ pressed }) => [styles.secondary, { borderColor }, expand ? styles.expand : styles.auto, pressed && { opacity: 0.7 }, style]}
+      style={({ pressed }) => [
+        base,
+        { minHeight: 46, backgroundColor: pressed ? colors.surface2 : colors.surface, borderWidth: 1, borderColor: borderColor ?? (tone === 'danger' ? colors.downSoft : colors.border2) },
+        expand ? { alignSelf: 'stretch' } : { alignSelf: 'center', paddingHorizontal: 18 },
+        style,
+      ]}
     >
-      <Text style={[typography.buttonLabel14, { color: foreground }]}>{label}</Text>
-    </Pressable>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        {icon ? <Icon name={icon} size={16} color={fg} style={{ marginRight: 8 }} /> : null}
+        <Text style={[typography.buttonLabel14, { color: fg }]}>{label}</Text>
+      </View>
+    </PressableScale>
   );
 }
 
@@ -64,15 +92,36 @@ interface TextActionLinkProps {
   label: string;
   onPress: () => void;
   color?: string;
+  icon?: IconName;
   testID?: string;
 }
 
-/** No-container text link, e.g. "See transaction", "All 5 →". */
-export function TextActionLink({ label, onPress, color, testID }: TextActionLinkProps) {
+/** No-container text link in the signal colour, e.g. "See all", with an optional trailing arrow. */
+export function TextActionLink({ label, onPress, color, icon, testID }: TextActionLinkProps) {
+  const fg = color ?? colors.signalText;
   return (
-    <Pressable accessibilityRole="link" testID={testID} onPress={onPress} hitSlop={8} style={({ pressed }) => pressed && { opacity: 0.6 }}>
-      <Text style={[typography.buttonLabel12, { color: color ?? colors.accentDim }]}>{label}</Text>
-    </Pressable>
+    <PressableScale haptic="tap" accessibilityRole="link" accessibilityLabel={label} testID={testID} onPress={onPress} hitSlop={10} scaleTo={0.94} style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <Text style={[typography.buttonLabel13, { color: fg, fontFamily: 'Inter_600SemiBold' }]}>{label}</Text>
+      {icon ? <Icon name={icon} size={14} color={fg} style={{ marginLeft: 4 }} /> : null}
+    </PressableScale>
+  );
+}
+
+/** Round icon button (bencho `.icon-btn.bordered`). */
+export function IconButton({ icon, onPress, label, size = 42, badge }: { icon: IconName; onPress?: () => void; label: string; size?: number; badge?: boolean }) {
+  return (
+    <PressableScale
+      haptic="tap"
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      disabled={!onPress}
+      scaleTo={0.9}
+      style={({ pressed }) => ({ width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: pressed ? colors.surface2 : colors.surface, borderWidth: 1, borderColor: colors.border })}
+    >
+      <Icon name={icon} size={18} color={colors.text} />
+      {badge ? <View style={{ position: 'absolute', top: 9, right: 10, width: 7, height: 7, borderRadius: 4, backgroundColor: '#ff5a6e', borderWidth: 1.5, borderColor: '#ffffff' }} /> : null}
+    </PressableScale>
   );
 }
 
@@ -81,24 +130,4 @@ export function ButtonRow({ children }: { children: React.ReactNode }) {
   return <View style={{ flexDirection: 'row', justifyContent: 'center' }}>{children}</View>;
 }
 
-const styles = StyleSheet.create({
-  primary: {
-    backgroundColor: colors.accent,
-    borderRadius: radius.pill,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 52,
-  },
-  secondary: {
-    borderWidth: 1.5,
-    borderRadius: radius.pill,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  expand: { alignSelf: 'stretch' },
-  auto: { alignSelf: 'center' },
-});
+const base: ViewStyle = { borderRadius: radius.pill, paddingVertical: 13, paddingHorizontal: 24, alignItems: 'center', justifyContent: 'center' };

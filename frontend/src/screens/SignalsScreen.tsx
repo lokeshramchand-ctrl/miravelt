@@ -1,9 +1,11 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { EmptyState, ErrorRetry, SignalCard, signalKindFromSeverity, withAlpha } from '../components/Display';
+import { SegmentedControl } from '../components/Controls';
+import { EmptyState, ErrorRetry, SignalCard, signalKindFromSeverity } from '../components/Display';
+import { Icon } from '../components/Icon';
+import { FadeInUp } from '../components/motion';
 import { Screen } from '../components/Screen';
 import { SkeletonBox } from '../components/Skeleton';
 import { spendingBreakdown } from '../domain/types';
@@ -49,23 +51,20 @@ export default function SignalsScreen() {
   return (
     <Screen dark>
       <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingTop: 6, paddingBottom: spacing.navClearance + insets.bottom }} showsVerticalScrollIndicator={false}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={[typography.screenTitle24, { color: colors.onDark }]}>Signals</Text>
-          {period ? (
-            <Text style={[typography.microLabel11, { color: colors.onDarkFaint }]}>
-              {`${monthAbbr(period.periodStart.getMonth() + 1)}–${monthAbbr(period.periodEnd.getMonth() + 1)} ${period.periodEnd.getFullYear()}`.toUpperCase()}
-            </Text>
-          ) : null}
-        </View>
+        <Text style={[typography.footnote12, { color: colors.muted, marginTop: 14 }]}>
+          {period ? `What stood out · ${monthAbbr(period.periodStart.getMonth() + 1)}–${monthAbbr(period.periodEnd.getMonth() + 1)} ${period.periodEnd.getFullYear()}` : 'What stood out'}
+        </Text>
+        <Text style={[typography.pageTitle, { color: colors.text, marginTop: 4 }]}>Signals</Text>
         <View style={{ height: 18 }} />
         {analytics.data ? <Headline analytics={analytics.data} /> : null}
         <View style={{ height: 18 }} />
         {insights.data ? (
-          <View style={{ flexDirection: 'row' }}>
-            <Chip label={`All ${all.length}`} selected={filter === 'all'} onPress={() => setFilter('all')} />
-            <Chip label={`Watch ${watchCount}`} selected={filter === 'watch'} onPress={() => setFilter('watch')} />
-            <Chip label={`Good ${goodCount}`} selected={filter === 'good'} onPress={() => setFilter('good')} last />
-          </View>
+          <SegmentedControl<SignalFilter>
+            options={[['all', 'All'], ['watch', 'Watch'], ['good', 'Good']]}
+            counts={{ all: all.length, watch: watchCount, good: goodCount }}
+            value={filter}
+            onChange={setFilter}
+          />
         ) : null}
         <View style={{ height: 16 }} />
         {insights.isPending ? (
@@ -81,7 +80,7 @@ export default function SignalsScreen() {
         ) : (
           <SignalList insights={filterInsights(all, filter)} />
         )}
-        <Text style={[typography.footnote1155, { color: colors.onDarkFaint, textAlign: 'center', marginTop: 8 }]}>
+        <Text style={[typography.footnote1155, { color: colors.faint, textAlign: 'center', marginTop: 8 }]}>
           Signals are written from your computed analytics only. If a figure isn't in your statement, Miravelt won't claim it.
         </Text>
       </ScrollView>
@@ -118,30 +117,25 @@ function SignalList({ insights }: { insights: Insight[] }) {
 function Headline({ analytics }: { analytics: StatementAnalytics }) {
   const { top, share, count } = headlineSpendShare(analytics);
   return (
-    <LinearGradient
-      colors={[withAlpha(colors.accent, 0.14), 'rgba(0, 0, 0, 0)']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={{ padding: 18, borderWidth: 1, borderColor: withAlpha(colors.accent, 0.28), borderRadius: 20 }}
-    >
-      <Text style={[typography.microLabelTracked105, { color: colors.accent }]}>THE HEADLINE</Text>
-      <Text style={[typography.signalBody17, { color: colors.onDark, marginTop: 10 }]}>
-        You spent <Text style={typography.amountMedium17}>{formatCurrency(analytics.totalSpend)}</Text> this period and kept <Text style={typography.amountMedium17}>{formatCurrency(analytics.totalIncome)}</Text> coming in.
-        {count > 0 ? ` ${top} ${count > 1 ? 'are' : 'is'} ${share}% of your spending.` : ''}
-      </Text>
-    </LinearGradient>
-  );
-}
-
-function Chip({ label, selected, onPress, last = false }: { label: string; selected: boolean; onPress: () => void; last?: boolean }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={{ paddingHorizontal: 13, paddingVertical: 8, marginRight: last ? 0 : 8, backgroundColor: selected ? colors.ink700 : 'transparent', borderWidth: 1, borderColor: colors.hairlineDark, borderRadius: radius.pill }}
-    >
-      <Text style={[typography.buttonLabel12, { color: selected ? colors.onDark : colors.onDarkMuted }]}>{label}</Text>
-    </Pressable>
+    <FadeInUp>
+      <View style={{ padding: 20, borderRadius: radius.card, backgroundColor: colors.heroBg, borderWidth: 1, borderColor: colors.scheme === 'dark' ? colors.border2 : colors.heroBg }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={[typography.footnote12, { color: colors.heroMuted, flex: 1 }]}>The headline</Text>
+          <Icon name="arrow-up-right" size={16} color={colors.heroText} />
+        </View>
+        <Text style={[typography.signalBody17, { fontFamily: 'Inter_400Regular', fontSize: 19, lineHeight: 27, color: colors.heroText, marginTop: 12 }]}>
+          You spent <Text style={{ fontFamily: 'Inter_600SemiBold' }}>{formatCurrency(analytics.totalSpend)}</Text> this period and kept{' '}
+          <Text style={{ fontFamily: 'Inter_600SemiBold' }}>{formatCurrency(analytics.totalIncome)}</Text> coming in.
+          {count > 0 ? ` ${top} ${count > 1 ? 'are' : 'is'} ${share}% of your spending.` : ''}
+        </Text>
+        {count > 0 ? (
+          <View style={{ flexDirection: 'row', marginTop: 16 }}>
+            <View style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, borderWidth: 1, borderColor: colors.heroBorder }}>
+              <Text style={[typography.meta12, { color: colors.heroText }]}>{share}% in two categories</Text>
+            </View>
+          </View>
+        ) : null}
+      </View>
+    </FadeInUp>
   );
 }

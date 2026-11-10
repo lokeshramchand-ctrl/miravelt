@@ -30,11 +30,11 @@ export default function TabsLayout() {
   }, []);
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.paper }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <Tabs
-        screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: colors.paper } }}
+        screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: colors.bg } }}
         tabBar={({ state, navigation }) => (
-          <View pointerEvents="box-none" style={{ position: 'absolute', left: 22, right: 22, bottom: 12 + insets.bottom, alignItems: 'center' }}>
+          <View pointerEvents="box-none" style={{ position: 'absolute', left: 20, right: 20, bottom: 14 + insets.bottom, alignItems: 'center' }}>
             <FloatingBottomNav
               tabs={TABS}
               currentIndex={state.index}

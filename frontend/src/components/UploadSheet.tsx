@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Icon } from './Icon';
 import { monthAbbr } from '../lib/format';
 import { looksLikePasswordIssue, useUpload } from '../state/upload';
 import { colors } from '../theme/colors';
@@ -79,7 +79,7 @@ function UploadSheetBody({ onClose }: { onClose: () => void }) {
   if (state.stage === 'idle') {
     return (
       <View style={{ height: 120, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={colors.accent} />
+        <ActivityIndicator color={colors.signal} />
       </View>
     );
   }
@@ -89,18 +89,18 @@ function UploadSheetBody({ onClose }: { onClose: () => void }) {
   return (
     <View>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <View style={{ width: 42, height: 42, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.ink700, borderWidth: 1, borderColor: colors.hairlineDark, borderRadius: radius.field }}>
-          <Text style={[typography.badge10, { color: colors.onDarkMuted }]}>PDF</Text>
+        <View style={{ width: 42, height: 42, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface3, borderWidth: 1, borderColor: colors.border, borderRadius: radius.field }}>
+          <Text style={[typography.badge10, { color: colors.muted }]}>PDF</Text>
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text numberOfLines={1} style={[typography.rowLabel14, { color: colors.onDark }]}>
+          <Text numberOfLines={1} style={[typography.rowLabel14, { color: colors.text }]}>
             {state.fileName ?? ''}
           </Text>
-          <Text style={[typography.meta115, { color: colors.onDarkFaint, marginTop: 2 }]}>{sizeLabel}</Text>
+          <Text style={[typography.meta115, { color: colors.faint, marginTop: 2 }]}>{sizeLabel}</Text>
         </View>
         {state.stage === 'uploading' ? (
           <Pressable accessibilityRole="button" accessibilityLabel="Cancel upload" onPress={cancel} hitSlop={10} style={{ padding: 8 }}>
-            <MaterialIcons name="close" size={18} color={colors.onDarkFaint} />
+            <Icon name="close" size={18} color={colors.faint} />
           </Pressable>
         ) : null}
       </View>
@@ -109,29 +109,29 @@ function UploadSheetBody({ onClose }: { onClose: () => void }) {
       {state.stage === 'uploading' ? (
         <>
           <SweepProgressBar percent={state.progressPercent} />
-          <Text style={[typography.meta115, { color: colors.onDarkMuted, marginTop: 8 }]}>UPLOADING · {Math.round(state.progressPercent)}%</Text>
-          <View style={{ marginTop: 20, paddingHorizontal: 15, paddingVertical: 13, borderWidth: 1, borderColor: colors.hairlineDark, borderRadius: 14 }}>
-            <Text style={[typography.footnote12, { color: colors.onDarkMuted }]}>Encrypted PDF? We'll ask for the password before parsing - it is never stored.</Text>
+          <Text style={[typography.meta115, { color: colors.muted, marginTop: 8 }]}>UPLOADING · {Math.round(state.progressPercent)}%</Text>
+          <View style={{ marginTop: 20, paddingHorizontal: 15, paddingVertical: 13, borderWidth: 1, borderColor: colors.border, borderRadius: 14 }}>
+            <Text style={[typography.footnote12, { color: colors.muted }]}>Encrypted PDF? We'll ask for the password before parsing - it is never stored.</Text>
           </View>
           <View style={{ height: 18 }} />
-          <SecondaryPillButton label="Cancel upload" foreground={colors.onDarkMuted} borderColor={colors.hairlineDark} onPress={cancel} />
+          <SecondaryPillButton label="Cancel upload" foreground={colors.muted} borderColor={colors.border} onPress={cancel} />
         </>
       ) : null}
 
       {state.stage === 'recognized' ? (
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', padding: 15, backgroundColor: colors.ink800, borderWidth: 1, borderColor: colors.hairlineDark, borderRadius: 16 }}>
-          <MaterialIcons name="check-circle" size={18} color={colors.accent} />
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', padding: 15, backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border, borderRadius: 16 }}>
+          <Icon name="check-circle" size={18} color={colors.signal} />
           <View style={{ flex: 1, marginLeft: 10 }}>
-            <Text style={[typography.rowLabel14, { color: colors.onDark }]}>Recognised as a Google Pay statement</Text>
-            {state.statement ? <Text style={[typography.meta115, { color: colors.onDarkMuted, marginTop: 6 }]}>{summaryLine(state.statement)}</Text> : null}
+            <Text style={[typography.rowLabel14, { color: colors.text }]}>Recognised as a Google Pay statement</Text>
+            {state.statement ? <Text style={[typography.meta115, { color: colors.muted, marginTop: 6 }]}>{summaryLine(state.statement)}</Text> : null}
           </View>
         </View>
       ) : null}
 
       {needsPassword ? (
         <>
-          <View style={{ padding: 15, backgroundColor: colors.amberTint, borderRadius: 14 }}>
-            <Text style={[typography.footnote12, { color: colors.amberTextOnTint }]}>{state.errorMessage || 'This PDF needs a password.'}</Text>
+          <View style={{ padding: 15, backgroundColor: colors.warnSoft, borderRadius: 14 }}>
+            <Text style={[typography.footnote12, { color: colors.warn }]}>{state.errorMessage || 'This PDF needs a password.'}</Text>
           </View>
           <TextInput
             value={password}
@@ -140,14 +140,14 @@ function UploadSheetBody({ onClose }: { onClose: () => void }) {
             autoCapitalize="none"
             autoCorrect={false}
             placeholder="PDF password"
-            placeholderTextColor={colors.onDarkFaint}
-            selectionColor={colors.accent}
-            style={[typography.body14, { marginTop: 14, paddingHorizontal: 14, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.ink800, color: colors.onDark }]}
+            placeholderTextColor={colors.faint}
+            selectionColor={colors.signal}
+            style={[typography.body14, { marginTop: 14, paddingHorizontal: 14, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.surface2, color: colors.text }]}
           />
           <View style={{ height: 14 }} />
           <PrimaryPillButton label="Try again" onPress={() => void useUpload.getState().retryWithPassword(password)} />
           <Pressable accessibilityRole="button" onPress={cancel} style={{ alignSelf: 'center', paddingVertical: 12 }}>
-            <Text style={[typography.footnote12, { color: colors.onDarkFaint }]}>Cancel</Text>
+            <Text style={[typography.footnote12, { color: colors.faint }]}>Cancel</Text>
           </Pressable>
         </>
       ) : null}

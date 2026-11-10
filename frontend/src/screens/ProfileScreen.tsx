@@ -7,8 +7,11 @@ import { ApiException } from '../api/errors';
 import { UserAvatar } from '../components/Avatars';
 import { DeveloperUnlockGesture } from '../components/DeveloperSettings';
 import { Dialog, PromptDialog } from '../components/Dialog';
-import { SegmentedControl, ScreenBackHeader, ToggleRow } from '../components/Controls';
-import { StatTile } from '../components/Display';
+import { PrimaryPillButton } from '../components/Buttons';
+import { RowIcon, SegmentedControl, ScreenBackHeader, ToggleRow } from '../components/Controls';
+import { Card as GlassCard, StatTile } from '../components/Display';
+import { Icon } from '../components/Icon';
+import type { IconName } from '../components/Icon';
 import { Screen } from '../components/Screen';
 import type { Transaction } from '../domain/types';
 import { userInitials } from '../domain/types';
@@ -97,88 +100,88 @@ export default function ProfileScreen() {
   return (
     <Screen dark>
       <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingTop: 6, paddingBottom: 28 + insets.bottom }} showsVerticalScrollIndicator={false}>
-        <ScreenBackHeader title="You" titleStyle={typography.screenTitle24} />
+        <ScreenBackHeader title="You" titleStyle={typography.pageTitle} />
         <View style={{ height: 18 }} />
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <UserAvatar seed={user?.id} initials={user ? userInitials(user) : '?'} size={54} gradient={[colors.accent, colors.accentDim]} foregroundColor={colors.accentInk} />
+          <UserAvatar seed={user?.id} initials={user ? userInitials(user) : '?'} size={54} gradient={[colors.signal, colors.signalText]} foregroundColor={colors.onInk} />
           <View style={{ flex: 1, marginLeft: 14 }}>
             {/* With no name set, the email is the title - don't repeat it underneath as well. */}
             {hasName ? (
               <>
-                <Text style={[typography.rowLabel14, { fontSize: 16, color: colors.onDark }]}>{user?.fullName}</Text>
-                <Text style={[typography.meta12, { color: colors.onDarkFaint, marginTop: 3 }]}>{user?.email}</Text>
+                <Text style={[typography.rowLabel14, { fontSize: 16, color: colors.text }]}>{user?.fullName}</Text>
+                <Text style={[typography.meta12, { color: colors.faint, marginTop: 3 }]}>{user?.email}</Text>
               </>
             ) : (
-              <Text style={[typography.rowLabel14, { fontSize: 16, color: colors.onDark }]}>{user?.email ?? ''}</Text>
+              <Text style={[typography.rowLabel14, { fontSize: 16, color: colors.text }]}>{user?.email ?? ''}</Text>
             )}
           </View>
-          <Pressable accessibilityRole="button" onPress={() => setEditing(true)} style={{ paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: colors.hairlineDark, borderRadius: 100 }}>
-            <Text style={[typography.buttonLabel12, { color: colors.onDark }]}>Edit</Text>
+          <Pressable accessibilityRole="button" onPress={() => setEditing(true)} style={{ paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: colors.border, borderRadius: 100 }}>
+            <Text style={[typography.buttonLabel12, { color: colors.text }]}>Edit</Text>
           </Pressable>
         </View>
         <View style={{ height: 20 }} />
         {/* "TXNS ANALYSED" wraps on phone widths, and the three tiles should still line up as one row. */}
         <View style={{ flexDirection: 'row', alignItems: 'stretch' }}>
           <View style={{ flex: 1 }}>
-            <StatTile label="PERIODS" value={`${periods.length}`} />
+            <StatTile icon="calendar" label="PERIODS" value={`${periods.length}`} />
           </View>
           <View style={{ width: 10 }} />
           <View style={{ flex: 1 }}>
-            <StatTile label="TXNS ANALYSED" value={`${totalTxns}`} />
+            <StatTile icon="receipt-long" label="TXNS ANALYSED" value={`${totalTxns}`} />
           </View>
           <View style={{ width: 10 }} />
           <View style={{ flex: 1 }}>
-            <StatTile label="COMPLETED" value={`${completed.length}`} />
+            <StatTile icon="check-circle" label="COMPLETED" value={`${completed.length}`} />
           </View>
         </View>
 
         <SectionLabel>DATA</SectionLabel>
         <Card>
-          <NavRow title="Manage periods" trailing={`${periods.length} ›`} onPress={() => router.push('/profile/periods')} />
+          <NavRow icon="calendar" title="Manage periods" trailing={`${periods.length} ›`} onPress={() => router.push('/profile/periods')} />
           <Divider />
-          <NavRow title="Spending patterns" trailing="›" onPress={() => router.push('/profile/analytics')} />
+          <NavRow icon="chart-bar" title="Spending patterns" trailing="›" onPress={() => router.push('/profile/analytics')} />
           <Divider />
-          <ToggleRow title="Keep original PDFs" value={settings.keepOriginalPdfs} onChange={settings.setKeepOriginalPdfs} />
+          <ToggleRow icon="file-pdf" title="Keep original PDFs" value={settings.keepOriginalPdfs} onChange={settings.setKeepOriginalPdfs} />
           <Divider />
-          <NavRow title="Export my data" trailing={exporting ? '' : '›'} busy={exporting} onPress={exportData} />
+          <NavRow icon="export" title="Export my data" trailing={exporting ? '' : '›'} busy={exporting} onPress={exportData} />
         </Card>
 
         <SectionLabel>APPEARANCE & ALERTS</SectionLabel>
         <Card>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 13 }}>
-            <Text style={[typography.rowLabel14, { color: colors.onDark }]}>Theme</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12 }}>
+            <RowIcon name="palette" />
+            <Text style={[typography.rowLabel14, { color: colors.text, flex: 1 }]}>Theme</Text>
             <SegmentedControl<ThemeMode> value={settings.themeMode} options={THEME_OPTIONS} onChange={settings.setThemeMode} />
           </View>
           <Divider />
-          <ToggleRow title="Analysis finished" subtitle="Push when a period is ready" value={settings.notifyAnalysisFinished} onChange={(v) => void setAlert(settings.setNotifyAnalysisFinished, v)} />
+          <ToggleRow icon="notifications-none" title="Analysis finished" subtitle="Push when a period is ready" value={settings.notifyAnalysisFinished} onChange={(v) => void setAlert(settings.setNotifyAnalysisFinished, v)} />
           <Divider />
-          <ToggleRow title="Unusual spend" subtitle="Only WATCH-level signals" value={settings.notifyUnusualSpend} onChange={(v) => void setAlert(settings.setNotifyUnusualSpend, v)} />
+          <ToggleRow icon="priority-high" title="Unusual spend" subtitle="Only WATCH-level signals" value={settings.notifyUnusualSpend} onChange={(v) => void setAlert(settings.setNotifyUnusualSpend, v)} />
         </Card>
 
         <SectionLabel>DEVELOPER</SectionLabel>
         <Card>
           {/* Same gesture and same sheet as the login screen's footer - whichever one you find first, the other stays in sync. */}
           <DeveloperUnlockGesture>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 15, paddingVertical: 15 }}>
-              <Text style={[typography.rowLabel14, { color: colors.onDark }]}>Developer settings</Text>
-              <Text style={[typography.meta12, { color: colors.onDarkFaint }]}>{settings.developerModeUnlocked ? '›' : ''}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12 }}>
+              <RowIcon name="code" />
+              <Text style={[typography.rowLabel14, { color: colors.text, flex: 1 }]}>Developer settings</Text>
+              <Text style={[typography.meta12, { color: colors.faint }]}>{settings.developerModeUnlocked ? '›' : ''}</Text>
             </View>
           </DeveloperUnlockGesture>
         </Card>
 
         <SectionLabel>LEGAL</SectionLabel>
         <Card>
-          <NavRow title="Privacy Policy" trailing="›" onPress={() => router.push('/profile/privacy')} />
+          <NavRow icon="shield-check" title="Privacy Policy" trailing="›" onPress={() => router.push('/profile/privacy')} />
           <Divider />
-          <NavRow title="Terms of Service" trailing="›" onPress={() => router.push('/profile/terms')} />
+          <NavRow icon="file-text" title="Terms of Service" trailing="›" onPress={() => router.push('/profile/terms')} />
         </Card>
 
         <View style={{ height: 26 }} />
-        <Pressable accessibilityRole="button" onPress={signOut} style={{ paddingVertical: 13, alignItems: 'center', borderWidth: 1, borderColor: colors.hairlineDark, borderRadius: 100 }}>
-          <Text style={[typography.buttonLabel14, { color: colors.onDark }]}>Sign out</Text>
-        </Pressable>
+        <PrimaryPillButton label="Sign out" icon="sign-out" onPress={signOut} />
         <Pressable accessibilityRole="button" onPress={() => setConfirmDelete(true)} style={{ alignSelf: 'center', paddingVertical: 14, marginTop: 6 }}>
-          <Text style={[typography.footnote12, { color: colors.rose }]}>Delete account and all data</Text>
+          <Text style={[typography.footnote12, { color: colors.down }]}>Delete account and all data</Text>
         </Pressable>
       </ScrollView>
 
@@ -205,22 +208,32 @@ export default function ProfileScreen() {
 }
 
 function SectionLabel({ children }: { children: string }) {
-  return <Text style={[typography.microLabelTracked105, { color: colors.onDarkFaint, marginTop: 26, marginBottom: 10 }]}>{children}</Text>;
+  const label = children.charAt(0) + children.slice(1).toLowerCase();
+  return <Text style={[typography.footnote12, { color: colors.muted, marginTop: 26, marginBottom: 10, marginLeft: 4 }]}>{label}</Text>;
 }
 
 function Card({ children }: { children: React.ReactNode }) {
-  return <View style={{ backgroundColor: colors.ink850, borderWidth: 1, borderColor: colors.hairlineDark, borderRadius: radius.field + 4, overflow: 'hidden' }}>{children}</View>;
+  return <GlassCard padded={false} style={{ overflow: 'hidden' }}>{children}</GlassCard>;
 }
 
 function Divider() {
-  return <View style={{ height: 1, backgroundColor: colors.hairlineDark }} />;
+  return <View style={{ height: 1, backgroundColor: colors.border }} />;
 }
 
-function NavRow({ title, trailing, onPress, busy = false }: { title: string; trailing: string; onPress: () => void; busy?: boolean }) {
+function NavRow({ title, trailing, onPress, busy = false, icon }: { title: string; trailing: string; onPress: () => void; busy?: boolean; icon?: IconName }) {
+  const count = trailing.replace('›', '').trim();
   return (
-    <Pressable accessibilityRole="button" disabled={busy} onPress={onPress} style={({ pressed }) => [{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 15 }, pressed && { opacity: 0.6 }]}>
-      <Text style={[typography.rowLabel14, { color: colors.onDark }]}>{title}</Text>
-      {busy ? <ActivityIndicator size="small" color={colors.accent} /> : <Text style={[typography.meta12, { color: colors.onDarkFaint }]}>{trailing}</Text>}
+    <Pressable accessibilityRole="button" disabled={busy} onPress={onPress} style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12 }, pressed && { backgroundColor: colors.surface2 }]}>
+      {icon ? <RowIcon name={icon} /> : null}
+      <Text style={[typography.rowLabel14, { color: colors.text, flex: 1 }]}>{title}</Text>
+      {busy ? (
+        <ActivityIndicator size="small" color={colors.signal} />
+      ) : (
+        <>
+          {count ? <Text style={[typography.meta12, { color: colors.muted, marginRight: 6 }]}>{count}</Text> : null}
+          {trailing.includes('›') ? <Icon name="chevron-right" size={14} color={colors.faint} /> : null}
+        </>
+      )}
     </Pressable>
   );
 }

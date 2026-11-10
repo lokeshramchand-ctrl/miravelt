@@ -35,7 +35,7 @@ export default function SpendingPatternsScreen() {
   );
 }
 
-const card = { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.hairlineLight, borderRadius: radius.card } as const;
+const card = { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.card } as const;
 
 /**
  * This endpoint compares calendar months, not uploaded periods - with no
@@ -54,20 +54,20 @@ function MoMTrendCard() {
   const up = mom.trend === 'up';
   return (
     <View style={[card, { padding: 17 }]}>
-      <Text style={[typography.microLabelTracked11, { color: colors.onLightFaint }]}>MONTH OVER MONTH</Text>
+      <Text style={[typography.footnote12, { color: colors.muted }]}>Month over month</Text>
       {hasNoMoMData(mom) ? (
-        <Text style={[typography.footnote12, { color: colors.onLightMuted, marginTop: 10 }]}>
+        <Text style={[typography.footnote12, { color: colors.muted, marginTop: 10 }]}>
           No spending recorded this calendar month or last. Month-over-month compares calendar months, so it fills in once a statement covers them.
         </Text>
       ) : (
         <>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
-            <Text style={[typography.heroAmount34, { color: colors.onLight }]}>{formatCurrency(mom.currentSpend)}</Text>
+            <Text style={[typography.heroAmount34, { color: colors.text }]}>{formatCurrency(mom.currentSpend)}</Text>
             <View style={{ marginLeft: 10 }}>
-              <DeltaChip label={`${up ? '▲' : '▼'} ${Math.abs(Math.round(mom.momGrowthPercentage))}%`} up={up} tint={withAlpha(up ? colors.rose : colors.accent, 0.16)} foreground={up ? colors.rose : colors.accent} />
+              <DeltaChip label={`${up ? '▲' : '▼'} ${Math.abs(Math.round(mom.momGrowthPercentage))}%`} up={up} tone={up ? 'down' : 'up'} />
             </View>
           </View>
-          <Text style={[typography.footnote12, { color: colors.onLightMuted, marginTop: 6 }]}>vs {formatCurrency(mom.previousSpend)} last period</Text>
+          <Text style={[typography.footnote12, { color: colors.muted, marginTop: 6 }]}>vs {formatCurrency(mom.previousSpend)} last period</Text>
         </>
       )}
     </View>
@@ -78,7 +78,7 @@ function CategoryPatternsSection() {
   const query = useQuery({ queryKey: ['patterns', 'categories'], queryFn: () => analyticsRepository.categoryPatterns(), ...fresh });
   return (
     <View>
-      <SectionHeader label="CATEGORY PATTERNS (30D)" labelColor={colors.onLightFaint} />
+      <SectionHeader label="CATEGORY PATTERNS (30D)" labelColor={colors.faint} />
       <View style={{ height: 4 }} />
       {query.isPending ? (
         [0, 1, 2].map((i) => (
@@ -121,7 +121,7 @@ function MerchantPatternsSection() {
   const query = useQuery({ queryKey: ['patterns', 'merchants'], queryFn: () => analyticsRepository.merchantPatterns(8), ...fresh });
   return (
     <View>
-      <SectionHeader label="TOP MERCHANTS" labelColor={colors.onLightFaint} />
+      <SectionHeader label="TOP MERCHANTS" labelColor={colors.faint} />
       <View style={{ height: 12 }} />
       {query.isPending ? (
         <SkeletonBox width="100%" height={140} radius={16} />
@@ -134,16 +134,16 @@ function MerchantPatternsSection() {
           {query.data.map((entry, i) => (
             <View key={`${entry.merchant}-${i}`}>
               <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8 }}>
-                <AvatarChip initials={entry.merchant ? entry.merchant[0].toUpperCase() : '?'} size={36} radius={11} backgroundColor={colors.accentTint} foregroundColor={colors.accentInk} />
+                <AvatarChip initials={entry.merchant ? entry.merchant[0].toUpperCase() : '?'} size={36} radius={18} backgroundColor={colors.surface} foregroundColor={colors.text} />
                 <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={[typography.rowLabel14, { color: colors.onLight }]}>{entry.merchant ?? 'Unknown'}</Text>
-                  <Text style={[typography.meta115, { color: colors.onLightFaint }]}>
+                  <Text style={[typography.rowLabel14, { color: colors.text }]}>{entry.merchant ?? 'Unknown'}</Text>
+                  <Text style={[typography.meta115, { color: colors.faint }]}>
                     {entry.visits} visit{entry.visits === 1 ? '' : 's'}
                   </Text>
                 </View>
-                <Text style={[typography.amountMedium14, { color: colors.onLight }]}>{formatCurrency(entry.spent)}</Text>
+                <Text style={[typography.amountMedium14, { color: colors.text }]}>{formatCurrency(entry.spent)}</Text>
               </View>
-              {i !== query.data.length - 1 ? <View style={{ height: 1, marginLeft: 62, backgroundColor: colors.hairlineLight }} /> : null}
+              {i !== query.data.length - 1 ? <View style={{ height: 1, marginLeft: 62, backgroundColor: colors.border }} /> : null}
             </View>
           ))}
         </View>
@@ -157,7 +157,7 @@ function SubscriptionsSection() {
   return (
     <View>
       {query.data ? (
-        <SectionHeader label="SUBSCRIPTIONS" labelColor={colors.onLightFaint} trailing={<Text style={[typography.body14, { fontSize: 12, color: colors.onLightFaint }]}>{formatCurrency(query.data.totalMonthlyBurn)}/mo</Text>} />
+        <SectionHeader label="SUBSCRIPTIONS" labelColor={colors.faint} trailing={<Text style={[typography.body14, { fontSize: 12, color: colors.faint }]}>{formatCurrency(query.data.totalMonthlyBurn)}/mo</Text>} />
       ) : null}
       <View style={{ height: 12 }} />
       {query.isPending ? (
@@ -172,12 +172,12 @@ function SubscriptionsSection() {
             <View key={`${detail.merchant}-${i}`}>
               <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[typography.rowLabel14, { color: colors.onLight }]}>{detail.merchant}</Text>
-                  {detail.lastBilled ? <Text style={[typography.meta115, { color: colors.onLightFaint }]}>Last billed {formatDayMonth(detail.lastBilled)}</Text> : null}
+                  <Text style={[typography.rowLabel14, { color: colors.text }]}>{detail.merchant}</Text>
+                  {detail.lastBilled ? <Text style={[typography.meta115, { color: colors.faint }]}>Last billed {formatDayMonth(detail.lastBilled)}</Text> : null}
                 </View>
-                <Text style={[typography.amountMedium14, { color: colors.onLight }]}>{formatCurrency(detail.estimatedMonthlyCost)}/mo</Text>
+                <Text style={[typography.amountMedium14, { color: colors.text }]}>{formatCurrency(detail.estimatedMonthlyCost)}/mo</Text>
               </View>
-              {i !== query.data.details.length - 1 ? <View style={{ height: 1, marginLeft: 14, backgroundColor: colors.hairlineLight }} /> : null}
+              {i !== query.data.details.length - 1 ? <View style={{ height: 1, marginLeft: 14, backgroundColor: colors.border }} /> : null}
             </View>
           ))}
         </View>

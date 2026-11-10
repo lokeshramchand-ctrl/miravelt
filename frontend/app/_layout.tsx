@@ -1,10 +1,4 @@
-import {
-  InstrumentSans_400Regular,
-  InstrumentSans_500Medium,
-  InstrumentSans_600SemiBold,
-  InstrumentSans_700Bold,
-} from '@expo-google-fonts/instrument-sans';
-import { SpaceGrotesk_600SemiBold, SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk';
+import { Inter_300Light, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack, router, usePathname, useRootNavigationState } from 'expo-router';
@@ -23,18 +17,18 @@ import { queryClient } from '../src/lib/queryClient';
 import { computeRedirect } from '../src/lib/redirect';
 import { useAuth } from '../src/state/auth';
 import { useSettings } from '../src/state/settings';
-import { useTheme } from '../src/theme/useTheme';
+import { applyColorScheme, colors } from '../src/theme/colors';
+import { useColorSchemeSetting } from '../src/theme/useTheme';
 
 void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
-    SpaceGrotesk_600SemiBold,
-    SpaceGrotesk_700Bold,
-    InstrumentSans_400Regular,
-    InstrumentSans_500Medium,
-    InstrumentSans_600SemiBold,
-    InstrumentSans_700Bold,
+    Inter_300Light,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
   });
   const hydrated = useSettings((s) => s.hydrated);
 
@@ -67,13 +61,18 @@ export default function RootLayout() {
 }
 
 function Shell() {
-  const { background } = useTheme();
+  // Swap the palette before anything below reads it. Keying the navigator on the scheme
+  // repaints every mounted screen (react-navigation memoizes scenes, so a plain re-render
+  // would leave them on the old colours); RedirectGate then returns to the same route.
+  const scheme = useColorSchemeSetting();
+  applyColorScheme(scheme);
   return (
     <>
-      <StatusBar style="auto" />
+      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <RedirectGate />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: background }, animation: 'fade_from_bottom' }}>
+      <Stack key={scheme} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg }, animation: 'fade_from_bottom' }}>
         <Stack.Screen name="index" options={{ animation: 'none' }} />
+        <Stack.Screen name="welcome" options={{ animation: 'fade' }} />
         <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
       </Stack>
       <UploadSheetHost />
@@ -92,11 +91,13 @@ function RedirectGate() {
   const pathname = usePathname();
   const navigationReady = useRootNavigationState()?.key != null;
   const authStatus = useAuth((s) => s.status);
+  const introSeen = useSettings((s) => s.introSeen);
   const periods = usePeriods();
 
   const target = computeRedirect({
     pathname,
     authStatus,
+    introSeen,
     periods: {
       loading: periods.isFetching || (periods.data === undefined && !periods.isError),
       hasData: periods.data !== undefined,

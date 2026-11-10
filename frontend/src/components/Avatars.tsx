@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import type { ColorValue } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { userAvatarForSeed } from '../lib/avatars';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
@@ -20,16 +19,11 @@ interface AvatarChipProps {
 export function AvatarChip({ initials, size = 40, radius, backgroundColor, foregroundColor, gradient }: AvatarChipProps) {
   const shape = { width: size, height: size, borderRadius: radius ?? size / 2 };
   const label = (
-    <Text style={[typography.amountMedium14, { fontSize: size * 0.36, color: foregroundColor ?? colors.accentInk }]}>{initials}</Text>
+    <Text style={[typography.amountMedium14, { fontSize: size * 0.36, color: foregroundColor ?? colors.onInk }]}>{initials}</Text>
   );
-  if (gradient) {
-    return (
-      <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.center, shape]}>
-        {label}
-      </LinearGradient>
-    );
-  }
-  return <View style={[styles.center, shape, { backgroundColor: backgroundColor ?? colors.accent }]}>{label}</View>;
+  // `gradient` is accepted for compatibility; bencho keeps chips flat, so its first stop is the fill.
+  const fill = backgroundColor ?? (gradient ? String(gradient[0]) : colors.ink);
+  return <View style={[styles.center, shape, { backgroundColor: fill }]}>{label}</View>;
 }
 
 interface UserAvatarProps {
@@ -55,7 +49,7 @@ export function UserAvatar({ seed, initials, size = 40, gradient, foregroundColo
   if (!source || failed) {
     return <AvatarChip initials={initials} size={size} gradient={gradient} foregroundColor={foregroundColor} backgroundColor={backgroundColor} />;
   }
-  return <Image source={source} onError={() => setFailed(true)} style={{ width: size, height: size, borderRadius: size / 2 }} resizeMode="cover" />;
+  return <Image source={source} onError={() => setFailed(true)} style={{ width: size, height: size, borderRadius: size / 2, borderWidth: 1, borderColor: colors.border }} resizeMode="cover" />;
 }
 
 const styles = StyleSheet.create({ center: { alignItems: 'center', justifyContent: 'center' } });

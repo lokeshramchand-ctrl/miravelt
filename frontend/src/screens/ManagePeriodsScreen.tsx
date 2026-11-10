@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Icon } from '../components/Icon';
 import { statementsRepository } from '../api/instance';
 import { ApiException } from '../api/errors';
 import { ScreenBackHeader } from '../components/Controls';
@@ -70,18 +70,18 @@ function PeriodTile({ period, entranceDelayMs }: { period: Statement; entranceDe
 
   return (
     <>
-      <FadeInUpCard delay={entranceDelayMs} style={{ flexDirection: 'row', alignItems: 'center', padding: 14, backgroundColor: colors.ink850, borderWidth: 1, borderColor: colors.hairlineDark, borderRadius: radius.card }}>
+      <FadeInUpCard delay={entranceDelayMs} style={{ flexDirection: 'row', alignItems: 'center', padding: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.card }}>
         <View style={{ flex: 1 }}>
-          <Text style={[typography.rowLabel145, { color: colors.onDark }]}>{label}</Text>
-          <Text style={[typography.meta115, { color: colors.onDarkFaint, marginTop: 4 }]}>
+          <Text style={[typography.rowLabel145, { color: colors.text }]}>{label}</Text>
+          <Text style={[typography.meta115, { color: colors.faint, marginTop: 4 }]}>
             {period.originalFilename} · {period.transactionCount} txns
           </Text>
         </View>
         {deleting ? (
-          <ActivityIndicator size="small" color={colors.rose} />
+          <ActivityIndicator size="small" color={colors.down} />
         ) : (
           <Pressable accessibilityRole="button" accessibilityLabel={`Delete ${label}`} onPress={() => setConfirming(true)} hitSlop={10} style={{ padding: 6 }}>
-            <MaterialIcons name="delete-outline" size={20} color={colors.rose} />
+            <Icon name="delete-outline" size={20} color={colors.down} />
           </Pressable>
         )}
       </FadeInUpCard>

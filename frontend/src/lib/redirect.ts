@@ -5,6 +5,7 @@ export const ROUTES = {
   splash: '/',
   login: '/login',
   register: '/register',
+  welcome: '/welcome',
   onboarding: '/onboarding',
   overview: '/overview',
   signals: '/signals',
@@ -25,6 +26,8 @@ export interface RedirectInput {
     failed: boolean;
     data: readonly Statement[] | undefined;
   };
+  /** Whether the welcome tour was finished or skipped. Omitted means yes (straight to sign in). */
+  introSeen?: boolean;
 }
 
 /**
@@ -32,15 +35,16 @@ export interface RedirectInput {
  * put. A pure function of its input so the launch/sign-in/onboarding rules can
  * be tested without mounting a navigator.
  */
-export function computeRedirect({ pathname, authStatus, periods }: RedirectInput): string | null {
+export function computeRedirect({ pathname, authStatus, periods, introSeen = true }: RedirectInput): string | null {
   const onSplash = pathname === ROUTES.splash;
-  const onAuthPages = pathname === ROUTES.login || pathname === ROUTES.register;
+  const onAuthPages = pathname === ROUTES.login || pathname === ROUTES.register || pathname === ROUTES.welcome;
 
   if (authStatus === 'loading') {
     // Cold start: hold on the splash, so a signed-in user never sees the login form flash up.
     return onSplash || onAuthPages ? null : ROUTES.splash;
   }
-  if (authStatus === 'unauthenticated') return onAuthPages ? null : ROUTES.login;
+  // Signed out: a first launch gets the welcome tour, later ones go straight to sign in.
+  if (authStatus === 'unauthenticated') return onAuthPages ? null : introSeen ? ROUTES.login : ROUTES.welcome;
 
   // Authenticated from here on. The periods query is keyed on the signed-in
   // user, so it reloads on every sign-in - wait for that fresh result (not a

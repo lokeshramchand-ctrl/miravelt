@@ -56,4 +56,20 @@ describe('computeRedirect', () => {
     }
     expect(computeRedirect({ pathname: '/profile', authStatus: 'authenticated', periods: settled([]) })).toBeNull();
   });
+
+describe('welcome tour', () => {
+  const settledEmpty = { loading: false, hasData: true, failed: false, data: [] };
+  it('sends a first-time signed-out launch to the tour, later ones to sign in', () => {
+    expect(computeRedirect({ pathname: '/', authStatus: 'unauthenticated', periods: settledEmpty, introSeen: false })).toBe('/welcome');
+    expect(computeRedirect({ pathname: '/', authStatus: 'unauthenticated', periods: settledEmpty, introSeen: true })).toBe('/login');
+  });
+  it('lets a signed-out user stay on the tour, sign in or register', () => {
+    for (const pathname of ['/welcome', '/login', '/register']) {
+      expect(computeRedirect({ pathname, authStatus: 'unauthenticated', periods: settledEmpty, introSeen: false })).toBeNull();
+    }
+  });
+  it('moves a signed-in user off the tour', () => {
+    expect(computeRedirect({ pathname: '/welcome', authStatus: 'authenticated', periods: settledEmpty })).toBe('/onboarding');
+  });
+});
 });

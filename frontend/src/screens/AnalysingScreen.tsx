@@ -1,8 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Icon } from '../components/Icon';
+import { Confetti } from '../components/Delight';
+import { haptics } from '../lib/haptics';
 import { PrimaryPillButton, SecondaryPillButton } from '../components/Buttons';
 import { ProgressRing, PulsingDot } from '../components/Charts';
 import { Screen } from '../components/Screen';
@@ -26,6 +27,7 @@ export function activeStageIndex(progress: number): number {
 export default function AnalysingScreen() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
   const [notifyRequested, setNotifyRequested] = useState(false);
+  const [celebrate, setCelebrate] = useState(0);
   const notifiedDone = useRef(false);
   const completionHandled = useRef(false);
 
@@ -71,8 +73,12 @@ export default function AnalysingScreen() {
       void alertUnusualSpendIfEnabled(resourceId);
       useSession.getState().selectPeriod(resourceId);
       void invalidatePeriods();
-      router.replace('/overview');
+      // A beat of celebration before Overview takes over.
+      haptics.success();
+      setCelebrate((c) => c + 1);
+      setTimeout(() => router.replace('/overview'), 1300);
     }
+    if (failed) haptics.error();
   }, [status, resourceId, notifyRequested]);
 
   const progress = job?.progressPercent ?? 0;
@@ -80,11 +86,10 @@ export default function AnalysingScreen() {
 
   return (
     <Screen dark>
-      <LinearGradient colors={[colors.analysingGlowCenter, colors.ink900]} locations={[0, 0.62]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.75 }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
       <View style={{ flex: 1, paddingHorizontal: spacing.gutter, paddingTop: 14, paddingBottom: 30 }}>
         {loading ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <ActivityIndicator size="large" color={colors.accent} />
+            <ActivityIndicator size="large" color={colors.signal} />
           </View>
         ) : error ? (
           <ErrorBody message={error.message} />
@@ -93,8 +98,8 @@ export default function AnalysingScreen() {
         ) : job ? (
           <>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={[typography.rowLabel14, { color: colors.onDark }]}>Your statement</Text>
-              <Text style={[typography.microLabel11, { color: colors.onDarkFaint }]}>RUNNING IN BACKGROUND</Text>
+              <Text style={[typography.rowLabel14, { color: colors.text }]}>Your statement</Text>
+              <Text style={[typography.microLabel11, { color: colors.faint }]}>RUNNING IN BACKGROUND</Text>
             </View>
             <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
               <View style={{ height: 28 }} />
@@ -103,33 +108,34 @@ export default function AnalysingScreen() {
                   percent={progress}
                   centerLabel={
                     <Text>
-                      <Text style={[typography.heroAmount34, { color: colors.onDark }]}>{Math.round(progress)}</Text>
-                      <Text style={[typography.amountMedium20, { color: colors.onDark }]}>%</Text>
+                      <Text style={[typography.heroAmount34, { color: colors.text }]}>{Math.round(progress)}</Text>
+                      <Text style={[typography.amountMedium20, { color: colors.text }]}>%</Text>
                     </Text>
                   }
                   centerSubLabel={job.stage?.toUpperCase()}
                 />
               </View>
-              <Text style={[typography.bigHeadline22, { color: colors.onDark, textAlign: 'center', marginTop: 28 }]}>Finding your patterns</Text>
-              <Text style={[typography.footnote15, { color: colors.onDarkMuted, textAlign: 'center', marginTop: 10 }]}>Profiling merchant behaviour - how often you pay them, and how much is normal.</Text>
+              <Text style={[typography.bigHeadline22, { color: colors.text, textAlign: 'center', marginTop: 28 }]}>Finding your patterns</Text>
+              <Text style={[typography.footnote15, { color: colors.muted, textAlign: 'center', marginTop: 10 }]}>Profiling merchant behaviour - how often you pay them, and how much is normal.</Text>
               <View style={{ height: 26 }} />
               {STAGE_LABELS.map((label, i) => (
                 <StageRow key={label} label={label} state={i < activeIndex ? 'done' : i === activeIndex ? 'active' : 'pending'} />
               ))}
             </ScrollView>
-            <View style={{ marginTop: 14, paddingHorizontal: 15, paddingVertical: 13, backgroundColor: colors.ink850, borderWidth: 1, borderColor: colors.hairlineDark, borderRadius: 14 }}>
-              <Text style={[typography.footnote12, { color: colors.onDarkMuted }]}>We'll show your top merchant and biggest signal the moment this finishes.</Text>
+            <View style={{ marginTop: 14, paddingHorizontal: 15, paddingVertical: 13, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 14 }}>
+              <Text style={[typography.footnote12, { color: colors.muted }]}>We'll show your top merchant and biggest signal the moment this finishes.</Text>
             </View>
             <View style={{ height: 14 }} />
             <SecondaryPillButton
               label={notifyRequested ? "We'll notify you" : "Notify me when it's done"}
-              foreground={colors.onDark}
-              borderColor={colors.hairlineDark}
+              foreground={colors.text}
+              borderColor={colors.border}
               onPress={notifyRequested ? undefined : requestNotify}
             />
           </>
         ) : null}
       </View>
+      <Confetti fire={celebrate} />
     </Screen>
   );
 }
@@ -140,16 +146,16 @@ function StageRow({ label, state }: { label: string; state: StageState }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, opacity: state === 'pending' ? 0.4 : 1 }}>
       {state === 'done' ? (
-        <MaterialIcons name="check-circle" size={18} color={colors.accent} />
+        <Icon name="check-circle" size={18} color={colors.signal} />
       ) : state === 'active' ? (
         <View style={{ width: 18, height: 18, alignItems: 'center', justifyContent: 'center' }}>
-          <View style={{ position: 'absolute', width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: colors.accent }} />
-          <PulsingDot color={colors.accent} size={7} />
+          <View style={{ position: 'absolute', width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: colors.signal }} />
+          <PulsingDot color={colors.signal} size={7} />
         </View>
       ) : (
-        <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 1, borderColor: colors.onDarkFaint }} />
+        <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 1, borderColor: colors.faint }} />
       )}
-      <Text style={[state === 'active' ? typography.rowLabel14 : typography.body13, { color: colors.onDark, marginLeft: 12 }]}>{label}</Text>
+      <Text style={[state === 'active' ? typography.rowLabel14 : typography.body13, { color: colors.text, marginLeft: 12 }]}>{label}</Text>
     </View>
   );
 }
@@ -157,8 +163,8 @@ function StageRow({ label, state }: { label: string; state: StageState }) {
 function ErrorBody({ message }: { message: string }) {
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <MaterialIcons name="error-outline" size={40} color={colors.rose} />
-      <Text style={[typography.footnote15, { color: colors.onDarkMuted, textAlign: 'center', marginTop: 16 }]}>{message}</Text>
+      <Icon name="error-outline" size={40} color={colors.down} />
+      <Text style={[typography.footnote15, { color: colors.muted, textAlign: 'center', marginTop: 16 }]}>{message}</Text>
       <View style={{ marginTop: 20 }}>
         <PrimaryPillButton label="Back to overview" expand={false} onPress={() => router.replace('/overview')} />
       </View>

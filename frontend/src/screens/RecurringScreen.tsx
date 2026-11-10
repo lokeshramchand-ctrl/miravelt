@@ -8,7 +8,7 @@ import { Screen } from '../components/Screen';
 import type { RecurringPaymentEntry, StatementAnalytics } from '../domain/types';
 import { useCurrentPeriodAnalytics } from '../hooks/periods';
 import { formatCurrency } from '../lib/format';
-import { colors } from '../theme/colors';
+import { colors, hues } from '../theme/colors';
 import { radius, spacing } from '../theme/tokens';
 import { typography } from '../theme/typography';
 
@@ -40,7 +40,7 @@ export default function RecurringScreen() {
     return (
       <Screen>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={colors.accent} />
+          <ActivityIndicator size="large" color={colors.signal} />
         </View>
       </Screen>
     );
@@ -58,14 +58,14 @@ export default function RecurringScreen() {
   return (
     <Screen safeTop={false}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom }}>
-        <View style={{ backgroundColor: colors.ink900, paddingHorizontal: spacing.gutter, paddingTop: insets.top + 6, paddingBottom: 26 }}>
+        <View style={{ backgroundColor: colors.bg, paddingHorizontal: spacing.gutter, paddingTop: insets.top + 6, paddingBottom: 26 }}>
           <ScreenBackHeader title="Recurring" />
-          <Text style={[typography.microLabel11, { color: colors.onDarkFaint, marginTop: 14 }]}>COMMITTED EVERY MONTH</Text>
-          <Text style={[typography.heroAmount40, { color: colors.onDark, marginTop: 4 }]}>{formatCurrency(totalMonthly)}</Text>
+          <Text style={[typography.microLabel11, { color: colors.faint, marginTop: 14 }]}>COMMITTED EVERY MONTH</Text>
+          <Text style={[typography.heroAmount40, { color: colors.text, marginTop: 4 }]}>{formatCurrency(totalMonthly)}</Text>
           <View style={{ flexDirection: 'row', marginTop: 20 }}>
             <Stat label="DETECTED" value={`${payments.length}`} />
             <Stat label="SHARE OF OUTFLOW" value={`${Math.round(shareOfOutflow)}%`} />
-            <Stat label="AVG REGULARITY" value={`${Math.round(avgRegularity)}%`} color={colors.amber} />
+            <Stat label="AVG REGULARITY" value={`${Math.round(avgRegularity)}%`} color={colors.warn} />
           </View>
         </View>
         <View style={{ padding: spacing.gutter }}>
@@ -78,7 +78,7 @@ export default function RecurringScreen() {
               </View>
             ))
           )}
-          <Text style={[typography.footnote12, { color: colors.onLightFaint, textAlign: 'center', marginTop: 8 }]}>
+          <Text style={[typography.footnote12, { color: colors.faint, textAlign: 'center', marginTop: 8 }]}>
             Detected from payment regularity in your statements - no bank connection, no card access.
           </Text>
         </View>
@@ -90,27 +90,27 @@ export default function RecurringScreen() {
 function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <View style={{ flex: 1 }}>
-      <Text style={[typography.microLabel11, { color: colors.onDarkFaint }]}>{label}</Text>
-      <Text style={[typography.amountMedium15, { color: color ?? colors.onDark, marginTop: 4 }]}>{value}</Text>
+      <Text style={[typography.microLabel11, { color: colors.faint }]}>{label}</Text>
+      <Text style={[typography.amountMedium15, { color: color ?? colors.text, marginTop: 4 }]}>{value}</Text>
     </View>
   );
 }
 
 function SubscriptionCard({ payment, entranceDelayMs }: { payment: RecurringPaymentEntry; entranceDelayMs: number }) {
-  const color = colors.violet;
+  const color = hues.violet;
   const filled = Math.round(Math.min(1, Math.max(0, payment.periodicityScore)) * 7);
   const states = Array.from({ length: 7 }, (_, i) => (i < filled ? ('paid' as const) : ('upcoming' as const)));
   return (
-    <FadeInUpCard delay={entranceDelayMs} style={{ padding: 16, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.hairlineLight, borderRadius: radius.card }}>
+    <FadeInUpCard delay={entranceDelayMs} style={{ padding: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.card }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <AvatarChip initials={payment.merchant ? payment.merchant[0].toUpperCase() : '?'} size={40} radius={12} backgroundColor={withAlpha(color, 0.16)} foregroundColor={color} />
+        <AvatarChip initials={payment.merchant ? payment.merchant[0].toUpperCase() : '?'} size={40} radius={20} backgroundColor={withAlpha(color, 0.16)} foregroundColor={color} />
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={[typography.rowLabel145, { color: colors.onLight }]}>{payment.merchant}</Text>
-          <Text style={[typography.meta115, { color: colors.onLightFaint }]}>{payment.occurrences} occurrences this period</Text>
+          <Text style={[typography.rowLabel145, { color: colors.text }]}>{payment.merchant}</Text>
+          <Text style={[typography.meta115, { color: colors.faint }]}>{payment.occurrences} occurrences this period</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={[typography.amountMedium16, { color: colors.onLight }]}>{formatCurrency(payment.estimatedMonthlyCost)}</Text>
-          <Text style={[typography.microLabel11, { color: colors.onLightFaint }]}>per month</Text>
+          <Text style={[typography.amountMedium16, { color: colors.text }]}>{formatCurrency(payment.estimatedMonthlyCost)}</Text>
+          <Text style={[typography.microLabel11, { color: colors.faint }]}>per month</Text>
         </View>
       </View>
       <View style={{ height: 14 }} />

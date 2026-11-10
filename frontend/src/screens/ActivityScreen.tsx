@@ -1,18 +1,19 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Icon } from '../components/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { statementsRepository } from '../api/instance';
 import { EmptyState, ErrorRetry, FadeInUpCard, MiraveltListRow, withAlpha } from '../components/Display';
 import { Screen } from '../components/Screen';
 import { MiraveltSheet } from '../components/Sheet';
+import { SegmentedControl } from '../components/Controls';
 import { SkeletonListRow } from '../components/Skeleton';
 import { TransactionSheet } from '../components/TransactionSheet';
 import type { Statement, Transaction, TransactionType } from '../domain/types';
 import { useCurrentPeriod, useCurrentPeriodAnalytics } from '../hooks/periods';
 import { formatCurrency, formatDayHeader, formatTime12h } from '../lib/format';
-import { categoryColor, colors } from '../theme/colors';
+import { categoryColor, categoryIcon, colors } from '../theme/colors';
 import { radius, spacing } from '../theme/tokens';
 import { typography } from '../theme/typography';
 
@@ -100,6 +101,7 @@ export default function ActivityScreen() {
           <FlatList
             data={groups}
             keyExtractor={(g) => g.day.toISOString()}
+            showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingTop: 8, paddingBottom: bottomPad }}
             onEndReachedThreshold={0.6}
             onEndReached={() => {
@@ -108,8 +110,8 @@ export default function ActivityScreen() {
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
-                tintColor={colors.accent}
-                colors={[colors.accent]}
+                tintColor={colors.signal}
+                colors={[colors.signal]}
                 onRefresh={async () => {
                   setRefreshing(true);
                   await activity.refetch();
@@ -132,8 +134,8 @@ function DaySection({ group, index, onSelect }: { group: DayGroup; index: number
   return (
     <FadeInUpCard delay={Math.min(6, index) * 40}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10 }}>
-        <Text style={[typography.microLabelTracked11, { color: colors.onLightFaint }]}>{formatDayHeader(group.day)}</Text>
-        <Text style={[typography.microLabelTracked11, { color: net > 0 ? colors.accentDim : colors.onLightFaint }]}>{formatCurrency(net, net > 0)}</Text>
+        <Text style={[typography.microLabelTracked11, { color: colors.faint }]}>{formatDayHeader(group.day)}</Text>
+        <Text style={[typography.microLabelTracked11, { color: net > 0 ? colors.signalText : colors.faint }]}>{formatCurrency(net, net > 0)}</Text>
       </View>
       {group.transactions.map((txn) => {
         const color = categoryColor(txn.category ?? '');
@@ -143,10 +145,11 @@ function DaySection({ group, index, onSelect }: { group: DayGroup; index: number
             avatarInitials={txn.merchant ? txn.merchant[0].toUpperCase() : '?'}
             avatarTint={withAlpha(color, 0.16)}
             avatarInk={color}
+            icon={categoryIcon(txn.category ?? '')}
             title={txn.merchant ?? 'Unknown merchant'}
-            subtitle={`${formatTime12h(txn.timestamp)} · ${(txn.category ?? 'UNCATEGORIZED').toUpperCase()}`}
+            subtitle={`${formatTime12h(txn.timestamp)} · ${txn.category ?? 'Uncategorized'}`}
             trailingAmount={`${txn.transactionType === 'DEBIT' ? '−' : '+'}${formatCurrency(Math.abs(txn.amount))}`}
-            trailingAmountColor={txn.transactionType === 'CREDIT' ? colors.accentDim : undefined}
+            trailingAmountColor={txn.transactionType === 'CREDIT' ? colors.signalText : undefined}
             badgeLabel={txn.status !== 'SUCCESS' ? txn.status : undefined}
             onPress={() => onSelect(txn)}
           />
@@ -163,35 +166,41 @@ function Header({ total, period, filters, onChange }: { total: number | undefine
   const categories = analytics.data?.categoryBreakdown.map((e) => e.category) ?? [];
 
   return (
-    <View style={{ paddingHorizontal: spacing.gutter, paddingTop: 14, paddingBottom: 12, backgroundColor: withAlpha(colors.paper, 0.92), borderBottomWidth: 1, borderBottomColor: colors.hairlineLight }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={[typography.screenTitle24, { color: colors.onLight }]}>Activity</Text>
-        <Text style={[typography.microLabel11, { color: colors.onLightFaint }]}>{total ?? period?.transactionCount ?? 0} TXNS</Text>
+    <View style={{ paddingHorizontal: spacing.gutter, paddingTop: 14, paddingBottom: 10 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <View>
+          <Text style={[typography.footnote12, { color: colors.muted }]}>{total ?? period?.transactionCount ?? 0} transactions</Text>
+          <Text style={[typography.pageTitle, { color: colors.text, marginTop: 4 }]}>Activity</Text>
+        </View>
       </View>
       <View style={{ height: 12 }} />
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.hairlineLight, borderRadius: radius.field }}>
-        <MaterialIcons name="search" size={16} color={colors.onLightFaint} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.pill }}>
+        <Icon name="search" size={16} color={colors.faint} />
         <TextInput
           value={query}
           onChangeText={setQuery}
           onSubmitEditing={() => onChange({ merchantQuery: query.trim() })}
           returnKeyType="search"
           placeholder="Search merchant, amount, UPI ID"
-          placeholderTextColor={colors.onLightFaint}
-          selectionColor={colors.accentDim}
+          placeholderTextColor={colors.faint}
+          selectionColor={colors.signalText}
           autoCorrect={false}
-          style={[typography.body14, { flex: 1, fontSize: 13, color: colors.onLight, paddingVertical: 11, marginLeft: 8 }]}
+          style={[typography.body14, { flex: 1, fontSize: 13, color: colors.text, paddingVertical: 11, marginLeft: 8 }]}
         />
       </View>
       <View style={{ height: 10 }} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ height: 32, flexGrow: 0 }}>
-        <FilterChip label="All" selected={filters.typeFilter == null} onPress={() => onChange({ typeFilter: null })} />
-        <FilterChip label="Out" selected={filters.typeFilter === 'DEBIT'} onPress={() => onChange({ typeFilter: 'DEBIT' })} />
-        <FilterChip label="In" selected={filters.typeFilter === 'CREDIT'} onPress={() => onChange({ typeFilter: 'CREDIT' })} />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ alignItems: 'center' }}>
+        <View style={{ marginRight: 7 }}>
+          <SegmentedControl<'all' | 'DEBIT' | 'CREDIT'>
+            options={[['all', 'All'], ['DEBIT', 'Out'], ['CREDIT', 'In']]}
+            value={filters.typeFilter ?? 'all'}
+            onChange={(v) => onChange({ typeFilter: v === 'all' ? null : v })}
+          />
+        </View>
         <FilterChip label={filters.category ?? 'Category ▾'} selected={filters.category != null} onPress={() => setPicking(true)} />
         <FilterChip label="₹ ▾" selected={filters.sortByAmount} onPress={() => onChange({ sortByAmount: !filters.sortByAmount })} last />
       </ScrollView>
-      <MiraveltSheet visible={picking} onClose={() => setPicking(false)} dark={false}>
+      <MiraveltSheet visible={picking} onClose={() => setPicking(false)} eyebrow="Filter" title="Category" sub="Show only one kind of spend.">
         <CategoryChoice
           categories={categories}
           onPick={(category) => {
@@ -209,7 +218,7 @@ function CategoryChoice({ categories, onPick }: { categories: string[]; onPick: 
     <View>
       {[null, ...categories].map((category) => (
         <Pressable key={category ?? '__all'} accessibilityRole="button" onPress={() => onPick(category)} style={({ pressed }) => [{ paddingVertical: 14 }, pressed && { opacity: 0.5 }]}>
-          <Text style={[typography.rowLabel14, { color: colors.onLight }]}>{category ?? 'All categories'}</Text>
+          <Text style={[typography.rowLabel14, { color: colors.text }]}>{category ?? 'All categories'}</Text>
         </Pressable>
       ))}
     </View>
@@ -223,18 +232,18 @@ function FilterChip({ label, selected, onPress, last = false }: { label: string;
       accessibilityState={{ selected }}
       onPress={onPress}
       style={{
-        height: 32,
-        paddingHorizontal: 13,
+        height: 38,
+        paddingHorizontal: 14,
         marginRight: last ? 0 : 7,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: selected ? colors.onLight : colors.card,
+        backgroundColor: selected ? colors.ink : colors.surface,
         borderWidth: 1,
-        borderColor: selected ? colors.onLight : colors.hairlineLight,
+        borderColor: selected ? colors.ink : colors.border,
         borderRadius: 100,
       }}
     >
-      <Text style={[typography.buttonLabel13, { color: selected ? colors.paper : colors.onLightMuted }]}>{label}</Text>
+      <Text style={[typography.buttonLabel13, { color: selected ? colors.onInk : colors.text }]}>{label}</Text>
     </Pressable>
   );
 }

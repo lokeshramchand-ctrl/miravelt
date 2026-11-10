@@ -64,7 +64,7 @@ function TransactionSheetBody({ transaction: txn }: { transaction: Transaction }
   if (picking) {
     return (
       <View>
-        <Text style={[typography.rowLabel14, { fontSize: 16, color: colors.onLight, marginBottom: 6 }]}>Which category is it?</Text>
+        <Text style={[typography.rowLabel14, { fontSize: 16, color: colors.text, marginBottom: 6 }]}>Which category is it?</Text>
         {TRANSACTION_CATEGORIES.map((category) => (
           <Pressable
             key={category}
@@ -75,11 +75,11 @@ function TransactionSheetBody({ transaction: txn }: { transaction: Transaction }
             }}
             style={({ pressed }) => [{ paddingVertical: 14 }, pressed && { opacity: 0.5 }]}
           >
-            <Text style={[typography.rowLabel14, { color: colors.onLight }]}>{category}</Text>
+            <Text style={[typography.rowLabel14, { color: colors.text }]}>{category}</Text>
           </Pressable>
         ))}
         <Pressable accessibilityRole="button" onPress={() => setPicking(false)} style={{ paddingVertical: 14 }}>
-          <Text style={[typography.rowLabel14, { color: colors.onLightMuted }]}>Back</Text>
+          <Text style={[typography.rowLabel14, { color: colors.muted }]}>Back</Text>
         </Pressable>
       </View>
     );
@@ -95,32 +95,32 @@ function TransactionSheetBody({ transaction: txn }: { transaction: Transaction }
       <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
         <AvatarChip initials={txn.merchant ? txn.merchant[0].toUpperCase() : '?'} size={46} radius={14} backgroundColor={withAlpha(color, 0.16)} foregroundColor={color} />
         <View style={{ flex: 1, marginLeft: 14 }}>
-          <Text style={[typography.rowLabel14, { fontSize: 16, color: colors.onLight }]}>{txn.merchant ?? 'Unknown merchant'}</Text>
-          <Text style={[typography.meta115, { color: colors.onLightFaint, marginTop: 3 }]}>{formatFullTimestamp(txn.timestamp)}</Text>
+          <Text style={[typography.rowLabel14, { fontSize: 16, color: colors.text }]}>{txn.merchant ?? 'Unknown merchant'}</Text>
+          <Text style={[typography.meta115, { color: colors.faint, marginTop: 3 }]}>{formatFullTimestamp(txn.timestamp)}</Text>
         </View>
-        <Text numberOfLines={1} style={[typography.amountSmall22, { color: colors.onLight, flexShrink: 1 }]}>
+        <Text numberOfLines={1} style={[typography.amountSmall22, { color: colors.text, flexShrink: 1 }]}>
           {sign}
           {formatCurrency(Math.abs(txn.amount))}
         </Text>
       </View>
 
       {isUnusual ? (
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginTop: 16, paddingHorizontal: 15, paddingVertical: 13, backgroundColor: colors.amberTint, borderRadius: 14 }}>
-          <Text style={[typography.buttonLabel12, { color: colors.amberInk, fontFamily: 'InstrumentSans_700Bold' }]}>!</Text>
-          <Text style={[typography.footnote12, { color: colors.amberTextOnTint, flex: 1, marginLeft: 8 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginTop: 16, paddingHorizontal: 15, paddingVertical: 13, backgroundColor: colors.warnSoft, borderRadius: 14 }}>
+          <Text style={[typography.buttonLabel12, { color: colors.warn, fontFamily: 'Inter_700Bold' }]}>!</Text>
+          <Text style={[typography.footnote12, { color: colors.warn, flex: 1, marginLeft: 8 }]}>
             This transaction is marked {txn.status.toLowerCase()} by the statement - not a normal completed payment.
           </Text>
         </View>
       ) : null}
 
-      <View style={{ marginTop: 16, borderWidth: 1, borderColor: colors.hairlineLight, borderRadius: radius.field + 4 }}>
+      <View style={{ marginTop: 16, borderWidth: 1, borderColor: colors.border, borderRadius: radius.field + 4 }}>
         <DetailRow
           label="Category"
           trailing={
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={[typography.rowLabel14, { color: colors.onLight }]}>{txn.category ?? 'Uncategorized'}</Text>
+              <Text style={[typography.rowLabel14, { color: colors.text }]}>{txn.category ?? 'Uncategorized'}</Text>
               <Pressable accessibilityRole="button" accessibilityLabel="Edit category" disabled={submitting} onPress={() => setPicking(true)} hitSlop={8} style={{ marginLeft: 8 }}>
-                <Text style={[typography.buttonLabel12, { color: colors.accentDim }]}>EDIT</Text>
+                <Text style={[typography.buttonLabel12, { color: colors.signalText }]}>EDIT</Text>
               </Pressable>
             </View>
           }
@@ -130,14 +130,14 @@ function TransactionSheetBody({ transaction: txn }: { transaction: Transaction }
         {period ? <DetailRow label="Period" value={formatPeriodRange(period.periodStart, period.periodEnd)} last /> : null}
       </View>
 
-      <View style={{ marginTop: 16, padding: 16, backgroundColor: colors.ink900, borderRadius: 16 }}>
+      <View style={{ marginTop: 16, padding: 16, backgroundColor: colors.bg, borderRadius: 16 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={{ color: colors.accent, fontSize: 12 }}>✦</Text>
-          <Text style={[typography.microLabelTracked105, { color: colors.accent, marginLeft: 6 }]}>WHY THIS CATEGORY</Text>
+          <Text style={{ color: colors.signal, fontSize: 12 }}>✦</Text>
+          <Text style={[typography.microLabelTracked105, { color: colors.signal, marginLeft: 6 }]}>WHY THIS CATEGORY</Text>
           <View style={{ flex: 1 }} />
-          <Text style={[typography.microLabel11, { color: colors.onDarkFaint }]}>{explanation.label}</Text>
+          <Text style={[typography.microLabel11, { color: colors.faint }]}>{explanation.label}</Text>
         </View>
-        <Text style={[typography.footnote12, { color: colors.onDarkMuted, lineHeight: 12 * 1.55, marginTop: 10 }]}>{explanation.body}</Text>
+        <Text style={[typography.footnote12, { color: colors.muted, lineHeight: 12 * 1.55, marginTop: 10 }]}>{explanation.body}</Text>
       </View>
 
       <View style={{ marginTop: 12 }}>
@@ -146,19 +146,19 @@ function TransactionSheetBody({ transaction: txn }: { transaction: Transaction }
 
       <View style={{ marginTop: 18 }}>
         {feedbackResult ? (
-          <Text style={[typography.footnote12, { color: colors.accentDim, textAlign: 'center' }]}>{feedbackResult}</Text>
+          <Text style={[typography.footnote12, { color: colors.signalText, textAlign: 'center' }]}>{feedbackResult}</Text>
         ) : (
           <>
             <View style={{ flexDirection: 'row' }}>
               <View style={{ flex: 1 }}>
-                <SecondaryPillButton label="Looks right" foreground={colors.onLight} borderColor={colors.hairlineLight} onPress={submitting ? undefined : () => void submitFeedback(txn.category ?? 'Unknown')} style={{ paddingVertical: 12 }} />
+                <SecondaryPillButton label="Looks right" foreground={colors.text} borderColor={colors.border} onPress={submitting ? undefined : () => void submitFeedback(txn.category ?? 'Unknown')} style={{ paddingVertical: 12 }} />
               </View>
               <View style={{ width: 10 }} />
               <View style={{ flex: 1 }}>
-                <SecondaryPillButton label="Wrong category" foreground={colors.onLight} borderColor={colors.hairlineLight} onPress={submitting ? undefined : () => setPicking(true)} style={{ paddingVertical: 12 }} />
+                <SecondaryPillButton label="Wrong category" foreground={colors.text} borderColor={colors.border} onPress={submitting ? undefined : () => setPicking(true)} style={{ paddingVertical: 12 }} />
               </View>
             </View>
-            <Text style={[typography.microLabel11, { color: colors.onLightFaint, textAlign: 'center', marginTop: 12 }]}>Your correction trains Miravelt's merchant memory.</Text>
+            <Text style={[typography.microLabel11, { color: colors.faint, textAlign: 'center', marginTop: 12 }]}>Your correction trains Miravelt's merchant memory.</Text>
           </>
         )}
       </View>
@@ -168,10 +168,10 @@ function TransactionSheetBody({ transaction: txn }: { transaction: Transaction }
 
 function DetailRow({ label, value, trailing, mono = false, last = false }: { label: string; value?: string; trailing?: React.ReactNode; mono?: boolean; last?: boolean }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: last ? 0 : 1, borderBottomColor: colors.hairlineLight }}>
-      <Text style={[typography.body14, { fontSize: 13, color: colors.onLightMuted }]}>{label}</Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: last ? 0 : 1, borderBottomColor: colors.border }}>
+      <Text style={[typography.body14, { fontSize: 13, color: colors.muted }]}>{label}</Text>
       <View style={{ flex: 1 }} />
-      {trailing ?? <Text style={[mono ? typography.meta12 : typography.rowLabel14, { color: colors.onLight, flexShrink: 1, textAlign: 'right' }]}>{value}</Text>}
+      {trailing ?? <Text style={[mono ? typography.meta12 : typography.rowLabel14, { color: colors.text, flexShrink: 1, textAlign: 'right' }]}>{value}</Text>}
     </View>
   );
 }
@@ -186,19 +186,19 @@ function ExplainPanel({ loading, outcome, onRequest }: { loading: boolean; outco
   if (!outcome) {
     return (
       <Pressable accessibilityRole="button" disabled={loading || !onRequest} onPress={onRequest} hitSlop={8} style={{ alignSelf: 'flex-start', opacity: onRequest ? 1 : 0.4 }}>
-        {loading ? <ActivityIndicator size="small" color={colors.accentDim} /> : <Text style={[typography.buttonLabel12, { color: colors.accentDim }]}>Ask for a deeper explanation</Text>}
+        {loading ? <ActivityIndicator size="small" color={colors.signalText} /> : <Text style={[typography.buttonLabel12, { color: colors.signalText }]}>Ask for a deeper explanation</Text>}
       </Pressable>
     );
   }
-  if (!outcome.available) return <Text style={[typography.footnote12, { color: colors.onLightMuted }]}>{outcome.unavailableReason}</Text>;
+  if (!outcome.available) return <Text style={[typography.footnote12, { color: colors.muted }]}>{outcome.unavailableReason}</Text>;
   return (
-    <View style={{ padding: 14, backgroundColor: withAlpha(colors.hairlineLight, 0.35), borderRadius: 14 }}>
+    <View style={{ padding: 14, backgroundColor: withAlpha(colors.border, 0.35), borderRadius: 14 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Text style={[typography.microLabelTracked105, { color: colors.onLightFaint }]}>GROUNDED EXPLANATION</Text>
+        <Text style={[typography.microLabelTracked105, { color: colors.faint }]}>GROUNDED EXPLANATION</Text>
         <View style={{ flex: 1 }} />
-        {outcome.confidence ? <Text style={[typography.microLabel11, { color: colors.onLightFaint }]}>{outcome.confidence}</Text> : null}
+        {outcome.confidence ? <Text style={[typography.microLabel11, { color: colors.faint }]}>{outcome.confidence}</Text> : null}
       </View>
-      <Text style={[typography.footnote12, { color: colors.onLight, lineHeight: 18, marginTop: 8 }]}>{outcome.explanation}</Text>
+      <Text style={[typography.footnote12, { color: colors.text, lineHeight: 18, marginTop: 8 }]}>{outcome.explanation}</Text>
     </View>
   );
 }
