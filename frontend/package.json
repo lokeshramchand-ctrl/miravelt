@@ -59,6 +59,9 @@
     ],
     "setupFiles": [
       "./jest.setup.ts"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.test.[jt]s?(x)"
     ]
   }
 }
