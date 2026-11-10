@@ -16,7 +16,7 @@ class ContextRetriever:
         milvus_hits = await vector_search.find_similar_behaviors(query_text, top_k=top_k)
 
         if not milvus_hits:
-            logger.warning(f"No semantic matches found in Milvus for query: {query_text}")
+            logger.warning("No semantic matches found in Milvus for explain query.")
             return []
 
         merchant_names = [hit["merchant_name"] for hit in milvus_hits]

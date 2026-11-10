@@ -90,7 +90,12 @@ class MongoDB:
         # (otherwise stateless) filesystem can't durably provide across redeploys.
         cls.app_releases_bucket = AsyncIOMotorGridFSBucket(cls.db, bucket_name="app_releases_apks")
 
-        logger.info(f"MongoDB connected to {uri}/{db_name}")
+        try:
+            from pymongo.uri_parser import parse_uri
+            hosts = ",".join(f"{h}:{p}" for h, p in parse_uri(uri)["nodelist"])
+        except Exception:
+            hosts = "<unparsed>"
+        logger.info(f"MongoDB connected to {hosts}/{db_name}")
 
     @classmethod
     async def ensure_indexes(cls):
