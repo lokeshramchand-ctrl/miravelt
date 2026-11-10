@@ -1,9 +1,15 @@
+import { RiStackLine } from "@remixicon/react";
+
 import { requireAdminSession } from "@/lib/dal";
 import { adminBackendJson } from "@/lib/backend";
 import PageHeader from "@/components/PageHeader";
+import Panel from "@/components/Panel";
 import StatusBadge from "@/components/StatusBadge";
 import StatusFilter from "@/components/StatusFilter";
 import Pagination from "@/components/Pagination";
+import EmptyRow from "@/components/EmptyRow";
+import UserIdLink from "@/components/UserIdLink";
+import { cx } from "@/utils/cx";
 
 const JOB_STATUSES = ["QUEUED", "RUNNING", "COMPLETED", "FAILED"];
 
@@ -40,72 +46,67 @@ export default async function JobsPage(props: PageProps<"/dashboard/jobs">) {
   if (status) query.set("status", status);
   const jobs = await adminBackendJson<JobList>(accessToken, `/admin/jobs?${query}`);
 
-  const makeHref = (p: number) => {
-    const q = new URLSearchParams({ page: String(p) });
-    if (status) q.set("status", status);
-    return `/dashboard/jobs?${q}`;
-  };
-  const makeStatusHref = (s?: string) => {
-    const q = new URLSearchParams({ page: "1" });
-    if (s) q.set("status", s);
-    return `/dashboard/jobs?${q}`;
-  };
-
   return (
     <div>
-      <PageHeader title="Jobs" description={`${jobs.total} job${jobs.total === 1 ? "" : "s"} total.`} />
+      <PageHeader
+        title="Jobs"
+        description={`${jobs.total.toLocaleString()} job${jobs.total === 1 ? "" : "s"}${status ? " with this status" : " total"}.`}
+        right={<StatusFilter current={status} options={JOB_STATUSES} basePath="/dashboard/jobs" />}
+      />
 
-      <div className="mb-4">
-        <StatusFilter current={status} options={JOB_STATUSES} makeHref={makeStatusHref} />
-      </div>
-
-      <div className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+      <Panel>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="bui-table">
             <thead>
-              <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-                <th className="px-4 py-2 font-medium">Job</th>
-                <th className="px-4 py-2 font-medium">Status</th>
-                <th className="px-4 py-2 font-medium">Progress</th>
-                <th className="px-4 py-2 font-medium">User</th>
-                <th className="px-4 py-2 font-medium">Created</th>
+              <tr>
+                <th>Job</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>User</th>
+                <th>Created</th>
               </tr>
             </thead>
             <tbody>
               {jobs.items.map((job) => (
-                <tr key={job.id} className="border-b border-zinc-100 last:border-0 dark:border-zinc-800">
-                  <td className="px-4 py-3">
-                    <p className="text-zinc-900 dark:text-zinc-100">{job.job_type}</p>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{job.stage ?? "—"}</p>
-                    {job.error_message && <p className="text-xs text-red-600 dark:text-red-400">{job.error_message}</p>}
+                <tr key={job.id} className="hover:bg-background-secondary-hover">
+                  <td>
+                    <p className="text-body-medium text-text-primary">{job.job_type}</p>
+                    <p className="text-body-2-regular text-text-tertiary">{job.stage ?? "—"}</p>
+                    {job.error_message && <p className="mt-0.5 max-w-md text-body-2-regular text-text-error-primary">{job.error_message}</p>}
                   </td>
-                  <td className="px-4 py-3">
+                  <td>
                     <StatusBadge status={job.status} />
                   </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{job.progress_percent}%</td>
-                  <td className="px-4 py-3">
-                    <a
-                      href={`/dashboard/users/${job.user_id}`}
-                      className="font-mono text-xs text-zinc-600 hover:underline dark:text-zinc-400"
-                    >
-                      {job.user_id}
-                    </a>
+                  <td>
+                    <ProgressMeter percent={job.progress_percent} failed={job.status === "FAILED"} />
                   </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{new Date(job.created_at).toLocaleString()}</td>
+                  <td>
+                    <UserIdLink id={job.user_id} />
+                  </td>
+                  <td className="whitespace-nowrap text-text-secondary">{new Date(job.created_at).toLocaleString()}</td>
                 </tr>
               ))}
-              {jobs.items.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                    No jobs found.
-                  </td>
-                </tr>
-              )}
+              {jobs.items.length === 0 && <EmptyRow colSpan={5} icon={RiStackLine} title="No jobs found" hint={status ? "Try another status filter." : undefined} />}
             </tbody>
           </table>
         </div>
-        <Pagination page={jobs.page} totalPages={jobs.total_pages} makeHref={makeHref} />
-      </div>
+        <Pagination page={jobs.page} totalPages={jobs.total_pages} basePath="/dashboard/jobs" params={{ status }} />
+      </Panel>
+    </div>
+  );
+}
+
+function ProgressMeter({ percent, failed }: { percent: number; failed: boolean }) {
+  const clamped = Math.max(0, Math.min(100, percent));
+  return (
+    <div className="flex items-center gap-2" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={clamped} aria-label="Progress">
+      <span className="h-1.5 w-20 overflow-hidden rounded-full bg-background-tertiary-default">
+        <span
+          className={cx("block h-full rounded-full", failed ? "bg-status-rose-text" : clamped >= 100 ? "bg-status-lime-text" : "bg-accent-500")}
+          style={{ width: `${clamped}%` }}
+        />
+      </span>
+      <span className="w-9 text-body-2-medium text-text-secondary tabular-nums">{clamped}%</span>
     </div>
   );
 }

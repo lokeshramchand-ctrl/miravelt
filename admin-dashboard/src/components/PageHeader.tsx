@@ -1,17 +1,22 @@
+import type { ReactNode } from "react";
+
 export default function PageHeader({
   title,
   description,
   right,
+  eyebrow,
 }: {
-  title: string;
-  description?: string;
-  right?: React.ReactNode;
+  title: ReactNode;
+  description?: ReactNode;
+  right?: ReactNode;
+  eyebrow?: ReactNode;
 }) {
   return (
-    <div className="mb-6 flex items-start justify-between gap-4">
-      <div>
-        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{title}</h1>
-        {description && <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{description}</p>}
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div className="min-w-0">
+        {eyebrow && <div className="mb-2">{eyebrow}</div>}
+        <h1 className="text-title-1-medium text-text-primary">{title}</h1>
+        {description && <p className="mt-1 text-body-regular text-text-secondary">{description}</p>}
       </div>
       {right}
     </div>

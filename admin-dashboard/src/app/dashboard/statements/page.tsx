@@ -1,9 +1,14 @@
+import { RiCheckboxCircleFill, RiCloseCircleFill, RiFilePdf2Line, RiFileList3Line } from "@remixicon/react";
+
 import { requireAdminSession } from "@/lib/dal";
 import { adminBackendJson } from "@/lib/backend";
 import PageHeader from "@/components/PageHeader";
+import Panel from "@/components/Panel";
 import StatusBadge from "@/components/StatusBadge";
 import StatusFilter from "@/components/StatusFilter";
 import Pagination from "@/components/Pagination";
+import EmptyRow from "@/components/EmptyRow";
+import UserIdLink from "@/components/UserIdLink";
 
 const STATEMENT_STATUSES = ["PENDING", "PROCESSING", "COMPLETED", "FAILED"];
 
@@ -40,79 +45,87 @@ export default async function StatementsPage(props: PageProps<"/dashboard/statem
   if (status) query.set("processing_status", status);
   const statements = await adminBackendJson<StatementList>(accessToken, `/admin/statements?${query}`);
 
-  const makeHref = (p: number) => {
-    const q = new URLSearchParams({ page: String(p) });
-    if (status) q.set("status", status);
-    return `/dashboard/statements?${q}`;
-  };
-  const makeStatusHref = (s?: string) => {
-    const q = new URLSearchParams({ page: "1" });
-    if (s) q.set("status", s);
-    return `/dashboard/statements?${q}`;
-  };
-
   return (
     <div>
-      <PageHeader title="Statements" description={`${statements.total} statement${statements.total === 1 ? "" : "s"} total.`} />
+      <PageHeader
+        title="Statements"
+        description={`${statements.total.toLocaleString()} statement${statements.total === 1 ? "" : "s"}${status ? " with this status" : " total"}.`}
+        right={<StatusFilter current={status} options={STATEMENT_STATUSES} basePath="/dashboard/statements" />}
+      />
 
-      <div className="mb-4">
-        <StatusFilter current={status} options={STATEMENT_STATUSES} makeHref={makeStatusHref} />
-      </div>
-
-      <div className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+      <Panel>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="bui-table">
             <thead>
-              <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-                <th className="px-4 py-2 font-medium">File</th>
-                <th className="px-4 py-2 font-medium">Status</th>
-                <th className="px-4 py-2 font-medium">Period</th>
-                <th className="px-4 py-2 font-medium">Transactions</th>
-                <th className="px-4 py-2 font-medium">Reconciled</th>
-                <th className="px-4 py-2 font-medium">User</th>
-                <th className="px-4 py-2 font-medium">Uploaded</th>
+              <tr>
+                <th>File</th>
+                <th>Status</th>
+                <th>Period</th>
+                <th className="!text-end">Transactions</th>
+                <th>Reconciled</th>
+                <th>User</th>
+                <th>Uploaded</th>
               </tr>
             </thead>
             <tbody>
               {statements.items.map((s) => (
-                <tr key={s.id} className="border-b border-zinc-100 last:border-0 dark:border-zinc-800">
-                  <td className="px-4 py-3">
-                    <p className="text-zinc-900 dark:text-zinc-100">{s.original_filename}</p>
-                    {s.error_message && <p className="text-xs text-red-600 dark:text-red-400">{s.error_message}</p>}
+                <tr key={s.id} className="hover:bg-background-secondary-hover">
+                  <td>
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background-secondary-default">
+                        <RiFilePdf2Line className="size-4 text-foreground-icon-secondary" aria-hidden />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="max-w-[16rem] truncate text-body-medium text-text-primary" title={s.original_filename}>
+                          {s.original_filename}
+                        </p>
+                        <p className="text-body-2-regular text-text-tertiary">{formatBytes(s.file_size_bytes)}</p>
+                      </div>
+                    </div>
+                    {s.error_message && <p className="mt-1 max-w-md text-body-2-regular text-text-error-primary">{s.error_message}</p>}
                   </td>
-                  <td className="px-4 py-3">
+                  <td>
                     <StatusBadge status={s.processing_status} />
                   </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                  <td className="whitespace-nowrap text-text-secondary">
                     {s.period_start} – {s.period_end}
                   </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{s.transaction_count}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                    {s.reconciliation_ok === null ? "—" : s.reconciliation_ok ? "Yes" : "No"}
+                  <td className="text-end tabular-nums">{s.transaction_count.toLocaleString()}</td>
+                  <td>
+                    <Reconciled ok={s.reconciliation_ok} />
                   </td>
-                  <td className="px-4 py-3">
-                    <a
-                      href={`/dashboard/users/${s.user_id}`}
-                      className="font-mono text-xs text-zinc-600 hover:underline dark:text-zinc-400"
-                    >
-                      {s.user_id}
-                    </a>
+                  <td>
+                    <UserIdLink id={s.user_id} />
                   </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{new Date(s.uploaded_at).toLocaleString()}</td>
+                  <td className="whitespace-nowrap text-text-secondary">{new Date(s.uploaded_at).toLocaleString()}</td>
                 </tr>
               ))}
               {statements.items.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                    No statements found.
-                  </td>
-                </tr>
+                <EmptyRow colSpan={7} icon={RiFileList3Line} title="No statements found" hint={status ? "Try another status filter." : undefined} />
               )}
             </tbody>
           </table>
         </div>
-        <Pagination page={statements.page} totalPages={statements.total_pages} makeHref={makeHref} />
-      </div>
+        <Pagination page={statements.page} totalPages={statements.total_pages} basePath="/dashboard/statements" params={{ status }} />
+      </Panel>
     </div>
   );
+}
+
+function Reconciled({ ok }: { ok: boolean | null }) {
+  if (ok === null) return <span className="text-text-tertiary">—</span>;
+  return ok ? (
+    <span className="inline-flex items-center gap-1 text-status-lime-text">
+      <RiCheckboxCircleFill className="size-4" aria-hidden /> Yes
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 text-status-rose-text">
+      <RiCloseCircleFill className="size-4" aria-hidden /> No
+    </span>
+  );
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

@@ -48,6 +48,26 @@ No automated test suite exists in this app yet.
 writes (via `backend.ts`). Never fetch the backend from a client component (`"use client"` files
 under `src/app/**` and `src/components/`).
 
+## UI (BoardUI)
+
+The UI is built on the free, MIT tier of [BoardUI](https://boardui.com): source-owned components
+copied in by its CLI, not a runtime package. `src/components/base/**`,
+`src/components/application/**`, `src/components/foundations/**`, `src/styles/` and `src/utils/`
+came from `npx boardui@latest init` / `add` (run with `BOARDUI_TELEMETRY_DISABLED=1`); add more
+with `npx boardui@latest add <name>` rather than hand-building lookalikes. `AGENTS.md` holds
+BoardUI's own design rules - semantic colour tokens only (no raw palette classes or `dark:`
+overrides), composite type utilities (`text-body-medium`, `text-title-1-medium`...), Remix icons.
+Local edits to vendored files: `theme-toggle.tsx` falls back to the OS theme when no choice is
+stored (and `src/app/layout.tsx` sets `.dark` before paint to match).
+
+The app's own wrappers sit beside them in `src/components/`: `Panel` (card), `KpiCard`,
+`StatusBadge` (status -> chip colour), `EmptyRow`, `UserIdLink`, and `StatusFilter`/`Pagination`,
+which wrap BoardUI's controlled segmented control and pagination so list state stays in the URL
+and pages stay Server Components. Tables are plain `<table className="bui-table">` (BoardUI's
+table CSS) rather than React Aria's client-only `Table`. Icons can't be passed from a Server
+Component into a Client Component prop (they're functions), hence `NavLink`'s icon keys, and a
+helper used by both sides belongs in `src/lib/` (see `initials.ts`), never in a `"use client"` file.
+
 ## Pages
 
 | Route | What it does |

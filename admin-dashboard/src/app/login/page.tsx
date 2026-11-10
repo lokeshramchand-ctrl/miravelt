@@ -6,13 +6,17 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const next = typeof nextParam === "string" && nextParam.startsWith("/dashboard") ? nextParam : "/dashboard";
 
   return (
-    <div className="flex min-h-screen flex-1 items-center justify-center bg-zinc-50 px-4 dark:bg-zinc-950">
-      <div className="w-full max-w-sm rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Miravelt Admin</h1>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Sign in with an admin account.</p>
-        <div className="mt-6">
-          <LoginForm next={next} />
+    <div className="flex min-h-screen flex-1 items-center justify-center px-4 py-10">
+      <div className="w-full max-w-[400px] rounded-3xl border border-border-button-white bg-background-secondary-default p-2 shadow-sidebar">
+        <div className="rounded-2xl bg-background-primary-default p-6 shadow-card">
+          <span className="flex size-10 items-center justify-center rounded-2lg bg-text-primary text-title-3-semibold text-background-full shadow-xs">M</span>
+          <h1 className="mt-5 text-title-2-medium text-text-primary">Miravelt Admin</h1>
+          <p className="mt-1 text-body-regular text-text-secondary">Sign in with an admin account.</p>
+          <div className="mt-6">
+            <LoginForm next={next} />
+          </div>
         </div>
+        <p className="px-4 py-3 text-center text-caption-1-regular text-text-tertiary">Operators only. Access is checked against the backend on every sign-in.</p>
       </div>
     </div>
   );

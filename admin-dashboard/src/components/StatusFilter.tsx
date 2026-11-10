@@ -1,39 +1,50 @@
-import Link from "next/link";
+"use client";
 
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+
+import { SegmentedControl, SegmentedControlItem } from "@/components/base/segmented-control/segmented-control";
+import { statusLabel } from "@/components/StatusBadge";
+import { cx } from "@/utils/cx";
+
+const ALL = "__all";
+
+/**
+ * Status filter as a BoardUI segmented control. Filter state lives in the URL
+ * (`?status=`), so selecting a segment navigates; the page re-renders server-side.
+ */
 export default function StatusFilter({
   current,
   options,
-  makeHref,
+  basePath,
 }: {
   current?: string;
   options: string[];
-  makeHref: (status?: string) => string;
+  basePath: string;
 }) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      <FilterLink href={makeHref(undefined)} active={!current}>
-        All
-      </FilterLink>
-      {options.map((opt) => (
-        <FilterLink key={opt} href={makeHref(opt)} active={current === opt}>
-          {opt}
-        </FilterLink>
-      ))}
-    </div>
-  );
-}
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
 
-function FilterLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
   return (
-    <Link
-      href={href}
-      className={`rounded-full px-3 py-1 text-xs font-medium ${
-        active
-          ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-          : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
-      }`}
-    >
-      {children}
-    </Link>
+    <div className="max-w-full overflow-x-auto [scrollbar-width:none]">
+      <SegmentedControl
+        aria-label="Filter by status"
+        selectedKeys={[current ?? ALL]}
+        onSelectionChange={(keys) => {
+          const [key] = [...keys];
+          const q = new URLSearchParams({ page: "1" });
+          if (key && key !== ALL) q.set("status", String(key));
+          startTransition(() => router.push(`${basePath}?${q}`));
+        }}
+        className={cx(pending && "opacity-70")}
+      >
+        <SegmentedControlItem id={ALL}>All</SegmentedControlItem>
+        {options.map((opt) => (
+          <SegmentedControlItem key={opt} id={opt}>
+            {statusLabel(opt)}
+          </SegmentedControlItem>
+        ))}
+      </SegmentedControl>
+    </div>
   );
 }

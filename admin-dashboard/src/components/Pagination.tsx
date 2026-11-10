@@ -1,46 +1,38 @@
-import Link from "next/link";
+"use client";
 
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+
+import { Pagination as BoardPagination } from "@/components/base/pagination/pagination";
+import { cx } from "@/utils/cx";
+
+/** BoardUI pagination driven by the URL: `?page=` plus whatever other params the list keeps. */
 export default function Pagination({
   page,
   totalPages,
-  makeHref,
+  basePath,
+  params = {},
 }: {
   page: number;
   totalPages: number;
-  makeHref: (page: number) => string;
+  basePath: string;
+  params?: Record<string, string | undefined>;
 }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
   if (totalPages <= 1) return null;
 
   return (
-    <nav className="flex items-center justify-between border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
-      <span className="text-sm text-zinc-500 dark:text-zinc-400">
-        Page {page} of {totalPages}
-      </span>
-      <div className="flex gap-2">
-        <PageLink href={makeHref(page - 1)} disabled={page <= 1}>
-          Previous
-        </PageLink>
-        <PageLink href={makeHref(page + 1)} disabled={page >= totalPages}>
-          Next
-        </PageLink>
-      </div>
-    </nav>
-  );
-}
-
-function PageLink({ href, disabled, children }: { href: string; disabled: boolean; children: React.ReactNode }) {
-  const className =
-    "rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium dark:border-zinc-700 " +
-    (disabled
-      ? "cursor-not-allowed text-zinc-400 dark:text-zinc-600"
-      : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800");
-
-  if (disabled) {
-    return <span className={className}>{children}</span>;
-  }
-  return (
-    <Link href={href} className={className}>
-      {children}
-    </Link>
+    <div className={cx("border-t border-separator-border px-4 py-3", pending && "opacity-70")}>
+      <BoardPagination
+        page={page}
+        totalPages={totalPages}
+        onChange={(p) => {
+          const q = new URLSearchParams({ page: String(p) });
+          for (const [k, v] of Object.entries(params)) if (v) q.set(k, v);
+          startTransition(() => router.push(`${basePath}?${q}`));
+        }}
+      />
+    </div>
   );
 }
