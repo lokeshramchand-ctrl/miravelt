@@ -51,12 +51,14 @@ LAN `http://192.168.x.y:9850/` works. The app never talks to Ollama/Milvus direc
   `upload`, `sheets`, `toast`, `appUpdate`. `src/hooks/periods.ts` - TanStack Query hooks (cached
   until invalidated, no auto-retry).
 - `src/lib/redirect.ts` - `computeRedirect`, the launch/sign-in/onboarding rules as a pure function.
-- `src/components`, `src/theme` (OKLCH tokens computed at load, typography generated from the
-  design), `src/screens`.
+- `src/components`, `src/theme` (one `colors` palette swapped in place for light/dark by
+  `applyColorScheme`, Inter typography), `src/screens`. Read colour tokens at render time, never
+  inside `StyleSheet.create`, so a theme switch repaints them. See `../DESIGN_SYSTEM.md`.
 - Tests live in `__tests__/`; `__tests__/support/fakes.ts` has a scripted fake `fetch` and in-memory
   token storage - reuse them instead of writing new mocks.
 
 Launch: the router starts on `/` (splash) and holds there while the stored session is checked.
+Signed out, a first launch goes to the `/welcome` tour (`settings.introSeen`), later ones to `/login`.
 `usePeriods` is keyed on the signed-in user id, and the redirect waits for it before choosing
 Overview vs onboarding. Only a *finished* period pulls someone off onboarding (see the comment in
 `redirect.ts`). The logo mark is deliberately not shown in-app - splash/onboarding use the wordmark.
@@ -72,7 +74,7 @@ in-app updater compares against the backend's `version_code`; bump it per releas
 ## Icons and avatars
 
 `tool/generate_app_icons.py` (Pillow, run from the repo root) builds `assets/icon.png`,
-`adaptive-icon.png` and `favicon.png` from `../assets/Frame.png` onto `#0D0F15` (`colors.ink900`;
-also set in `app.json`). The user avatar is one of the nine illustrations in `assets/avatars/`,
+`adaptive-icon.png` and `favicon.png` from `../assets/Frame.png` onto `#0D0F15` (the launcher-icon
+background, also set in `app.json`). The user avatar is one of the nine illustrations in `assets/avatars/`,
 chosen by `src/lib/avatars.ts` from a stable FNV-1a hash of the user id (identical to the Flutter
 client's, so existing users keep their face). Render it with `UserAvatar`.

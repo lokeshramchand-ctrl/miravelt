@@ -1,9 +1,10 @@
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Animated, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import type { TextInput } from 'react-native';
 import { PrimaryPillButton } from '../components/Buttons';
 import { DeveloperUnlockGesture, versionLabel } from '../components/DeveloperSettings';
+import { Mascot, SpeechBubble, useShake } from '../components/Delight';
 import { Screen } from '../components/Screen';
 import { TextField } from '../components/TextField';
 import { appConfig } from '../config/appConfig';
@@ -39,14 +40,20 @@ export default function LoginScreen() {
   const [errors, setErrors] = useState<ReturnType<typeof validateLogin>>({});
   const passwordRef = useRef<TextInput>(null);
 
+  const { shake, style: shakeStyle } = useShake();
+
   const submit = async () => {
     const found = validateLogin(email, password);
     setErrors(found);
-    if (Object.keys(found).length > 0) return;
+    if (Object.keys(found).length > 0) {
+      shake();
+      return;
+    }
     Keyboard.dismiss();
     try {
       await useAuth.getState().login(email.trim(), password);
     } catch (e) {
+      shake();
       showToast(errorMessage(e), 'error');
     }
   };
@@ -55,9 +62,14 @@ export default function LoginScreen() {
     <Screen dark>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingVertical: 32 }}>
-          <Text style={[typography.bigHeadline26, { color: colors.onDark }]}>Welcome back</Text>
-          <Text style={[typography.footnote15, { color: colors.onDarkMuted, marginTop: 8 }]}>Sign in to see your spending, explained.</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 22 }}>
+            <Mascot size={64} />
+            <SpeechBubble text="Welcome back! Let's see where your money went." style={{ flex: 1, marginLeft: 14, marginBottom: 14 }} />
+          </View>
+          <Text style={[typography.bigHeadline26, { color: colors.text }]}>Welcome back</Text>
+          <Text style={[typography.footnote15, { color: colors.muted, marginTop: 8 }]}>Sign in to see your spending, explained.</Text>
           <View style={{ height: 32 }} />
+          <Animated.View style={shakeStyle}>
           <TextField
             label="EMAIL"
             value={email}
@@ -89,15 +101,19 @@ export default function LoginScreen() {
             onSubmitEditing={submit}
             error={errors.password}
           />
+          </Animated.View>
           <View style={{ height: 28 }} />
           <PrimaryPillButton label="Sign in" onPress={submit} loading={loading} />
           <Pressable accessibilityRole="button" onPress={() => router.push('/register')} style={{ alignSelf: 'center', paddingVertical: 14, marginTop: 4 }}>
-            <Text style={[typography.footnote12, { color: colors.accentDim }]}>Don't have an account? Create one</Text>
+            <Text style={[typography.footnote12, { color: colors.signalText }]}>Don't have an account? Create one</Text>
           </Pressable>
-          <View style={{ height: 40 }} />
+          <Pressable accessibilityRole="button" onPress={() => router.push('/welcome')} style={{ alignSelf: 'center', paddingVertical: 10 }}>
+            <Text style={[typography.footnote12, { color: colors.muted }]}>New here? <Text style={{ color: colors.text, fontFamily: 'Inter_600SemiBold' }}>Take the tour</Text></Text>
+          </Pressable>
+          <View style={{ height: 32 }} />
           {/* The only entry point to Developer settings that works when the backend is down - Profile is behind a successful sign-in, which is exactly what an unreachable backend prevents. */}
           <DeveloperUnlockGesture>
-            <Text style={[typography.footnote12, { color: colors.onDarkFaint, textAlign: 'center' }]}>Version {versionLabel()}</Text>
+            <Text style={[typography.footnote12, { color: colors.faint, textAlign: 'center' }]}>Version {versionLabel()}</Text>
           </DeveloperUnlockGesture>
         </ScrollView>
       </KeyboardAvoidingView>

@@ -13,9 +13,9 @@ export default function SplashScreen() {
   return (
     <Screen dark>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={[typography.wordmark14, { color: colors.onDark }]}>Miravelt</Text>
+        <Text style={[typography.wordmark14, { color: colors.text }]}>Miravelt</Text>
         <View style={{ height: 28 }} />
-        <ActivityIndicator size="small" color={colors.accent} />
+        <ActivityIndicator size="small" color={colors.signal} />
       </View>
     </Screen>
   );

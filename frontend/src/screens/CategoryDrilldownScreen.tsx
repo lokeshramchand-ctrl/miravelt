@@ -7,6 +7,7 @@ import { AvatarChip } from '../components/Avatars';
 import { MiniBarChart } from '../components/Charts';
 import { ScreenBackHeader } from '../components/Controls';
 import { DeltaChip, EmptyState, ErrorRetry, withAlpha } from '../components/Display';
+import { Icon } from '../components/Icon';
 import { Screen } from '../components/Screen';
 import { SkeletonListRow } from '../components/Skeleton';
 import type { Statement, Transaction } from '../domain/types';
@@ -114,14 +115,14 @@ export default function CategoryDrilldownScreen() {
           <View style={{ height: 6 }} />
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: color }} />
-            <Text style={[typography.navTitle15, { color: colors.onDark, marginLeft: 8 }]}>{category}</Text>
+            <Text style={[typography.navTitle15, { color: colors.text, marginLeft: 8 }]}>{category}</Text>
           </View>
           <View style={{ height: 10 }} />
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={[typography.heroAmount36, { color: colors.onDark }]}>{formatCurrency(total)}</Text>
+            <Text style={[typography.heroAmount36, { color: colors.text }]}>{formatCurrency(total)}</Text>
             {delta != null ? (
               <View style={{ marginLeft: 10 }}>
-                <DeltaChip label={`${delta >= 0 ? '↑' : '↓'} ${Math.abs(Math.round(delta))}%`} up={delta >= 0} tint={withAlpha(delta >= 0 ? colors.rose : colors.accent, 0.16)} foreground={delta >= 0 ? colors.rose : colors.accent} />
+                <DeltaChip label={`${delta >= 0 ? '↑' : '↓'} ${Math.abs(Math.round(delta))}%`} up={delta >= 0} tone={delta >= 0 ? 'down' : 'up'} />
               </View>
             ) : null}
           </View>
@@ -130,14 +131,14 @@ export default function CategoryDrilldownScreen() {
         </HeaderBand>
 
         <View style={{ padding: spacing.gutter }}>
-          <Text style={[typography.microLabelTracked11, { color: colors.onLightFaint }]}>MERCHANTS IN {category.toUpperCase()}</Text>
+          <Text style={[typography.cardTitle, { color: colors.text }]}>Merchants in {category}</Text>
           <View style={{ height: 12 }} />
           {drilldown.isPending ? (
             <View>
               {[0, 1, 2].map((i) => (
                 <View key={i}>
                   <SkeletonListRow />
-                  {i !== 2 ? <View style={{ height: 1, marginLeft: 62, backgroundColor: colors.hairlineLight }} /> : null}
+                  {i !== 2 ? <View style={{ height: 1, marginLeft: 62, backgroundColor: colors.border }} /> : null}
                 </View>
               ))}
             </View>
@@ -167,7 +168,7 @@ function safeDecode(value: string): string {
 /** The dark header band paints under the status bar, so it carries the top inset itself. */
 function HeaderBand({ children }: { children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
-  return <View style={{ backgroundColor: colors.ink900, paddingHorizontal: spacing.gutter, paddingTop: insets.top + 6, paddingBottom: 24 }}>{children}</View>;
+  return <View style={{ backgroundColor: colors.bg, paddingHorizontal: spacing.gutter, paddingTop: insets.top + 6, paddingBottom: 24 }}>{children}</View>;
 }
 
 function Chart({ buckets }: { buckets: MonthlyBucket[] }) {
@@ -189,20 +190,20 @@ function Chart({ buckets }: { buckets: MonthlyBucket[] }) {
 
 function MerchantList({ merchants, color }: { merchants: MerchantAggregate[]; color: string }) {
   return (
-    <View style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.hairlineLight, borderRadius: radius.card }}>
+    <View style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.card }}>
       {merchants.map((m, i) => (
         <View key={m.merchant}>
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8 }}>
-            <AvatarChip initials={m.merchant ? m.merchant[0].toUpperCase() : '?'} size={36} radius={11} backgroundColor={withAlpha(color, 0.16)} foregroundColor={color} />
+            <AvatarChip initials={m.merchant ? m.merchant[0].toUpperCase() : '?'} size={36} radius={18} backgroundColor={withAlpha(color, 0.16)} foregroundColor={color} />
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={[typography.rowLabel14, { color: colors.onLight }]}>{m.merchant}</Text>
-              <Text style={[typography.meta115, { color: colors.onLightFaint }]}>
+              <Text style={[typography.rowLabel14, { color: colors.text }]}>{m.merchant}</Text>
+              <Text style={[typography.meta115, { color: colors.faint }]}>
                 {m.count} order{m.count === 1 ? '' : 's'} · {formatCurrency(m.average)} avg
               </Text>
             </View>
-            <Text style={[typography.amountMedium14, { color: colors.onLight }]}>{formatCurrency(m.total)}</Text>
+            <Text style={[typography.amountMedium14, { color: colors.text }]}>{formatCurrency(m.total)}</Text>
           </View>
-          {i !== merchants.length - 1 ? <View style={{ height: 1, marginLeft: 62, backgroundColor: colors.hairlineLight }} /> : null}
+          {i !== merchants.length - 1 ? <View style={{ height: 1, marginLeft: 62, backgroundColor: colors.border }} /> : null}
         </View>
       ))}
     </View>
@@ -212,11 +213,11 @@ function MerchantList({ merchants, color }: { merchants: MerchantAggregate[]; co
 function TopMerchantNote({ merchant, total, category }: { merchant: MerchantAggregate; total: number; category: string }) {
   const share = Math.round((merchant.total / total) * 100);
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-start', padding: 16, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.hairlineLight, borderRadius: radius.card }}>
-      <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: colors.accentTint, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontSize: 11, color: colors.accentInk }}>✦</Text>
+    <View style={{ flexDirection: 'row', alignItems: 'flex-start', padding: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.card }}>
+      <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: colors.ink, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="auto-awesome" size={12} color={colors.onInk} />
       </View>
-      <Text style={[typography.cardBody135, { color: colors.onLight, flex: 1, marginLeft: 10 }]}>
+      <Text style={[typography.cardBody135, { color: colors.text, flex: 1, marginLeft: 10 }]}>
         {merchant.merchant} accounts for {share}% of your {category} spend this period.
       </Text>
     </View>

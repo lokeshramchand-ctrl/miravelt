@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Animated, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { PrimaryPillButton } from '../components/Buttons';
 import { ScreenBackHeader } from '../components/Controls';
+import { useShake } from '../components/Delight';
 import { Screen } from '../components/Screen';
 import { TextField } from '../components/TextField';
 import { errorMessage, useAuth } from '../state/auth';
@@ -33,14 +34,20 @@ export default function RegisterScreen() {
   const passwordRef = useRef<TextInput>(null);
   const confirmRef = useRef<TextInput>(null);
 
+  const { shake, style: shakeStyle } = useShake();
+
   const submit = async () => {
     const found = validateRegister(email, password, confirm);
     setErrors(found);
-    if (Object.keys(found).length > 0) return;
+    if (Object.keys(found).length > 0) {
+      shake();
+      return;
+    }
     Keyboard.dismiss();
     try {
       await useAuth.getState().registerAndLogin(email.trim(), password);
     } catch (e) {
+      shake();
       showToast(errorMessage(e), 'error');
     }
   };
@@ -51,9 +58,10 @@ export default function RegisterScreen() {
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingBottom: 24 }}>
           <View style={{ height: 8 }} />
           <ScreenBackHeader />
-          <Text style={[typography.bigHeadline26, { color: colors.onDark, marginTop: 12 }]}>Create your account</Text>
-          <Text style={[typography.footnote15, { color: colors.onDarkMuted, marginTop: 8 }]}>One account, every statement you add.</Text>
+          <Text style={[typography.bigHeadline26, { color: colors.text, marginTop: 12 }]}>Create your account</Text>
+          <Text style={[typography.footnote15, { color: colors.muted, marginTop: 8 }]}>One account, every statement you add.</Text>
           <View style={{ height: 28 }} />
+          <Animated.View style={shakeStyle}>
           <TextField
             label="EMAIL"
             value={email}
@@ -97,10 +105,11 @@ export default function RegisterScreen() {
             onSubmitEditing={submit}
             error={errors.confirm}
           />
+          </Animated.View>
           <View style={{ height: 28 }} />
           <PrimaryPillButton label="Create account" onPress={submit} loading={busy} />
           <Pressable accessibilityRole="button" onPress={() => router.back()} style={{ alignSelf: 'center', paddingVertical: 14, marginTop: 6 }}>
-            <Text style={[typography.footnote12, { color: colors.accentDim }]}>Already have an account? Sign in</Text>
+            <Text style={[typography.footnote12, { color: colors.signalText }]}>Already have an account? Sign in</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>

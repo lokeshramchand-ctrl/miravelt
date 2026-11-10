@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Icon } from './Icon';
 import type { Statement } from '../domain/types';
 import { useCurrentPeriod, useJobSnapshot, usePeriods } from '../hooks/periods';
 import { formatCurrency, formatPeriodRange } from '../lib/format';
@@ -31,15 +31,15 @@ function PeriodSwitcherBody({ onClose }: { onClose: () => void }) {
 
   return (
     <View>
-      <Text style={[typography.bigHeadline26, { fontSize: 20, color: colors.onDark }]}>Choose a period</Text>
-      <Text style={[typography.body13, { color: colors.onDarkMuted, marginTop: 6, lineHeight: 18 }]}>Each period is one Google Pay statement you've added.</Text>
+      <Text style={[typography.bigHeadline26, { fontSize: 20, color: colors.text }]}>Choose a period</Text>
+      <Text style={[typography.body13, { color: colors.muted, marginTop: 6, lineHeight: 18 }]}>Each period is one Google Pay statement you've added.</Text>
       <View style={{ height: 18 }} />
       {periods.isPending ? (
         <View style={{ paddingVertical: 20 }}>
-          <ActivityIndicator color={colors.accent} />
+          <ActivityIndicator color={colors.signal} />
         </View>
       ) : periods.isError ? (
-        <Text style={[typography.footnote12, { color: colors.rose }]}>Could not load periods.</Text>
+        <Text style={[typography.footnote12, { color: colors.down }]}>Could not load periods.</Text>
       ) : (
         (periods.data ?? []).map((period) => (
           <View key={period.id} style={{ marginBottom: 10 }}>
@@ -53,17 +53,17 @@ function PeriodSwitcherBody({ onClose }: { onClose: () => void }) {
           onClose();
           startUploadFlow();
         }}
-        style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', padding: 13, borderWidth: 1, borderColor: colors.hairlineDark, borderRadius: radius.card }, pressed && { opacity: 0.7 }]}
+        style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', padding: 13, borderWidth: 1, borderColor: colors.border, borderRadius: radius.card }, pressed && { opacity: 0.7 }]}
       >
-        <View style={{ width: 34, height: 34, borderRadius: 11, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={[typography.amountMedium19, { color: colors.accentInk }]}>+</Text>
+        <View style={{ width: 34, height: 34, borderRadius: 11, backgroundColor: colors.signal, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={[typography.amountMedium19, { color: colors.onInk }]}>+</Text>
         </View>
         <View style={{ marginLeft: 12, flex: 1 }}>
-          <Text style={[typography.rowLabel14, { color: colors.onDark }]}>Add a statement</Text>
-          <Text style={[typography.footnote12, { color: colors.onDarkMuted }]}>Google Pay → Transaction statement → PDF</Text>
+          <Text style={[typography.rowLabel14, { color: colors.text }]}>Add a statement</Text>
+          <Text style={[typography.footnote12, { color: colors.muted }]}>Google Pay → Transaction statement → PDF</Text>
         </View>
       </Pressable>
-      <Text style={[typography.microLabel11, { color: colors.onDarkFaint, textAlign: 'center', lineHeight: 16, marginTop: 16 }]}>
+      <Text style={[typography.microLabel11, { color: colors.faint, textAlign: 'center', lineHeight: 16, marginTop: 16 }]}>
         Periods never overlap twice - re-uploading the same statement updates it in place.
       </Text>
     </View>
@@ -89,32 +89,32 @@ function PeriodRow({ period, selected, onClose }: { period: Statement; selected:
           flexDirection: 'row',
           alignItems: 'center',
           padding: 13,
-          backgroundColor: selected ? colors.ink700 : colors.ink800,
+          backgroundColor: selected ? colors.surface3 : colors.surface2,
           borderWidth: 1,
-          borderColor: selected ? colors.accent : colors.hairlineDark,
+          borderColor: selected ? colors.signal : colors.border,
           borderRadius: radius.card,
         },
         pressed && { opacity: 0.8 },
       ]}
     >
       <View style={{ flex: 1 }}>
-        <Text style={[typography.rowLabel145, { color: colors.onDark }]}>{formatPeriodRange(period.periodStart, period.periodEnd)}</Text>
+        <Text style={[typography.rowLabel145, { color: colors.text }]}>{formatPeriodRange(period.periodStart, period.periodEnd)}</Text>
         <View style={{ marginTop: 4 }}>
           {live ? (
             <LiveProgressLabel jobId={period.currentJobId} />
           ) : (
-            <Text style={[typography.meta115, { color: colors.onDarkMuted }]}>
+            <Text style={[typography.meta115, { color: colors.muted }]}>
               {period.transactionCount} txns · {formatCurrency(period.computedSentAmount ?? period.declaredSentAmount ?? 0)} out
             </Text>
           )}
         </View>
       </View>
       {selected ? (
-        <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' }}>
-          <MaterialIcons name="check" size={13} color={colors.accentInk} />
+        <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: colors.signal, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="check" size={13} color={colors.onInk} />
         </View>
       ) : (
-        <MaterialIcons name="chevron-right" size={24} color={colors.onDarkFaint} />
+        <Icon name="chevron-right" size={24} color={colors.faint} />
       )}
     </Pressable>
   );
@@ -122,12 +122,12 @@ function PeriodRow({ period, selected, onClose }: { period: Statement; selected:
 
 function LiveProgressLabel({ jobId }: { jobId: string | null }) {
   const snapshot = useJobSnapshot(jobId);
-  if (!jobId) return <Text style={[typography.meta115, { color: colors.amber }]}>ANALYSING</Text>;
+  if (!jobId) return <Text style={[typography.meta115, { color: colors.warn }]}>ANALYSING</Text>;
   const percent = snapshot.data?.progressPercent;
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-      <PulsingDot color={colors.amber} size={5} />
-      <Text style={[typography.meta115, { color: colors.amber, marginLeft: 6 }]}>{percent == null ? 'ANALYSING' : `ANALYSING · ${percent}%`}</Text>
+      <PulsingDot color={colors.warn} size={5} />
+      <Text style={[typography.meta115, { color: colors.warn, marginLeft: 6 }]}>{percent == null ? 'ANALYSING' : `ANALYSING · ${percent}%`}</Text>
     </View>
   );
 }

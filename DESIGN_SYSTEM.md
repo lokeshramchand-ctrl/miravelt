@@ -12,152 +12,146 @@ token exists - add a token instead.
 
 ## 1. Principles
 
-- **Dark money surfaces, light reading surfaces, one luminous accent.** Headers, hero numbers,
-  sheets and system states sit on *ink* (near-black). Lists, breakdowns and reading content sit on
-  *paper* (near-white). A screen chooses its surface explicitly - this is a fixed two-surface
-  design, not a global light/dark palette swap.
-- **Numbers are the product.** Amounts use Space Grotesk with tabular figures everywhere so columns
-  of money align. Currency is always `₹` with Indian grouping (`₹80,634`) and a true minus sign
-  before the symbol (`−₹4,500`).
-- **Colour is never the only signal.** Direction is carried by sign and glyph (`▲`, `↓`, `+`/`−`)
-  as well as rose/accent.
-- **Grounded, not decorative.** No donut charts, no invented metrics. Every figure maps to a
-  backend field (see `DESIGN_SPEC.md` §6).
-- **No logo inside the app.** The logo mark lives on the launcher icon only. In-app branding is
-  the "Miravelt" wordmark (`typography.wordmark14`) on the splash and onboarding screens, and
-  the Android 12+ system splash icon is blanked (`android/app/src/main/res/values-v31/styles.xml`).
+- **Soft glass on a cool wash.** Every screen sits on one backdrop (`Backdrop`): a pale gray
+  gradient that turns light blue toward the bottom. Content lives on frosted glass cards
+  (translucent white, bright hairline edge, radius 26). Things that float over content (sheets,
+  dialogs, toasts) use the opaque `solid` surface.
+- **Black is the accent.** The near-black `ink` marks what is selected or primary: the Overview arc
+  pill, the selected tab, primary buttons, the headline card. There is no brand hue.
+- **Light figures, quiet type.** One family, Inter. Big amounts are 300 weight with slight
+  negative tracking; titles are 400; labels 500. Eyebrows are sentence case, not tracked caps.
+  Every number uses tabular figures. Currency is `₹` with Indian grouping and a true minus sign.
+- **Status only in pastel badges.** Lime (`upSoft`) for better, pink (`downSoft`) for worse,
+  amber (`warnSoft`) for watch, always with dark ink text and a sign or glyph, never colour alone.
+- **Grounded, not decorative.** Every figure maps to a backend field (see `DESIGN_SPEC.md` §6).
+- **No logo inside the app.** The logo mark lives on the launcher icon only; splash and onboarding
+  use the "Miravelt" wordmark.
+- **Interaction from the SPL Console kit.** Sliding pill indicators, spring presses, tick meters,
+  a tappable split meter and spark bars are ported from the bencho.dev-style web dashboard.
 
-## 2. Colour - `colors`
+## 2. Colour - `colors` (`src/theme/colors.ts`)
 
-Values are OKLCH, converted by `oklch.ts`, copied from the design source.
-
-**Ink (dark) surfaces**
-
-| Token | Use |
-|---|---|
-| `ink900` | Darkest background: dark screens, headers, splash. Also the launcher-icon background (`values/ic_launcher_background.xml`, keep in sync). |
-| `ink850` | Elevated dark surface: sheets, cards, tiles, text fields |
-| `ink800` | Level-2 dark surface: pills, icon buttons |
-| `ink700` | Level-3: active nav segment, toggle-off track, drag handle |
-| `hairlineDark` | 1px borders and dividers on dark |
-| `onDark` / `onDarkMuted` / `onDarkFaint` | Primary / secondary / tertiary text on dark |
-
-**Paper (light) surfaces**
+`colors` is one object. `applyColorScheme('light' | 'dark')` swaps its values in place; the root
+layout calls it from the Theme setting (Light / Dark / Auto) and keys the navigator on the scheme
+so every mounted screen repaints. **Read tokens at render time** (inline styles), never inside
+`StyleSheet.create`, or a theme switch will miss them.
 
 | Token | Use |
 |---|---|
-| `paper` | Light screen background |
-| `card` | Light card surface |
-| `hairlineLight` | Borders and dividers on light |
-| `onLight` / `onLightMuted` / `onLightFaint` | Primary / secondary / tertiary text on light |
+| `bg` | Flat fallback under the backdrop gradient (`backdrop.light` / `backdrop.dark`) |
+| `surface`, `surface2` | Glass card fill, recessed glass (segmented-control tracks, pressed rows) |
+| `surface3` | Faint ink wash: unlit ticks, inactive bars, switch-off track |
+| `border`, `border2` | Bright glass edge; darker hairline for outlined pills and inputs |
+| `solid` | Opaque surface for sheets, dialogs, toasts |
+| `text` / `muted` / `faint` | Primary / secondary / tertiary text |
+| `ink` / `onInk` | The black accent fill and the text on it (they flip in dark mode) |
+| `signal`, `signalSoft`, `signalText` | Links, focus rings, active states (ink-coloured in this skin) |
+| `up` / `warn` / `down` | Status text directly on glass |
+| `upSoft`+`upInk`, `warnSoft`+`warnInk`, `downSoft`+`downInk` | Pastel badge fill + its dark text |
+| `hero*` | The fixed dark accent shapes (arc pill, Signals headline), same in both themes |
 
-**Accent and semantic colours**
-
-| Token | Meaning |
-|---|---|
-| `accent` | Brand, positive, "money kept", primary buttons, active states |
-| `accentDim` | Links, secondary bars, Food category |
-| `accentInk` | Text and icons on an `accent` fill |
-| `accentTint` | Light background for accent chips |
-| `rose` | Outflow, negative, error, destructive actions |
-| `amber` | "Watch" signals, warnings |
-| `violet`, `sky` | Category hues |
-| `*Tint` / `*Ink` pairs | Chip, badge and avatar backgrounds with matching text (`amberTint`/`amberTextOnTint`, `violetTint`/`violetInk`, `skyTint`/`skyInk`, `roseTint`/`roseInk`) |
-
-**Category colours** come only from `categoryColor(name)`: Food → `accentDim`, Travel →
-`violet`, Bills → `amber`, Shopping → `sky`, Personal Care → `violet`, Income → `accent`,
-Entertainment → `sky`, Healthcare → `amber`, Subscription → `sky`, Utility → `amber`,
-Friends → `accentDim`, Education → `violet`. Anything else (including `Uncategorized`) is `rose`.
-Add new backend categories to this switch rather than colouring them at the call site.
-
-**Misc:** `skeletonBase`/`skeletonHighlight` (+ `Dark` variants), `progressTrackLight`,
-`analysingGlowCenter` (Analysing screen radial glow), `scrimHeavy`/`scrimMedium` (sheet scrims),
-`roseFlowGradientEnd` (the outflow segment of Overview's flow bar only).
+**Category colours** come only from `categoryColor(name)` (pastel `hues`) and **category glyphs**
+only from `categoryIcon(name)` (Phosphor fill). Unknown categories get `hues.rose` and `cat-other`.
 
 ## 3. Typography - `typography`
 
-Three families via `google_fonts`; every style applies tabular figures.
-
-| Family | Role | Styles |
-|---|---|---|
-| **Space Grotesk** | Amounts, headlines, wordmark | `heroAmount44/40/36/34`, `screenTitle24`, `bigHeadline32/26/22`, `amountMedium20/19/17/16/15/14`, `amountSmall22`, `navTitle15`, `wordmark14` |
-| **Instrument Sans** | Body, labels, buttons | `signalBody17`, `cardBody15`, `cardBody135`, `body14/13`, `rowLabel145/14`, `buttonLabel15/14/13/12`, `footnote15/12/1155`, `meta115` |
-| **Instrument Sans (caps, tracked)** | Micro labels (`SENT`, `WHERE IT WENT`) | `microLabel11`, `microLabelTracked105`, `microLabelTracked11` |
-
-Style names carry their size (`heroAmount44` is 44px). Colour is applied at the call site
-(`{ color: colors.onDark }` in the style array), because the same role appears on both surfaces. Text
-scaling is capped at 1.25× app-wide (`src/lib/textScaling.ts`) so hero amounts can't overflow.
-
-Formatting helpers live in `src/lib/format.ts` (`formatCurrency`,
-`formatPeriodRange`, date and time labels). Use them rather than building amount strings by hand.
+Inter 300/400/500/600/700 via `@expo-google-fonts/inter`. Style names still carry their original
+size (`heroAmount44`, `body14`...), so call sites read the same. `num()` styles (amounts) are 300
+weight from 19px up and 500 below; `pageTitle` (27px, 400) is the screen heading ("Your latest
+insights", "Signals", "Activity"); `cardTitle` (16px, 400) heads cards and sections. Text scaling
+is capped at 1.25x app-wide (`src/lib/textScaling.ts`).
 
 ## 4. Spacing, radius, elevation
 
-- **Spacing - `AppSpacing`:** `xs 4 · sm 8 · smd 12 · md 16 · gutter 22 · lg 26 · xl 32`. The screen
-  side gutter is always `gutter` (22). Tab bodies end with `navClearance` (108) of bottom padding
-  so content clears the floating nav.
-- **Radius - `AppRadius`:** `chip 8 · field 12 · card 18 · sheet 28` (top corners only) `· pill 100`
-  (buttons, badges, avatars, nav, toggles, segmented controls).
-- **Elevation - `AppShadows`:** `flat`, `card`, `sheetLight`, `floatingNav`. **Dark surfaces never
-  use shadows** - they use `hairlineDark` borders. Light surfaces use the soft `card` shadow.
+- **Spacing:** `xs 4 · sm 8 · smd 12 · md 16 · gutter 20 · lg 26 · xl 32`; tab bodies end with
+  `navClearance` (112) so content clears the floating nav.
+- **Radius:** `chip 12 · field 16 · card 26 · sheet 30 · pill 999`. Icon buttons, avatars and arc
+  circles are full circles.
+- **Elevation:** `shadows.lift()` (soft, wide, cool-tinted, on glass cards) and `shadows.liftHi()`
+  (nav, sheets, dialogs, toasts). They are functions so they follow the theme.
 
 ## 5. Components - `src/components/`
 
-| Component | What it is | Notes |
-|---|---|---|
-| `PrimaryPillButton` / `SecondaryPillButton` | Filled accent pill / outline pill | `loading:` shows a spinner and blocks taps; `expand:` for full width |
-| `FloatingBottomNav` | The 3-tab pill nav (Overview · Signals · Activity) | Exactly three tabs. Profile is reached from the avatar, never a tab |
-| `PeriodPill` | Header period selector (dot + label + caret) | Opens the period switcher sheet |
-| `SignalCard` | Typed insight card (WATCH / GOOD / CONTEXT) | Shared by the Overview preview and the Signals list |
-| `CategoryBarRow` | Ranked category row with a bar relative to the largest category | Spending views pass `StatementAnalytics.spendingBreakdown` (Income excluded) |
-| `MiraveltListRow` | Avatar + two lines + trailing amount + optional badge | Merchant, transaction and subscription rows |
-| `AvatarChip` / `UserAvatar` | Initials avatar / the user's bundled illustration | `UserAvatar` picks one of `assets/avatars/` from a hash of the user id |
-| `DeltaChip`, `MicroBadge` | Tinted pill with a direction glyph / uppercase tag (`UNUSUAL`, `WATCH`) | |
-| `StatTile` | Micro label + Space Grotesk value | Put rows of tiles in `IntrinsicHeight` so wrapped labels don't make them uneven |
-| `SectionHeader` | Tracked micro label + optional trailing action | |
-| `ToggleRow` | Settings row with the 38×22 pill switch | Every toggle must change real behaviour - no decorative switches |
-| `ProgressRing`, `SweepProgressBar`, `PulsingDot` | Job progress ring, upload bar with shine, live "analysing" dot | |
-| `MiniBarChart`, `RegularityStrip` | Monthly bars with one highlighted month; 7-segment recurring rhythm strip | |
-| `SkeletonBox` | Shimmer placeholder | Use for loading states instead of spinners inside content |
-| `EmptyState`, `ErrorRetry` | No-data state; error with a Retry action | A screen whose main load fails renders `ErrorRetry` so it is recoverable without restarting the app; optional sections may hide themselves instead |
-| `ScreenBackHeader` | Back chevron + title row for secondary screens | |
-| `BottomSheetScaffold` | Modal sheet shell: 28px top radius, drag handle, scrim | |
-| `MiraveltSegmentedControl` | Pill segmented control (Theme, API server) | Defined in `Controls.tsx` (`SegmentedControl`) |
-
-## 6. Screens and surfaces
-
-| Screen | Surface |
+| Component | What it is |
 |---|---|
-| Splash, Login, Register, Onboarding, Analysing, Profile ("You"), Manage periods, Signals, Developer settings | Ink |
-| Overview | Ink header, paper body |
-| Category drill-down, Recurring | Ink header, paper body |
-| Activity, Transaction sheet, Rejected file, Spending patterns, Legal | Paper |
+| `Backdrop` | The gradient wash behind every screen (used by `Screen`) |
+| `CategoryArc` | Overview's signature control: categories on an arc. The selected one rides in a thick ink pill (glyph + share of spend along the curve); the next four sit in white circles round the rim, then a `+` (add a statement). Tap a circle to bring it into the pill; tap the pill to open that category |
+| `Card`, `Divider` | Frosted glass card; hairline divider |
+| `Stat` | Glass stat card: title + ↗, optional spark, faint context line, light value + pastel badge |
+| `StatTile` | Small stat card for rows of three (Profile) |
+| `SignalCard` | Insight card: ink icon disc, title, status badge (Watch pings), body, optional CTA |
+| `CategoryBarRow` | Category row: colour dot, name, amount, tick meter, share, trend caption |
+| `MiraveltListRow` | Row with a round category-glyph chip (or initial), two lines, trailing amount |
+| `DeltaChip`, `MicroBadge` | Pastel trend pill / badge (`tone`: up, down, warn, signal, neutral); `ping` adds a live dot |
+| `SectionHeader`, `Eyebrow` | Sentence-case section title with sub line and trailing action |
+| `EmptyState`, `ErrorRetry` | Icon chip + title + hint/CTA; error with Retry |
+| `PrimaryPillButton` / `SecondaryPillButton` / `IconButton` / `TextActionLink` | Ink pill / outlined glass pill / round glass icon button / text link; all spring on press (`PressableScale`) |
+| `FloatingBottomNav` | Frosted pill nav, ink indicator slides between the three tabs |
+| `SegmentedControl` | Pill tabs with a sliding raised indicator and optional count badges (Signals filter, Activity In/Out, Theme) |
+| `PeriodPill`, `ScreenBackHeader`, `ToggleRow`, `RowIcon` | Header period selector, round back button, settings rows with icon chips |
+| `Ticks`, `ContextMeter`, `Gauge`, `SparkBars`, `SparkLine`, `MiniBarChart` (`Charts.tsx`) | Tick meter; split-by-part meter (tap a tick to isolate a category); 270° gauge; spark glyphs; tappable monthly columns |
+| `ProgressRing`, `SweepProgressBar`, `PulsingDot` | Analysis progress ring, flat easing progress bar, ping dot |
+| `MiraveltSheet` | Bottom sheet with optional eyebrow/title/sub head and close button, spring rise |
+| `Dialog`, `PromptDialog` | Spring pop-in dialog with pill actions (last one primary) |
+| `Toast` | Floating card with a status bar on its left edge |
+| `TextField` | Glass input, signal border + soft focus ring, inline error with icon |
+| `Icon`, `IconChip` | Phosphor glyphs inlined in `iconPaths.ts` (regular; `cat-*` keys use fill) |
 
-Every screen draws its own header. Material `AppBar` is not used.
+### Delight kit - `components/Delight.tsx` and `lib/haptics.ts`
+
+| Piece | What it does |
+|---|---|
+| `haptics` | One vocabulary: `select` (moving a selection: tabs, chips, arc, chart bars, ticks), `tap` (buttons), `toggle`, `success`/`warning`/`error`. No-op on web |
+| `AnimatedNumber` | Counts from the previous value to the new one (Overview total, Net flow, Payments) |
+| `Toggle` | The switch in every settings row: knob springs across and stretches while held |
+| `useShake` | Horizontal "that's not right" shake + error haptic (sign in / register validation, locked lesson steps) |
+| `Confetti` | Paper burst for wins: tour finished, all lesson steps done, analysis complete |
+| `Button3D` | Duolingo-style chunky button: face on a darker lip that it presses into (`go` lime, `ink`, `ghost`) |
+| `Mascot`, `SpeechBubble` | Miro the octopus (`assets/avatars/baby-octopus.png`): bobs, hops on tap; the bubble types its text out |
+| `ChunkyProgress`, `StepTransition`, `PopIn` | Thick progress bar with a highlight stripe; step slide-in; overshoot pop for staggered items |
+
+Other micro-interactions: `PressableScale` takes `haptic`; nav tab icons squash-and-pop when
+selected; the arc pill's glyph spins in on a new pick; sheets drag down to dismiss (follows the
+finger, resists upward, springs back unless pulled 110px or flicked); Overview's top bar stays
+put and turns opaque with a hairline once content scrolls under it, while the page title drifts
+and fades; the greeting follows the time of day.
+
+## 6. Screens
+
+All screens share the backdrop and glass cards; there are no longer separate ink and paper
+screens. Overview: top bar (period pill, add, settings, avatar), "Your latest insights" with the
+`CategoryArc` around total spend, then Net flow / Received / Payments stat cards, reconciliation,
+signals preview and the "Where it went" split meter.
+
+**Onboarding.** Signed out on a first launch (`settings.introSeen` false), the redirect sends
+people to `/welcome`: a hello screen, then five steps (goals, how it works, privacy promise,
+alerts, done) with Miro, the chunky progress bar and 3D buttons. Goals are saved
+(`settings.goals`) and personalise the first-statement screen; picking "Spot unusual spending"
+switches that alert on; the alert toggles are the real Profile settings. Finishing or "I already
+have an account" sets `introSeen`. Signed in with no periods, `/onboarding` is a lesson path:
+three steps on a winding trail (later ones locked until the current one is ticked off), a
+bouncing START flag, a step card per node, and a trophy that opens the upload.
 
 ## 7. Motion
 
-From the design spec, implemented with React Native's `Animated` and `react-native-svg`: signal cards rise 6px
-and fade in (240ms, 60ms stagger), bars grow from the baseline (420ms), a period switch
-cross-fades numbers with no page slide, and skeletons shimmer on a 1.4s loop. Android page
-transitions use `FadeForwardsPageTransitionsBuilder`. Material ink splashes are off app-wide
-(`NoSplash`).
+Built on `Animated` (`components/motion.tsx`): `PressableScale` sinks to .9-.98 and springs back
+(`motion.spring`); indicators spring between options; cards fade and rise 6-10px; ticks light up in
+sequence (14ms stagger); bars grow from the baseline; arc circles spring in one after another;
+skeletons pulse in opacity. The native driver is used everywhere except web.
 
 ## 8. Accessibility
 
-- Body text meets 4.5:1 contrast on its surface. Use the `onDark*` / `onLight*` pair that matches
-  the surface; never put `onLight*` text on ink.
-- Tap targets are at least 44px (the avatar button wraps a 34px chip in a 44px hit area).
+- Body text uses `text` / `muted` on glass; badge text uses the matching `*Ink` token on its
+  pastel fill. Never put `onInk` text anywhere but an `ink` fill.
+- Tap targets are at least 42px (icon buttons, arc circles, avatar).
 - Category hues are never the only identifier - the name and amount are always shown next to them.
 - Icons that act as buttons carry a `tooltip` or `Semantics(label:)` (e.g. "Open profile",
   "Show password").
 
 ## 9. Known gaps
 
-- **The Theme setting (Light / Dark / Auto) has almost no visible effect.** Screens pick
-  `colors` ink/paper tokens directly, and
-  the design defines no dark variant of the paper surfaces. Making the setting real needs a design
-  decision first - a dark palette for the reading surfaces - and then moving screens onto
-  theme-aware tokens.
-- **Micro labels use Instrument Sans, not IBM Plex Mono** as `DESIGN_SPEC.md` §2.2 specifies.
-- **Haptics** from the spec (period switch tick, analysis-complete thud) are not implemented.
+- **Glass blur is web-only.** `backdropFilter` works in the web build; on device the cards are
+  translucent without blur (adding `expo-blur` would close the gap).
+- **`DESIGN_SPEC.md` describes the previous ink/paper design** (Space Grotesk + Instrument Sans,
+  luminous green accent). This file and the code are the current source of truth.
+- **Haptics** are implemented (`lib/haptics.ts`, `expo-haptics`); there are no sounds.

@@ -14,7 +14,13 @@ const KEYS = {
   apiEnvironment: 'miravelt.api_environment',
   customApiBaseUrl: 'miravelt.custom_api_base_url',
   developerModeUnlocked: 'miravelt.developer_mode_unlocked',
+  introSeen: 'miravelt.intro_seen',
+  goals: 'miravelt.goals',
 } as const;
+
+/** What someone said they want help with on the welcome tour - personalises onboarding copy and presets alerts. */
+export type Goal = 'where' | 'save' | 'subscriptions' | 'unusual' | 'food';
+const GOALS: readonly Goal[] = ['where', 'save', 'subscriptions', 'unusual', 'food'];
 
 export interface SettingsState {
   /** False until the stored values have been read - the root layout holds the splash until then. */
@@ -34,6 +40,9 @@ export interface SettingsState {
   customApiBaseUrl: string;
   /** Unlocked by tapping the "Developer settings" row 5 times; persisted once found. */
   developerModeUnlocked: boolean;
+  /** The pre-sign-in welcome tour was finished or skipped; signed-out launches then go straight to sign in. */
+  introSeen: boolean;
+  goals: Goal[];
 
   hydrate(): Promise<void>;
   setThemeMode(mode: ThemeMode): void;
@@ -43,6 +52,8 @@ export interface SettingsState {
   setApiEnvironment(environment: ApiEnvironment): void;
   setCustomApiBaseUrl(url: string): void;
   setDeveloperModeUnlocked(value: boolean): void;
+  setIntroSeen(value: boolean): void;
+  setGoals(goals: Goal[]): void;
 }
 
 function persist(key: string, value: string): void {
@@ -60,6 +71,8 @@ export const useSettings = create<SettingsState>((set) => ({
   apiEnvironment: 'production',
   customApiBaseUrl: '',
   developerModeUnlocked: false,
+  introSeen: false,
+  goals: [],
 
   async hydrate() {
     try {
@@ -75,6 +88,8 @@ export const useSettings = create<SettingsState>((set) => ({
         apiEnvironment: parseApiEnvironment(stored[KEYS.apiEnvironment]),
         customApiBaseUrl: stored[KEYS.customApiBaseUrl] ?? '',
         developerModeUnlocked: bool(KEYS.developerModeUnlocked, false),
+        introSeen: bool(KEYS.introSeen, false),
+        goals: parseGoals(stored[KEYS.goals]),
       });
     } finally {
       set({ hydrated: true });
@@ -109,7 +124,24 @@ export const useSettings = create<SettingsState>((set) => ({
     set({ developerModeUnlocked: value });
     persist(KEYS.developerModeUnlocked, String(value));
   },
+  setIntroSeen(value) {
+    set({ introSeen: value });
+    persist(KEYS.introSeen, String(value));
+  },
+  setGoals(goals) {
+    set({ goals });
+    persist(KEYS.goals, JSON.stringify(goals));
+  },
 }));
+
+function parseGoals(raw: string | null | undefined): Goal[] {
+  try {
+    const parsed: unknown = JSON.parse(raw ?? '[]');
+    return Array.isArray(parsed) ? parsed.filter((g): g is Goal => GOALS.includes(g as Goal)) : [];
+  } catch {
+    return [];
+  }
+}
 
 /** The base URL every request actually targets (custom resolved against its stored URL). */
 export function effectiveApiBaseUrl(state: Pick<SettingsState, 'apiEnvironment' | 'customApiBaseUrl'> = useSettings.getState()): string {

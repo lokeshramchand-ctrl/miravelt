@@ -80,7 +80,7 @@ export function DeveloperUnlockGesture({ children }: { children: React.ReactNode
         {children}
         {/* Only ever rendered mid-gesture, so someone who taps a footer once never learns there is anything hidden here. */}
         {taps > 0 && taps < TAPS_TO_UNLOCK ? (
-          <Text style={[typography.footnote1155, { color: colors.onDarkFaint, marginTop: 4, textAlign: 'center' }]}>
+          <Text style={[typography.footnote1155, { color: colors.faint, marginTop: 4, textAlign: 'center' }]}>
             {remaining} more {remaining === 1 ? 'tap' : 'taps'}
           </Text>
         ) : null}
@@ -139,30 +139,30 @@ function DeveloperSettingsSheet({ visible, onClose }: { visible: boolean; onClos
   return (
     <>
       <MiraveltSheet visible={visible} onClose={onClose} dark>
-        <Text style={[typography.rowLabel14, { fontSize: 17, color: colors.onDark }]}>Developer settings</Text>
-        <Text style={[typography.footnote1155, { color: colors.onDarkMuted, marginTop: 6 }]}>
+        <Text style={[typography.rowLabel14, { fontSize: 17, color: colors.text }]}>Developer settings</Text>
+        <Text style={[typography.footnote1155, { color: colors.muted, marginTop: 6 }]}>
           Point the app at a different backend. MongoDB, Milvus and Ollama all sit behind whichever backend you pick.
         </Text>
-        <Text style={[typography.microLabelTracked105, { color: colors.onDarkFaint, marginTop: 18, marginBottom: 10 }]}>API SERVER</Text>
+        <Text style={[typography.microLabelTracked105, { color: colors.faint, marginTop: 18, marginBottom: 10 }]}>API SERVER</Text>
         <SegmentedControl<ApiEnvironment> value={environment} options={API_ENVIRONMENTS.map((e) => [e, apiEnvironmentLabel[e]] as const)} onChange={switchEnvironment} />
         <View style={{ height: 16 }} />
         <UrlPanel url={effectiveUrl} onEdit={environment === 'custom' ? () => setPrompting(true) : undefined} />
         {environment === 'local' && Platform.OS === 'android' && effectiveUrl.includes('10.0.2.2') ? (
-          <Text style={[typography.footnote1155, { color: colors.onDarkMuted, marginTop: 8 }]}>
+          <Text style={[typography.footnote1155, { color: colors.muted, marginTop: 8 }]}>
             10.0.2.2 reaches this computer only from the Android emulator. On a physical phone, pick Custom and enter your computer's LAN address (e.g. http://192.168.1.5:9850/) - or connect over USB, run "adb reverse tcp:9850 tcp:9850" and use http://localhost:9850/.
           </Text>
         ) : null}
         <View style={{ height: 14 }} />
-        <SecondaryPillButton label={probing ? 'Testing…' : 'Test connection'} foreground={colors.onDark} borderColor={colors.hairlineDark} onPress={probing ? undefined : testConnection} />
-        {probing ? <ActivityIndicator size="small" color={colors.accent} style={{ marginTop: 10 }} /> : null}
+        <SecondaryPillButton label={probing ? 'Testing…' : 'Test connection'} foreground={colors.text} borderColor={colors.border} onPress={probing ? undefined : testConnection} />
+        {probing ? <ActivityIndicator size="small" color={colors.signal} style={{ marginTop: 10 }} /> : null}
         {result ? <HealthReport result={result} /> : null}
-        <Text style={[typography.footnote1155, { color: colors.onDarkFaint, marginTop: 18 }]}>Switching backends signs you out - a session issued by one is not valid on another.</Text>
+        <Text style={[typography.footnote1155, { color: colors.faint, marginTop: 18 }]}>Switching backends signs you out - a session issued by one is not valid on another.</Text>
         {environment !== 'production' ? (
           <Pressable accessibilityRole="button" onPress={() => switchEnvironment('production')} style={{ alignSelf: 'center', paddingVertical: 10 }}>
-            <Text style={[typography.footnote12, { color: colors.accentDim }]}>Reset to {apiEnvironmentLabel.production}</Text>
+            <Text style={[typography.footnote12, { color: colors.signalText }]}>Reset to {apiEnvironmentLabel.production}</Text>
           </Pressable>
         ) : null}
-        <Text style={[typography.microLabelTracked105, { color: colors.onDarkFaint, marginTop: 14, marginBottom: 10 }]}>BUILD</Text>
+        <Text style={[typography.microLabelTracked105, { color: colors.faint, marginTop: 14, marginBottom: 10 }]}>BUILD</Text>
         <BuildInfo />
         <Pressable
           accessibilityRole="button"
@@ -172,7 +172,7 @@ function DeveloperSettingsSheet({ visible, onClose }: { visible: boolean; onClos
           }}
           style={{ alignSelf: 'center', paddingVertical: 12 }}
         >
-          <Text style={[typography.footnote12, { color: colors.onDarkFaint }]}>Hide developer settings</Text>
+          <Text style={[typography.footnote12, { color: colors.faint }]}>Hide developer settings</Text>
         </Pressable>
       </MiraveltSheet>
       {prompting ? (
@@ -218,22 +218,22 @@ export function versionLabel(): string {
 function InfoRow({ label, value, warn = false }: { label: string; value: string; warn?: boolean }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6 }}>
-      <Text style={[typography.meta12, { width: 96, color: colors.onDarkFaint }]}>{label}</Text>
-      <Text style={[typography.meta12, { flex: 1, color: warn ? colors.rose : colors.onDark }]}>{value}</Text>
+      <Text style={[typography.meta12, { width: 96, color: colors.faint }]}>{label}</Text>
+      <Text style={[typography.meta12, { flex: 1, color: warn ? colors.down : colors.text }]}>{value}</Text>
     </View>
   );
 }
 
 function UrlPanel({ url, onEdit }: { url: string; onEdit?: () => void }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, backgroundColor: colors.ink900, borderWidth: 1, borderColor: colors.hairlineDark, borderRadius: radius.field }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border, borderRadius: radius.field }}>
       <View style={{ flex: 1 }}>
-        <Text style={[typography.microLabelTracked105, { color: colors.onDarkFaint }]}>CURRENTLY USING</Text>
-        <Text style={[typography.body14, { color: colors.onDark, marginTop: 4 }]}>{url}</Text>
+        <Text style={[typography.microLabelTracked105, { color: colors.faint }]}>CURRENTLY USING</Text>
+        <Text style={[typography.body14, { color: colors.text, marginTop: 4 }]}>{url}</Text>
       </View>
       {onEdit ? (
         <Pressable accessibilityRole="button" onPress={onEdit} hitSlop={8}>
-          <Text style={[typography.buttonLabel12, { color: colors.accent }]}>Edit</Text>
+          <Text style={[typography.buttonLabel12, { color: colors.signal }]}>Edit</Text>
         </Pressable>
       ) : null}
     </View>
@@ -241,15 +241,15 @@ function UrlPanel({ url, onEdit }: { url: string; onEdit?: () => void }) {
 }
 
 function HealthReport({ result }: { result: HealthProbeResult }) {
-  const accent = result.reachable ? colors.accent : colors.rose;
+  const accent = result.reachable ? colors.signal : colors.down;
   return (
-    <View style={{ marginTop: 14, padding: 14, backgroundColor: colors.ink900, borderWidth: 1, borderColor: accent.replace(/[\d.]+\)$/, '0.4)'), borderRadius: radius.field }}>
+    <View style={{ marginTop: 14, padding: 14, backgroundColor: colors.bg, borderWidth: 1, borderColor: accent.replace(/[\d.]+\)$/, '0.4)'), borderRadius: radius.field }}>
       <Text style={[typography.rowLabel14, { color: accent }]}>{result.reachable ? `Responded - ${result.status ?? 'no status'}` : 'Could not reach it'}</Text>
-      {!result.reachable ? <Text style={[typography.footnote1155, { color: colors.onDarkMuted, marginTop: 6 }]}>{result.error ?? ''}</Text> : null}
+      {!result.reachable ? <Text style={[typography.footnote1155, { color: colors.muted, marginTop: 6 }]}>{result.error ?? ''}</Text> : null}
       {Object.entries(result.services).map(([name, state], i) => (
         <View key={name} style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: i === 0 ? 10 : 4 }}>
-          <Text style={[typography.body14, { color: colors.onDark }]}>{name}</Text>
-          <Text style={[typography.meta12, { color: state === 'connected' ? colors.accent : colors.onDarkFaint }]}>{state}</Text>
+          <Text style={[typography.body14, { color: colors.text }]}>{name}</Text>
+          <Text style={[typography.meta12, { color: state === 'connected' ? colors.signal : colors.faint }]}>{state}</Text>
         </View>
       ))}
     </View>
