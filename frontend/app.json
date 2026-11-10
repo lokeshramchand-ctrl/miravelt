@@ -25,16 +25,36 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0D0F15"
       },
-      "permissions": ["REQUEST_INSTALL_PACKAGES", "POST_NOTIFICATIONS"]
+      "permissions": [
+        "REQUEST_INSTALL_PACKAGES",
+        "POST_NOTIFICATIONS"
+      ]
     },
-    "web": { "favicon": "./assets/favicon.png" },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
     "plugins": [
       "expo-router",
       "expo-secure-store",
       "expo-font",
-      ["expo-build-properties", { "android": { "usesCleartextTraffic": true } }],
-      ["expo-notifications", { "color": "#0D0F15" }]
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#0D0F15"
+        }
+      ],
+      "expo-asset"
     ],
-    "experiments": { "typedRoutes": false }
+    "experiments": {
+      "typedRoutes": false
+    }
   }
 }

@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
+import type { StyleProp, ViewStyle } from 'react-native';
 import { colors } from '../theme/colors';
 import { radius } from '../theme/tokens';
 import { typography } from '../theme/typography';
@@ -221,6 +222,15 @@ const SIGNAL_STYLE: Record<SignalKind, { tint: string; ink: string; label: strin
 };
 
 export { withAlpha };
+
+/** A FadeInUp that takes the card's own style - the entrance used by list cards. */
+export function FadeInUpCard({ children, delay = 0, style }: { children: React.ReactNode; delay?: number; style?: StyleProp<ViewStyle> }) {
+  return (
+    <FadeInUp delay={delay} duration={240} distance={6} style={style}>
+      {children}
+    </FadeInUp>
+  );
+}
 
 interface SignalCardProps {
   kind: SignalKind;
