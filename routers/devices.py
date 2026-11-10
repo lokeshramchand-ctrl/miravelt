@@ -24,8 +24,8 @@ class DeviceInfo(BaseModel):
 
 
 class RegisterDeviceRequest(BaseModel):
-    device_id: str = Field(description="Unique device identifier")
-    device_name: str = Field(description="User-friendly device name", default="Unknown Device")
+    device_id: str = Field(description="Unique device identifier", min_length=1, max_length=128)
+    device_name: str = Field(description="User-friendly device name", default="Unknown Device", max_length=100)
 
 
 class TrustDeviceRequest(BaseModel):
@@ -38,9 +38,12 @@ async def register_device(
     current_user = Depends(get_current_user)
 ):
     """Register a new device for the current user."""
-    user = await user_repo.get_by_id(current_user["sub"])
+    user = await user_repo.get_by_id(current_user.id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    if len(user.devices) >= 10:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Device limit reached")
 
     # Check if device already registered
     for device in user.devices:
@@ -78,7 +81,7 @@ async def register_device(
 @router.get("", response_model=list[DeviceInfo])
 async def list_devices(current_user = Depends(get_current_user)):
     """List all registered devices for the current user."""
-    user = await user_repo.get_by_id(current_user["sub"])
+    user = await user_repo.get_by_id(current_user.id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
@@ -103,7 +106,7 @@ async def update_device(
     current_user = Depends(get_current_user)
 ):
     """Update device trust status."""
-    user = await user_repo.get_by_id(current_user["sub"])
+    user = await user_repo.get_by_id(current_user.id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
@@ -132,7 +135,7 @@ async def revoke_device(
     current_user = Depends(get_current_user)
 ):
     """Revoke a device and all its active sessions."""
-    user = await user_repo.get_by_id(current_user["sub"])
+    user = await user_repo.get_by_id(current_user.id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 

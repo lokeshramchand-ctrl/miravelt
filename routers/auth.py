@@ -9,7 +9,7 @@ from core.config import settings
 from core.device_attestation import device_attestation_verifier
 from core.jwt_auth import create_access_token, generate_refresh_token
 from core.rate_limiter import limiter
-from core.security import hash_password, verify_password
+from core.security import DUMMY_HASH, hash_password_async, verify_password_async
 from models.schemas import (
     LoginRequest,
     LogoutRequest,
@@ -81,7 +81,7 @@ async def register(request: Request, payload: RegisterRequest):
     if existing is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email is already registered")
 
-    hashed = hash_password(payload.password)
+    hashed = await hash_password_async(payload.password)
     try:
         user = await user_repo.create_user(email=payload.email, hashed_password=hashed)
     except DuplicateKeyError as e:
@@ -97,12 +97,14 @@ async def register(request: Request, payload: RegisterRequest):
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit("10/minute")
 async def login(request: Request, payload: LoginRequest):
+    client_ip = request.client.host if request.client else None
+    client_ua = (request.headers.get("user-agent") or "")[:300] or None
     user = await user_repo.get_by_email(payload.email)
 
     # Verify against a real hash even when no user was found, so response
     # timing doesn't reveal whether the email is registered (a hasher call
     # takes measurably longer than skipping straight to the 401).
-    password_ok = verify_password(payload.password, user.hashed_password if user else hash_password(""))
+    password_ok = await verify_password_async(payload.password, user.hashed_password if user else DUMMY_HASH)
 
     if user is None or not password_ok:
         logger.warning("Rejected login attempt with invalid credentials.")
@@ -144,14 +146,14 @@ async def login(request: Request, payload: LoginRequest):
         device = next((d for d in user.devices if d.device_id == payload.device_id), None)
         if device:
             device.last_login = datetime.now(UTC)
-            device.user_agent = payload.user_agent or device.user_agent
-            device.ip_address = payload.ip_address or device.ip_address
+            device.user_agent = client_ua or device.user_agent
+            device.ip_address = client_ip or device.ip_address
         else:
             device = DeviceSession(
                 device_id=payload.device_id,
                 device_name=payload.device_name or "Unknown Device",
-                user_agent=payload.user_agent,
-                ip_address=payload.ip_address,
+                user_agent=client_ua,
+                ip_address=client_ip,
                 last_login=datetime.now(UTC),
             )
             user.devices.append(device)
@@ -169,8 +171,8 @@ async def login(request: Request, payload: LoginRequest):
         user.id,
         device_id=payload.device_id,
         device_name=payload.device_name or "Unknown Device",
-        user_agent=payload.user_agent,
-        ip_address=payload.ip_address,
+        user_agent=client_ua,
+        ip_address=client_ip,
         scopes=_scopes_for(user),
     )
 
@@ -184,29 +186,33 @@ async def refresh(request: Request, payload: RefreshRequest):
     if stored is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
-    if stored.get("revoked_at") is not None:
-        # Reuse of an already-rotated (or already-logged-out) refresh token
-        # is a strong signal of token theft - burn every session this user
-        # currently has, not just the one being replayed.
+    expires_at = stored["expires_at"]
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=UTC)
+    if stored.get("revoked_at") is None and expires_at < datetime.now(UTC):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token has expired")
+
+    # Atomic single-use redemption: exactly one concurrent caller wins.
+    redeemed = await refresh_token_repo.redeem(token_hash)
+    if redeemed is None:
+        # Reuse of an already-rotated (or logged-out) token: likely theft.
         logger.warning("Rejected reused/revoked refresh token; revoking all sessions for the associated user.")
         await refresh_token_repo.revoke_all_for_user(stored["user_id"])
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
-    expires_at = stored["expires_at"]
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=UTC)
-    if expires_at < datetime.now(UTC):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token has expired")
-
-    user = await user_repo.get_by_id(stored["user_id"])
+    user = await user_repo.get_by_id(redeemed["user_id"])
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
-    # Rotation: the presented token is single-use. Revoke it before issuing
-    # its replacement so it can never be redeemed a second time.
-    await refresh_token_repo.revoke(token_hash)
-
-    return await _issue_token_pair(user.id, scopes=_scopes_for(user))
+    # Carry the device forward so device revocation keeps working after rotation.
+    return await _issue_token_pair(
+        user.id,
+        device_id=redeemed.get("device_id"),
+        device_name=redeemed.get("device_name"),
+        user_agent=redeemed.get("user_agent"),
+        ip_address=redeemed.get("ip_address"),
+        scopes=_scopes_for(user),
+    )
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

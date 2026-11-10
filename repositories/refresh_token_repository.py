@@ -45,6 +45,15 @@ class RefreshTokenRepository:
             {"$set": {"revoked_at": datetime.now(UTC)}},
         )
 
+    async def redeem(self, token_hash: str) -> dict[str, Any] | None:
+        """Atomically revoke an active, unexpired token and return it; None if
+        unknown, expired or already used. Closes the refresh race."""
+        now = datetime.now(UTC)
+        return await db.refresh_tokens.find_one_and_update(
+            {"token_hash": token_hash, "revoked_at": None, "expires_at": {"$gt": now}},
+            {"$set": {"revoked_at": now}},
+        )
+
     async def revoke_all_for_user(self, user_id: str) -> None:
         """Used on refresh-token-reuse detection (see routers/auth.py) to
         burn every active session for a user, not just the replayed one."""
