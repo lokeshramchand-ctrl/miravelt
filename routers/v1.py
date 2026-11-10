@@ -47,7 +47,7 @@ class ResolveRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=2000)
 
 @router.post("/resolve", response_model=ResolutionResult)
-async def resolve_transaction_merchant(request: ResolveRequest):
+async def resolve_transaction_merchant(request: ResolveRequest, current_user: User = Depends(get_current_user)):
     """
     Phase 3 Endpoint: Takes a raw UPI/Bank transaction string and resolves it to a canonical merchant.
     """
@@ -59,7 +59,7 @@ class MockModelPrediction(BaseModel):
     raw_confidence: float = Field(..., ge=0.0, le=1.0)
 
 @router.post("/confidence/evaluate", response_model=ConfidenceEvaluation)
-async def evaluate_prediction_confidence(request: MockModelPrediction):
+async def evaluate_prediction_confidence(request: MockModelPrediction, current_user: User = Depends(get_current_user)):
     """
     Phase 5 Endpoint: Evaluates an upstream category prediction.
     Forces the response to 'Unknown' if the confidence wall is breached.

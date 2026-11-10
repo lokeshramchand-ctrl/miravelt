@@ -70,7 +70,7 @@ async def get_mom_trends(current_user: User = Depends(get_current_user)):
     return await trend_analyzer.calculate_mom_growth(current_user.id, now.month, now.year)
 
 @router.post("/anomaly/check")
-async def check_anomaly(merchant: str, amount: float):
+async def check_anomaly(merchant: str, amount: float, current_user: User = Depends(get_current_user)):
     """Real-time evaluation for the transaction ingestion pipeline. Not
     user-scoped (a merchant/amount pair is evaluated against that merchant's
     global behavioral profile, not any one user's history) - API-key auth

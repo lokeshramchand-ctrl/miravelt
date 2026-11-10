@@ -9,10 +9,13 @@ from repositories.transaction_repository import transaction_repo
 
 router = APIRouter(prefix="/v1/feedback", tags=["Continuous Learning"])
 
+from models.schemas import TransactionCategory  # noqa: E402
+
+
 class FeedbackRequest(BaseModel):
     transaction_id: str = Field(..., min_length=1, max_length=100)
     original_prediction: str = Field(..., min_length=1, max_length=100)
-    corrected_category: str = Field(..., min_length=1, max_length=100)
+    corrected_category: TransactionCategory
     confidence: float = Field(..., ge=0.0, le=1.0)
 
 @router.post("/")
