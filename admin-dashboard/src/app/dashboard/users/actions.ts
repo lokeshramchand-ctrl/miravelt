@@ -20,6 +20,7 @@ function errorResult(e: unknown, fallback: string): ActionResult {
  * treated as their own endpoint (see Next's authentication guide). */
 
 export async function toggleUserActive(userId: string, nextActive: boolean): Promise<ActionResult> {
+  if (!/^[a-f0-9]{24}$/.test(userId)) return { error: "Invalid user id." };
   const { accessToken } = await requireAdminSession();
   try {
     await adminBackendFetch(accessToken, `/admin/users/${userId}/active?active=${nextActive}`, { method: "PATCH" });
@@ -32,6 +33,7 @@ export async function toggleUserActive(userId: string, nextActive: boolean): Pro
 }
 
 export async function updateUserRole(userId: string, role: "user" | "admin"): Promise<ActionResult> {
+  if (!/^[a-f0-9]{24}$/.test(userId)) return { error: "Invalid user id." };
   const { accessToken } = await requireAdminSession();
   try {
     await adminBackendFetch(accessToken, `/admin/users/${userId}/role`, {
@@ -47,6 +49,7 @@ export async function updateUserRole(userId: string, role: "user" | "admin"): Pr
 }
 
 export async function deleteUser(userId: string): Promise<ActionResult> {
+  if (!/^[a-f0-9]{24}$/.test(userId)) return { error: "Invalid user id." };
   const { accessToken } = await requireAdminSession();
   try {
     await adminBackendFetch(accessToken, `/admin/users/${userId}`, { method: "DELETE" });

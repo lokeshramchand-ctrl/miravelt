@@ -43,7 +43,7 @@ export default async function proxy(request: NextRequest) {
   // request (response.cookies) - see the proxy.js "Using Cookies" example.
   request.cookies.set(SESSION_COOKIE_NAME, sealed);
   const response = NextResponse.next({ request });
-  response.cookies.set(SESSION_COOKIE_NAME, sealed, { httpOnly: true, sameSite: "lax", path: "/" });
+  response.cookies.set(SESSION_COOKIE_NAME, sealed, { httpOnly: true, sameSite: "strict", secure: process.env.NODE_ENV === "production", path: "/" });
   return response;
 }
 
