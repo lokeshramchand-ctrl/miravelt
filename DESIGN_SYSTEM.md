@@ -110,6 +110,16 @@ is capped at 1.25x app-wide (`src/lib/textScaling.ts`).
 | `Mascot`, `SpeechBubble` | Miro the octopus (`assets/avatars/baby-octopus.png`): bobs, hops on tap; the bubble types its text out |
 | `ChunkyProgress`, `StepTransition`, `PopIn` | Thick progress bar with a highlight stripe; step slide-in; overshoot pop for staggered items |
 
+### Live states - `components/Live.tsx`
+
+From beautifului.dev's agent kit, rebuilt on `Animated`; all static under the OS reduce-motion
+setting (`useReducedMotion`). `DotWave` (three rising dots), `ThinkingIndicator` (dot wave +
+breathing label + elapsed time; the deeper-explanation request), `StreamedText` (reveals
+already-received text word by word with a caret; an invisible copy reserves the final height and
+screen readers get the full text), `useElapsed` (Analysing header). Analysing stage rows are task
+rows: the check pops in, the active stage carries a dot wave. `Toast` rises with a spring, scales
+up from .94 and fades in, and animates out (transitions.dev's toast) instead of vanishing.
+
 Other micro-interactions: `PressableScale` takes `haptic`; nav tab icons squash-and-pop when
 selected; the arc pill's glyph spins in on a new pick; sheets drag down to dismiss (follows the
 finger, resists upward, springs back unless pulled 110px or flicked); Overview's top bar stays

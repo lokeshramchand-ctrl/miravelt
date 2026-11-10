@@ -2,7 +2,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { Icon } from '../components/Icon';
-import { Confetti } from '../components/Delight';
+import { Confetti, PopIn } from '../components/Delight';
+import { DotWave, useElapsed } from '../components/Live';
+import { formatElapsed } from '../lib/format';
 import { haptics } from '../lib/haptics';
 import { PrimaryPillButton, SecondaryPillButton } from '../components/Buttons';
 import { ProgressRing, PulsingDot } from '../components/Charts';
@@ -83,6 +85,10 @@ export default function AnalysingScreen() {
 
   const progress = job?.progressPercent ?? 0;
   const activeIndex = activeStageIndex(progress);
+  // Elapsed since the worker picked the job up (or since it was queued). Device and server
+  // clocks can disagree a little; formatElapsed never shows a negative.
+  const startedMs = (job?.startedAt ?? job?.createdAt)?.getTime() ?? null;
+  const elapsed = useElapsed(startedMs, status !== 'COMPLETED' && status !== 'FAILED');
 
   return (
     <Screen dark>
@@ -99,7 +105,9 @@ export default function AnalysingScreen() {
           <>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={[typography.rowLabel14, { color: colors.text }]}>Your statement</Text>
-              <Text style={[typography.microLabel11, { color: colors.faint }]}>RUNNING IN BACKGROUND</Text>
+              <Text style={[typography.microLabel11, { color: colors.faint }]} accessibilityLabel={`Running in background, ${formatElapsed(elapsed)} elapsed`}>
+                RUNNING IN BACKGROUND · {formatElapsed(elapsed)}
+              </Text>
             </View>
             <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
               <View style={{ height: 28 }} />
@@ -119,7 +127,7 @@ export default function AnalysingScreen() {
               <Text style={[typography.footnote15, { color: colors.muted, textAlign: 'center', marginTop: 10 }]}>Profiling merchant behaviour - how often you pay them, and how much is normal.</Text>
               <View style={{ height: 26 }} />
               {STAGE_LABELS.map((label, i) => (
-                <StageRow key={label} label={label} state={i < activeIndex ? 'done' : i === activeIndex ? 'active' : 'pending'} />
+                <StageRow key={label} index={i} label={label} state={i < activeIndex ? 'done' : i === activeIndex ? 'active' : 'pending'} />
               ))}
             </ScrollView>
             <View style={{ marginTop: 14, paddingHorizontal: 15, paddingVertical: 13, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 14 }}>
@@ -142,11 +150,21 @@ export default function AnalysingScreen() {
 
 type StageState = 'done' | 'active' | 'pending';
 
-function StageRow({ label, state }: { label: string; state: StageState }) {
+/**
+ * A pipeline stage as a live task row (beautifului.dev's task rows): the check pops in when a
+ * stage finishes, the active stage carries a dot wave, pending ones wait dimmed.
+ */
+function StageRow({ index, label, state }: { index: number; label: string; state: StageState }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, opacity: state === 'pending' ? 0.4 : 1 }}>
+    <View
+      accessible
+      accessibilityLabel={`${label}: ${state === 'done' ? 'done' : state === 'active' ? 'in progress' : 'waiting'}`}
+      style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, opacity: state === 'pending' ? 0.4 : 1 }}
+    >
       {state === 'done' ? (
-        <Icon name="check-circle" size={18} color={colors.signal} />
+        <PopIn delay={index * 60}>
+          <Icon name="check-circle" size={18} color={colors.signal} />
+        </PopIn>
       ) : state === 'active' ? (
         <View style={{ width: 18, height: 18, alignItems: 'center', justifyContent: 'center' }}>
           <View style={{ position: 'absolute', width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: colors.signal }} />
@@ -155,7 +173,8 @@ function StageRow({ label, state }: { label: string; state: StageState }) {
       ) : (
         <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 1, borderColor: colors.faint }} />
       )}
-      <Text style={[state === 'active' ? typography.rowLabel14 : typography.body13, { color: colors.text, marginLeft: 12 }]}>{label}</Text>
+      <Text style={[state === 'active' ? typography.rowLabel14 : typography.body13, { color: colors.text, marginLeft: 12, flex: 1 }]}>{label}</Text>
+      {state === 'active' ? <DotWave color={colors.muted} size={4} /> : state === 'done' ? <Text style={[typography.microLabel11, { color: colors.faint }]}>Done</Text> : null}
     </View>
   );
 }

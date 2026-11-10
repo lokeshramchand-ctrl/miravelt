@@ -82,3 +82,21 @@ export function toDateOnly(date: Date): string {
 export function formatDayMonth(date: Date): string {
   return `${date.getDate()} ${titleCase(MONTHS[date.getMonth()])}`;
 }
+
+/** Elapsed time for live states: "0:07", "1:42", "1:02:05". Negative input reads as 0. */
+export function formatElapsed(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const ss = String(s).padStart(2, '0');
+  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
+}
+
+/**
+ * Splits text into reveal chunks for a streamed-text effect: each word keeps its trailing
+ * whitespace, so joining any prefix of the chunks is an exact prefix of the text.
+ */
+export function revealChunks(text: string): string[] {
+  return text.match(/\S+\s*|\s+/g) ?? [];
+}

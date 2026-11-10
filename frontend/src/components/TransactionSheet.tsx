@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { explainRepository, feedbackRepository } from '../api/instance';
 import type { ExplainOutcome, Transaction } from '../domain/types';
 import { useCurrentPeriod } from '../hooks/periods';
@@ -11,6 +11,8 @@ import { typography } from '../theme/typography';
 import { AvatarChip } from './Avatars';
 import { SecondaryPillButton } from './Buttons';
 import { withAlpha } from './Display';
+import { StreamedText, ThinkingIndicator } from './Live';
+import { FadeInUp } from './motion';
 import { MiraveltSheet } from './Sheet';
 
 /** The light transaction detail sheet. Keeps showing its last transaction while it animates closed. */
@@ -29,12 +31,14 @@ function TransactionSheetBody({ transaction: txn }: { transaction: Transaction }
   const [submitting, setSubmitting] = useState(false);
   const [feedbackResult, setFeedbackResult] = useState<string | null>(null);
   const [explainLoading, setExplainLoading] = useState(false);
+  const [explainSince, setExplainSince] = useState<number | null>(null);
   const [explainOutcome, setExplainOutcome] = useState<ExplainOutcome | null>(null);
   // Picking a category swaps the sheet body rather than stacking a second modal on top.
   const [picking, setPicking] = useState(false);
 
   const requestExplanation = async () => {
     setExplainLoading(true);
+    setExplainSince(Date.now());
     try {
       setExplainOutcome(await explainRepository.explain(explainTransactionText(txn)));
     } catch {
@@ -141,7 +145,7 @@ function TransactionSheetBody({ transaction: txn }: { transaction: Transaction }
       </View>
 
       <View style={{ marginTop: 12 }}>
-        <ExplainPanel loading={explainLoading} outcome={explainOutcome} onRequest={txn.transactionType === 'CREDIT' ? undefined : requestExplanation} />
+        <ExplainPanel loading={explainLoading} loadingSince={explainSince} outcome={explainOutcome} onRequest={txn.transactionType === 'CREDIT' ? undefined : requestExplanation} />
       </View>
 
       <View style={{ marginTop: 18 }}>
@@ -180,25 +184,36 @@ function DetailRow({ label, value, trailing, mono = false, last = false }: { lab
  * A deeper, grounded explanation on top of "Why this category" - fetched on
  * demand (never auto) since it costs a rate-limited LLM call. Deliberately a
  * separate, additive panel: that card is instant; this one is richer but
- * slower and can come back empty.
+ * slower and can come back empty. While it works it shows a thinking indicator
+ * with elapsed time; the answer then reveals word by word (presentation only -
+ * the backend returns it whole, and screen readers get the full text at once).
  */
-function ExplainPanel({ loading, outcome, onRequest }: { loading: boolean; outcome: ExplainOutcome | null; onRequest?: () => void }) {
+function ExplainPanel({ loading, loadingSince, outcome, onRequest }: { loading: boolean; loadingSince: number | null; outcome: ExplainOutcome | null; onRequest?: () => void }) {
   if (!outcome) {
+    if (loading) return <ThinkingIndicator label="Checking similar transactions" since={loadingSince} />;
     return (
-      <Pressable accessibilityRole="button" disabled={loading || !onRequest} onPress={onRequest} hitSlop={8} style={{ alignSelf: 'flex-start', opacity: onRequest ? 1 : 0.4 }}>
-        {loading ? <ActivityIndicator size="small" color={colors.signalText} /> : <Text style={[typography.buttonLabel12, { color: colors.signalText }]}>Ask for a deeper explanation</Text>}
+      <Pressable accessibilityRole="button" disabled={!onRequest} onPress={onRequest} hitSlop={8} style={{ alignSelf: 'flex-start', opacity: onRequest ? 1 : 0.4 }}>
+        <Text style={[typography.buttonLabel12, { color: colors.signalText }]}>Ask for a deeper explanation</Text>
       </Pressable>
     );
   }
-  if (!outcome.available) return <Text style={[typography.footnote12, { color: colors.muted }]}>{outcome.unavailableReason}</Text>;
+  if (!outcome.available) {
+    return (
+      <FadeInUp distance={6}>
+        <Text style={[typography.footnote12, { color: colors.muted }]}>{outcome.unavailableReason}</Text>
+      </FadeInUp>
+    );
+  }
   return (
-    <View style={{ padding: 14, backgroundColor: withAlpha(colors.border, 0.35), borderRadius: 14 }}>
+    <FadeInUp distance={8} style={{ padding: 14, backgroundColor: withAlpha(colors.border, 0.35), borderRadius: 14 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <Text style={[typography.microLabelTracked105, { color: colors.faint }]}>GROUNDED EXPLANATION</Text>
         <View style={{ flex: 1 }} />
         {outcome.confidence ? <Text style={[typography.microLabel11, { color: colors.faint }]}>{outcome.confidence}</Text> : null}
       </View>
-      <Text style={[typography.footnote12, { color: colors.text, lineHeight: 18, marginTop: 8 }]}>{outcome.explanation}</Text>
-    </View>
+      <View style={{ marginTop: 8 }}>
+        <StreamedText text={outcome.explanation} style={[typography.footnote12, { color: colors.text, lineHeight: 18 }]} />
+      </View>
+    </FadeInUp>
   );
 }

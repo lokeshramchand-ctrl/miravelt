@@ -2,10 +2,12 @@ import {
   formatCompactCurrency,
   formatCurrency,
   formatDayHeader,
+  formatElapsed,
   formatFullTimestamp,
   formatPeriodRange,
   formatTime12h,
   parseApiDate,
+  revealChunks,
   toDateOnly,
 } from '../src/lib/format';
 
@@ -49,5 +51,33 @@ describe('dates', () => {
     expect(formatTime12h(new Date(2026, 5, 28, 0, 5))).toBe('12:05 AM');
     expect(formatTime12h(new Date(2026, 5, 28, 12, 0))).toBe('12:00 PM');
     expect(formatFullTimestamp(new Date(2026, 5, 28, 16, 47))).toBe('28 JUN 2026 · 04:47 PM');
+  });
+});
+
+describe('formatElapsed', () => {
+  it('reads as m:ss, then h:mm:ss past an hour', () => {
+    expect(formatElapsed(0)).toBe('0:00');
+    expect(formatElapsed(7_400)).toBe('0:07');
+    expect(formatElapsed(102_000)).toBe('1:42');
+    expect(formatElapsed(3_725_000)).toBe('1:02:05');
+  });
+
+  it('never goes negative (clock skew against a server start time)', () => {
+    expect(formatElapsed(-5_000)).toBe('0:00');
+  });
+});
+
+describe('revealChunks', () => {
+  it('keeps whitespace so every prefix is an exact prefix of the text', () => {
+    const text = 'Paid  to Zomato,\ncategorized as Food.';
+    const chunks = revealChunks(text);
+    expect(chunks.join('')).toBe(text);
+    expect(chunks[0]).toBe('Paid  ');
+    for (let i = 1; i <= chunks.length; i++) expect(text.startsWith(chunks.slice(0, i).join(''))).toBe(true);
+  });
+
+  it('handles empty and whitespace-only text', () => {
+    expect(revealChunks('')).toEqual([]);
+    expect(revealChunks('   ').join('')).toBe('   ');
   });
 });

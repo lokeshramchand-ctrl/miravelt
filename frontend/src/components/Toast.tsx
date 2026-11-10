@@ -1,33 +1,72 @@
-import { useEffect } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useToast } from '../state/toast';
+import { useToast, type ToastTone } from '../state/toast';
 import { colors } from '../theme/colors';
 import { shadows } from '../theme/shadows';
+import { motion } from '../theme/tokens';
 import { typography } from '../theme/typography';
 import { Icon } from './Icon';
-import { FadeInUp } from './motion';
+import { useReducedMotion } from './Live';
+import { nativeDriver } from './motion';
 
-/** The app's toast (bencho `.toast`): a floating glass card with a status bar on its left edge; clears itself. */
+/**
+ * The app's toast (bencho `.toast`): a floating card with a status bar on its left edge; clears
+ * itself. Motion from transitions.dev's toast: it rises in with a spring while scaling up from
+ * .94 and fading in, and on its way out it sinks, shrinks and fades instead of vanishing. A new
+ * toast replaces the current one with a fresh rise.
+ */
 export function ToastHost() {
   const { message, tone, nonce, hide } = useToast();
   const insets = useSafeAreaInsets();
+  const reduced = useReducedMotion();
+  const t = useRef(new Animated.Value(0)).current;
+  // Keeps the last toast on screen while it animates out after `message` clears.
+  const [shown, setShown] = useState<{ message: string; tone: ToastTone; nonce: number } | null>(null);
+
   useEffect(() => {
     if (!message) return;
-    const t = setTimeout(hide, 3800);
-    return () => clearTimeout(t);
+    const timer = setTimeout(hide, 3800);
+    return () => clearTimeout(timer);
   }, [message, nonce, hide]);
-  if (!message) return null;
-  const accent = tone === 'error' ? colors.down : tone === 'success' ? colors.up : colors.signal;
+
+  useEffect(() => {
+    if (message) {
+      setShown({ message, tone, nonce });
+      t.setValue(0);
+      const enter = reduced
+        ? Animated.timing(t, { toValue: 1, duration: 120, useNativeDriver: nativeDriver })
+        : Animated.spring(t, { toValue: 1, ...motion.spring, useNativeDriver: nativeDriver });
+      enter.start();
+      return () => enter.stop();
+    }
+    const exit = Animated.timing(t, { toValue: 0, duration: reduced ? 100 : 200, easing: Easing.in(Easing.quad), useNativeDriver: nativeDriver });
+    exit.start(({ finished }) => finished && setShown(null));
+    return () => exit.stop();
+  }, [message, tone, nonce, t, reduced]);
+
+  if (!shown) return null;
+  const accent = shown.tone === 'error' ? colors.down : shown.tone === 'success' ? colors.up : colors.signal;
+  const opacity = t.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0, 1, 1], extrapolate: 'clamp' });
+  const transform = reduced
+    ? []
+    : [{ translateY: t.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }, { scale: t.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) }];
   return (
     <View pointerEvents="none" style={[styles.wrap, { bottom: insets.bottom + 92 }]}>
-      <FadeInUp key={nonce} duration={260} distance={12} style={[styles.toast, { backgroundColor: colors.solid, borderColor: colors.border }, Platform.OS === 'web' ? ({ backdropFilter: 'blur(10px)' } as object) : null, shadows.liftHi()]}>
+      <Animated.View
+        style={[
+          styles.toast,
+          { backgroundColor: colors.solid, borderColor: colors.border, opacity, transform },
+          Platform.OS === 'web' ? ({ backdropFilter: 'blur(10px)' } as object) : null,
+          shadows.liftHi(),
+        ]}
+      >
         <View style={[styles.bar, { backgroundColor: accent }]} />
-        <Icon name={tone === 'error' ? 'error-outline' : tone === 'success' ? 'check-circle' : 'info-outline'} size={17} color={accent} style={{ marginLeft: 12 }} />
+        <Icon name={shown.tone === 'error' ? 'error-outline' : shown.tone === 'success' ? 'check-circle' : 'info-outline'} size={17} color={accent} style={{ marginLeft: 12 }} />
         <Text accessibilityLiveRegion="polite" style={[typography.body13, { color: colors.text, flexShrink: 1, marginLeft: 10, marginRight: 14 }]}>
-          {message}
+          {shown.message}
         </Text>
-      </FadeInUp>
+      </Animated.View>
     </View>
   );
 }
