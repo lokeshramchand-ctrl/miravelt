@@ -41,3 +41,6 @@ DEV_TEST_ACCOUNT.txt
 # Personal portfolio source file (lives in the Downloads folder, never committed)
 Miravelt-Portfolio-Source.md
 *Portfolio-Source.md
+
+# Celery beat runtime state
+celerybeat-schedule*

@@ -32,8 +32,10 @@ services:
       # points at externally managed infrastructure, not a compose-local
       # one, same as Mongo/Milvus/Ollama).
       - REDIS_URI=${REDIS_URI:?REDIS_URI must be set}
-    ports:
-      - "9850:8000"
+    # Traefik (Coolify proxy) reaches the app over the shared `coolify` network;
+    # no host port is published.
+    expose:
+      - "8000"
     restart: always
     networks:
       - coolify
