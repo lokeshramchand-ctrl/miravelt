@@ -18,6 +18,9 @@ export const apiEnvironmentLabel: Record<ApiEnvironment, string> = {
 };
 
 export function parseApiEnvironment(value: string | null | undefined): ApiEnvironment {
+  // Release builds are pinned to the deployed backend: a user-reachable "custom
+  // server" switch is a credential-phishing path.
+  if (!__DEV__) return 'production';
   return value === 'local' || value === 'custom' ? value : 'production';
 }
 
@@ -43,6 +46,7 @@ export function presetBaseUrl(environment: Exclude<ApiEnvironment, 'custom'>): s
  * which the Profile UI's own validation should never allow).
  */
 export function resolveBaseUrl(environment: ApiEnvironment, customUrl: string): string {
+  if (!__DEV__) return presetBaseUrl('production');
   if (environment !== 'custom') return presetBaseUrl(environment);
   const custom = customUrl.trim();
   if (!custom) return presetBaseUrl('production');
