@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import secrets
 
@@ -21,6 +22,10 @@ admin_key_header = APIKeyHeader(name=ADMIN_KEY_NAME, auto_error=False)
 # algorithm, ahead of bcrypt/PBKDF2. Salting and constant-time verification
 # are handled internally by the library, not hand-rolled here.
 _password_hasher = PasswordHasher()
+# Each hash costs ~64 MiB; bound concurrency so a login flood can't exhaust RAM.
+_hash_semaphore = asyncio.Semaphore(4)
+# Computed once so unknown-email logins cost one verify, not a fresh hash.
+DUMMY_HASH = _password_hasher.hash(secrets.token_hex(16))
 
 
 def hash_password(password: str) -> str:
@@ -81,3 +86,13 @@ async def validate_admin_key(admin_key_header: str = Security(admin_key_header))
         )
 
     return "admin"
+
+
+async def hash_password_async(password: str) -> str:
+    async with _hash_semaphore:
+        return await asyncio.to_thread(hash_password, password)
+
+
+async def verify_password_async(password: str, hashed_password: str) -> bool:
+    async with _hash_semaphore:
+        return await asyncio.to_thread(verify_password, password, hashed_password)
