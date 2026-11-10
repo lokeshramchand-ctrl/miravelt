@@ -93,7 +93,7 @@ async def upload_statement(
     file: UploadFile = File(..., description="A Google Pay 'Transaction statement' PDF"),
     password: str | None = Form(None, description="PDF password, if the statement is password-protected"),
     keep_original_pdf: bool = Form(
-        True,
+        False,
         description="Store the uploaded PDF alongside the parsed data. False keeps only the extracted transactions.",
     ),
     current_user: User = Depends(get_current_user),
@@ -107,7 +107,18 @@ async def upload_statement(
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="File must be a PDF.")
 
-    raw_bytes = await file.read()
+    limit = settings.MAX_STATEMENT_PDF_BYTES
+    chunks: list[bytes] = []
+    received = 0
+    while chunk := await file.read(1024 * 1024):
+        received += len(chunk)
+        if received > limit:
+            raise HTTPException(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                detail=f"PDF exceeds the {limit // (1024 * 1024)} MB limit.",
+            )
+        chunks.append(chunk)
+    raw_bytes = b"".join(chunks)
 
     try:
         validate_pdf_upload(
