@@ -99,6 +99,8 @@ networkx==3.4.2
 # rather than split out since tasks/celery_app.py is imported by
 # feedback/retraining_queue.py's lazy dispatch path too.
 celery==5.4.0
+# kombu >=5.5 (pulled in unpinned by celery) needs redis-py >=6.1; stay on the release matching celery 5.4.0 + redis 5.2.1
+kombu==5.4.2
 redis==5.2.1
 
 # Testing
