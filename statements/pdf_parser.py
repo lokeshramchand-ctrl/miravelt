@@ -6,6 +6,7 @@ from datetime import UTC, date, datetime
 import pdfplumber
 import pypdf
 
+from core.config import settings
 from core.timezone import APP_TZ
 
 logger = logging.getLogger(__name__)
@@ -103,6 +104,10 @@ class GooglePayStatementParser:
             page_count = len(reader.pages)
             if page_count == 0:
                 raise CorruptedPDFError("The uploaded PDF has no pages.")
+            if page_count > settings.MAX_PDF_PAGES:
+                raise UnsupportedStatementError(
+                    f"This PDF has {page_count} pages; statements over {settings.MAX_PDF_PAGES} pages are not supported."
+                )
 
             raw_metadata = reader.metadata or {}
             metadata = {str(k).lstrip("/"): str(v) for k, v in raw_metadata.items() if v is not None}

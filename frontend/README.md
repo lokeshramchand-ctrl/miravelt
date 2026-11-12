@@ -13,7 +13,7 @@ A financial analyst in your pocket - a React Native (Expo) mobile client for the
 | Variable (build time) | Purpose |
 |---|---|
 | `EXPO_PUBLIC_MIRAVELT_API_KEY` | `X-Miravelt-API-Key` sent on every request. No usable default (falls back to a public placeholder). |
-| `EXPO_PUBLIC_MIRAVELT_API_BASE_URL` | Overrides the deployed backend URL (default `https://miravelt.deploy.lokeshrc.me/`). |
+| `EXPO_PUBLIC_MIRAVELT_API_BASE_URL` | Overrides the deployed backend URL (default `https://miravelt.deploy-ui.lokeshrc.me/`). |
 | `EXPO_PUBLIC_MIRAVELT_LOCAL_API_BASE_URL` | Overrides the Localhost preset (`http://10.0.2.2:9850/` on Android, `http://localhost:9850/` elsewhere). |
 
 Put them in `frontend/.env.local` (gitignored). Which backend the app uses is a **runtime** choice: Developer settings > "API server" (Deployed / Localhost / Custom), unlocked by tapping the version line on the login screen or the "Developer settings" row in Profile five times. Switching signs you out first. On a physical phone `10.0.2.2` does not exist - use Custom with your computer's LAN address (e.g. `http://192.168.1.5:9850/`), or `adb reverse tcp:9850 tcp:9850` plus Custom `http://localhost:9850/`. Cleartext HTTP is enabled for exactly this.

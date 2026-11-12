@@ -101,20 +101,37 @@ class BodySizeLimitMiddleware:
          even if no Content-Length header was sent at all.
     """
 
-    def __init__(self, app, max_bytes: int):
+    def __init__(
+        self,
+        app,
+        max_bytes: int,
+        route_limits: dict[tuple[str, str], int] | None = None,
+        default_bytes: int | None = None,
+    ):
+        # max_bytes is the outer ceiling; route_limits maps (METHOD, path) to
+        # its own limit and default_bytes covers every other route, so a small
+        # JSON endpoint can't be used to stream tens of MB into memory.
         self.app = app
         self.max_bytes = max_bytes
+        self.route_limits = route_limits or {}
+        self.default_bytes = default_bytes
+
+    def _limit_for(self, scope) -> int:
+        key = (scope.get("method", "").upper(), scope.get("path", "").rstrip("/"))
+        limit = self.route_limits.get(key, self.default_bytes)
+        return self.max_bytes if limit is None else min(limit, self.max_bytes)
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
 
+        max_bytes = self._limit_for(scope)
         headers = dict(scope.get("headers") or [])
         content_length = headers.get(b"content-length")
         if content_length is not None:
             try:
-                if int(content_length) > self.max_bytes:
+                if int(content_length) > max_bytes:
                     response = JSONResponse(
                         status_code=413,
                         content={"error": "payload_too_large", "detail": "Request body exceeds the maximum allowed size."},
@@ -131,7 +148,7 @@ class BodySizeLimitMiddleware:
             message = await receive()
             if message["type"] == "http.request":
                 total_received += len(message.get("body", b""))
-                if total_received > self.max_bytes:
+                if total_received > max_bytes:
                     raise HTTPException(status_code=413, detail="Request body exceeds the maximum allowed size.")
             return message
 

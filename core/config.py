@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     # backstop for every request body regardless of route.
     MAX_REQUEST_BODY_BYTES: int = 80_000_000  # 80 MB
     MAX_STATEMENT_PDF_BYTES: int = 10_000_000  # 10 MB
+    # Route-aware ceilings enforced by BodySizeLimitMiddleware (SECURITY_AUDIT H-5):
+    # every route except the two upload routes gets the small default.
+    MAX_DEFAULT_BODY_BYTES: int = 1_000_000  # 1 MB
+    MAX_PDF_PAGES: int = 50  # a real 6-month Google Pay statement is ~19 pages
     MAX_APK_UPLOAD_BYTES: int = 80_000_000  # 80 MB - a React Native release APK is typically 30-80 MB
     PDF_RETENTION_DAYS: int = 90  # Auto-delete PDFs after 90 days
     MONGODB_SERVER_SELECTION_TIMEOUT_MS: int = 5000

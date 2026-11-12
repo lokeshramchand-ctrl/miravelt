@@ -28,7 +28,7 @@ The backend is a **runtime** choice (`src/config/apiEnvironment.ts`, `src/state/
 
 | Environment | Default base URL |
 |---|---|
-| `production` (fresh-install default) | `https://miravelt.deploy.lokeshrc.me/` |
+| `production` (fresh-install default) | `https://miravelt.deploy-ui.lokeshrc.me/` |
 | `local` | `http://10.0.2.2:9850/` on Android, `http://localhost:9850/` elsewhere |
 | `custom` | a URL typed into Developer settings |
 

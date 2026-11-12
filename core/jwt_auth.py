@@ -24,6 +24,10 @@ bearer_scheme = HTTPBearer(
 ACCESS_TOKEN_TYPE = "access"  # noqa: S105 - a JWT "type" claim value, not a credential
 
 
+JWT_ISSUER = "miravelt-api"
+JWT_AUDIENCE = "miravelt-app"
+
+
 def create_access_token(user_id: str, scopes: list[str] | None = None) -> tuple[str, int]:
     """Returns (token, expires_in_seconds).
 
@@ -35,6 +39,8 @@ def create_access_token(user_id: str, scopes: list[str] | None = None) -> tuple[
     lifetime = timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {
         "sub": user_id,
+        "iss": JWT_ISSUER,
+        "aud": JWT_AUDIENCE,
         "type": ACCESS_TOKEN_TYPE,
         "iat": now,
         "exp": now + lifetime,
@@ -61,7 +67,13 @@ def generate_refresh_token(device_id: str | None = None) -> tuple[str, datetime]
 
 def decode_access_token(token: str) -> dict:
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM],
+            issuer=JWT_ISSUER,
+            audience=JWT_AUDIENCE,
+        )
     except jwt.ExpiredSignatureError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -161,6 +173,12 @@ def require_scope(required_scopes: str | list[str]):
         # get_current_user (above) already rejects missing/invalid credentials,
         # so by the time this line runs credentials is guaranteed non-None.
         token_scopes = decode_access_token(credentials.credentials).get("scopes", [])
+
+        # The scope claim is baked in for up to JWT_ACCESS_TOKEN_EXPIRE_MINUTES, so a
+        # demoted admin would keep access. Re-check the live role from the database
+        # (current_user was just loaded from it) for the admin scope.
+        if "admin" in required_scopes and "admin" in token_scopes and getattr(current_user, "role", None) != "admin":
+            token_scopes = [sc for sc in token_scopes if sc != "admin"]
 
         if not any(scope in token_scopes for scope in required_scopes):
             raise HTTPException(

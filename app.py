@@ -189,7 +189,16 @@ setup_rate_limiting(app)
 if settings.ENFORCE_HTTPS and settings.ENVIRONMENT != "development":
     app.add_middleware(HTTPSEnforcementMiddleware, enabled_for_environment=settings.ENVIRONMENT)
 app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.MAX_REQUEST_BODY_BYTES)
+app.add_middleware(
+    BodySizeLimitMiddleware,
+    max_bytes=settings.MAX_REQUEST_BODY_BYTES,
+    default_bytes=settings.MAX_DEFAULT_BODY_BYTES,
+    route_limits={
+        # file size plus multipart overhead
+        ("POST", "/statements/upload"): settings.MAX_STATEMENT_PDF_BYTES + 1_000_000,
+        ("POST", "/app/releases"): settings.MAX_APK_UPLOAD_BYTES + 1_000_000,
+    },
+)
 app.add_middleware(RequestIDMiddleware)
 
 # CORS - added last so it's outermost (last-added = outermost, see comment

@@ -119,6 +119,12 @@ async def toggle_user_active(
     """Enable or disable a user account. Requires admin scope."""
     from repositories.user_repository import user_repo
 
+    if user_id == current_user.id and not active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot deactivate your own account - have another admin do it.",
+        )
+
     user = await user_repo.get_by_id(user_id)
     if not user:
         raise HTTPException(

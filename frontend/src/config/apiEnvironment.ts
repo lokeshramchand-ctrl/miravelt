@@ -24,7 +24,7 @@ export function parseApiEnvironment(value: string | null | undefined): ApiEnviro
   return value === 'local' || value === 'custom' ? value : 'production';
 }
 
-const PRODUCTION_BASE_URL = process.env.EXPO_PUBLIC_MIRAVELT_API_BASE_URL || 'https://miravelt.deploy.lokeshrc.me/';
+const PRODUCTION_BASE_URL = process.env.EXPO_PUBLIC_MIRAVELT_API_BASE_URL || 'https://miravelt.deploy-ui.lokeshrc.me/';
 
 // Android emulator can't resolve "localhost" to the host machine - 10.0.2.2 is
 // its documented alias for that. iOS simulator reaches the host as localhost.

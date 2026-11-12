@@ -1,4 +1,5 @@
 import * as Application from 'expo-application';
+import * as Crypto from 'expo-crypto';
 import * as FileSystem from 'expo-file-system';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { Platform } from 'react-native';
@@ -68,6 +69,12 @@ export const useAppUpdate = create<AppUpdateState>((set, get) => ({
       const result = await download.downloadAsync();
       if (cancelled) return;
       if (!result || result.status < 200 || result.status >= 300) throw new Error(`Download failed (${result?.status ?? 'no response'})`);
+      // Refuse to launch the installer unless the file matches the published digest.
+      const actual = await sha256OfFile(result.uri);
+      if (!info.sha256 || actual.toLowerCase() !== info.sha256.toLowerCase()) {
+        await FileSystem.deleteAsync(result.uri, { idempotent: true });
+        throw new Error('The downloaded update failed its integrity check.');
+      }
       set({ stage: 'readyToInstall' });
       await installApk(result.uri);
     } catch (e) {
@@ -84,6 +91,15 @@ export const useAppUpdate = create<AppUpdateState>((set, get) => ({
 
   dismiss: () => set({ ...INITIAL }),
 }));
+
+async function sha256OfFile(fileUri: string): Promise<string> {
+  const base64 = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
+  const binary = globalThis.atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, bytes);
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 /**
  * Hands off to Android's own package installer. Android still shows its own
