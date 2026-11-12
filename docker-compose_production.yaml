@@ -101,6 +101,12 @@ services:
     build: .
     container_name: miravelt-celery-worker
     command: celery -A tasks.celery_app worker --loglevel=info --concurrency=2 -Q celery
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A tasks.celery_app inspect ping -d celery@$$HOSTNAME -t 5 > /dev/null 2>&1"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 40s
     environment:
       - MONGODB_URI=${MONGODB_URI:?MONGODB_URI must be set}
       - MONGODB_DB_NAME=${MONGODB_DB_NAME:-miravelt}
@@ -137,6 +143,12 @@ services:
     build: .
     container_name: miravelt-celery-worker-statements
     command: celery -A tasks.celery_app worker --loglevel=info --concurrency=${STATEMENT_WORKER_CONCURRENCY:-2} -Q statements
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A tasks.celery_app inspect ping -d celery@$$HOSTNAME -t 5 > /dev/null 2>&1"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 40s
     environment:
       - MONGODB_URI=${MONGODB_URI:?MONGODB_URI must be set}
       - MONGODB_DB_NAME=${MONGODB_DB_NAME:-miravelt}
@@ -175,7 +187,11 @@ services:
   miravelt-celery-beat:
     build: .
     container_name: miravelt-celery-beat
-    command: celery -A tasks.celery_app beat --loglevel=info
+    command: celery -A tasks.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    # The API image's /live healthcheck doesn't apply to a scheduler; beat has no
+    # listener, and a dead beat is already restarted by `restart: always`.
+    healthcheck:
+      disable: true
     environment:
       - MONGODB_URI=${MONGODB_URI:?MONGODB_URI must be set}
       - MONGODB_DB_NAME=${MONGODB_DB_NAME:-miravelt}
