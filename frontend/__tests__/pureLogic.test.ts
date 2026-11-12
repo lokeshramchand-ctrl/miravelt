@@ -1,5 +1,8 @@
 import { activeStageIndex } from '../src/screens/AnalysingScreen';
-import { dayTotal, groupByDay } from '../src/screens/ActivityScreen';
+import { dayTotal, groupByDay, sectionsFor } from '../src/screens/ActivityScreen';
+import { csvField } from '../src/lib/exportCsv';
+import { nextChargeLabel, priceChangeLabel } from '../src/screens/RecurringScreen';
+import { canRecategorize, TRANSACTION_CATEGORIES } from '../src/lib/transactionText';
 import { aggregateCategory } from '../src/screens/CategoryDrilldownScreen';
 import { netFlowDeltaPercent, trendCaption } from '../src/screens/OverviewScreen';
 import { summarizeRecurring } from '../src/screens/RecurringScreen';
@@ -12,7 +15,7 @@ import { categoryExplanation, explainTransactionText } from '../src/lib/transact
 import { pickCurrentPeriod, pickPreviousPeriod } from '../src/hooks/periods';
 import { looksLikePasswordIssue } from '../src/state/upload';
 import { spendingBreakdown, userInitials } from '../src/domain/types';
-import type { Insight, Statement, StatementAnalytics, Transaction } from '../src/domain/types';
+import type { Insight, RecurringPaymentEntry, Statement, StatementAnalytics, Transaction } from '../src/domain/types';
 
 const txn = (over: Partial<Transaction> = {}): Transaction => ({
   id: 't1',
@@ -29,6 +32,26 @@ const txn = (over: Partial<Transaction> = {}): Transaction => ({
   accountLast4: null,
   paymentMethod: 'UPI',
   categorizationConfidence: 0.95,
+  categorizationSource: 'alias',
+  counterpartyKind: 'business',
+  note: null,
+  tags: [],
+  ...over,
+});
+
+const rec = (over: Partial<RecurringPaymentEntry> = {}): RecurringPaymentEntry => ({
+  merchant: 'Netflix',
+  estimatedMonthlyCost: 100,
+  periodicityScore: 1,
+  occurrences: 6,
+  cadence: 'monthly',
+  cadenceDays: 30.44,
+  typicalAmount: 100,
+  lastAmount: 100,
+  lastPaidAt: null,
+  nextExpectedAt: null,
+  amountChange: null,
+  shareOfMonthlySpend: null,
   ...over,
 });
 
@@ -47,12 +70,17 @@ const analytics = (over: Partial<StatementAnalytics> = {}): StatementAnalytics =
   topMerchants: [],
   dailyTrend: [],
   recurringPayments: [],
+  averageMonthlySpend: 0,
   generatedAt: new Date(),
   ...over,
 });
 
 describe('periods', () => {
-  const periods = [stmt('new', 'PROCESSING'), stmt('b', 'COMPLETED'), stmt('a', 'COMPLETED')];
+  const periods = [
+    stmt('new', 'PROCESSING', { periodStart: new Date(2027, 0, 1) }),
+    stmt('b', 'COMPLETED', { periodStart: new Date(2026, 6, 1) }),
+    stmt('a', 'COMPLETED', { periodStart: new Date(2026, 0, 1) }),
+  ];
   it('defaults to the most recent completed period', () => {
     expect(pickCurrentPeriod(periods, null)?.id).toBe('b');
   });
@@ -67,7 +95,14 @@ describe('periods', () => {
   it('finds the completed period before the current one', () => {
     expect(pickPreviousPeriod(periods, periods[1])?.id).toBe('a');
     expect(pickPreviousPeriod(periods, periods[2])).toBeNull();
-    expect(pickPreviousPeriod(periods, periods[0])).toBeNull();
+    expect(pickPreviousPeriod(periods, periods[0])?.id).toBe('b');
+  });
+  it('orders by period dates, not upload order (a backfilled earlier year)', () => {
+    const uploadedLater = stmt('2025', 'COMPLETED', { periodStart: new Date(2025, 0, 1) });
+    const uploadedFirst = stmt('2026', 'COMPLETED', { periodStart: new Date(2026, 0, 1) });
+    const list = [uploadedLater, uploadedFirst];
+    expect(pickPreviousPeriod(list, uploadedFirst)?.id).toBe('2025');
+    expect(pickPreviousPeriod(list, uploadedLater)).toBeNull();
   });
 });
 
@@ -96,9 +131,9 @@ describe('overview math', () => {
 
 describe('signals', () => {
   const insights: Insight[] = [
-    { type: 'A', message: 'a', severity: 'WARNING' },
-    { type: 'B', message: 'b', severity: 'POSITIVE' },
-    { type: 'C', message: 'c', severity: 'INFO' },
+    { type: 'A', message: 'a', severity: 'WARNING', origin: 'computed' },
+    { type: 'B', message: 'b', severity: 'POSITIVE', origin: 'computed' },
+    { type: 'C', message: 'c', severity: 'INFO', origin: 'llm' },
   ];
   it('filters by severity', () => {
     expect(filterInsights(insights, 'all')).toHaveLength(3);
@@ -125,8 +160,8 @@ describe('recurring', () => {
     const a = analytics({
       totalSpend: 1000,
       recurringPayments: [
-        { merchant: 'Netflix', estimatedMonthlyCost: 100, periodicityScore: 1, occurrences: 6 },
-        { merchant: 'Gym', estimatedMonthlyCost: 300, periodicityScore: 0.5, occurrences: 3 },
+        rec({ merchant: 'Netflix', estimatedMonthlyCost: 100, periodicityScore: 1, occurrences: 6 }),
+        rec({ merchant: 'Gym', estimatedMonthlyCost: 300, periodicityScore: 0.5, occurrences: 3 }),
       ],
     });
     const s = summarizeRecurring(a);
@@ -197,9 +232,10 @@ describe('upload + analysing', () => {
     const s = stmt('s', 'PENDING', { periodStart: new Date(2026, 0, 1), periodEnd: new Date(2026, 5, 30), declaredSentAmount: 1234.4, declaredReceivedAmount: null });
     expect(summaryLine(s)).toBe('PERIOD JAN 1 - JUN 30 2026 · SENT ₹1234');
   });
-  it('spots a password prompt in the error message', () => {
-    expect(looksLikePasswordIssue('This PDF is Password protected')).toBe(true);
-    expect(looksLikePasswordIssue('Not a statement')).toBe(false);
+  it('spots a password prompt from the backend error code', () => {
+    expect(looksLikePasswordIssue('password_required')).toBe(true);
+    expect(looksLikePasswordIssue('incorrect_password')).toBe(true);
+    expect(looksLikePasswordIssue('unsupported_statement')).toBe(false);
     expect(looksLikePasswordIssue(null)).toBe(false);
   });
   it('maps progress onto the five pipeline stages', () => {
@@ -233,5 +269,39 @@ describe('forms', () => {
     expect(userInitials({ fullName: 'Ada  Lovelace Byron', email: 'a@b.co' })).toBe('AL');
     expect(userInitials({ fullName: '  ', email: 'zed@b.co' })).toBe('Z');
     expect(userInitials({ fullName: null, email: 'zed@b.co' })).toBe('Z');
+  });
+});
+
+describe('audit fixes', () => {
+  it('sorts by amount as one flat section, never repeating days (F14)', () => {
+    const list = [txn({ id: '1', amount: 900 }), txn({ id: '2', amount: 10, timestamp: new Date(2026, 1, 1) }), txn({ id: '3', amount: 5 })];
+    const sections = sectionsFor(list, true);
+    expect(sections).toHaveLength(1);
+    expect(sections[0].day).toBeNull();
+    expect(sectionsFor([], true)).toEqual([]);
+  });
+  it('neutralises spreadsheet formulas in exported payee names (F24)', () => {
+    expect(csvField('=HYPERLINK("x")')).toBe(`"'=HYPERLINK(""x"")"`);
+    expect(csvField('+91 shop')).toBe("'+91 shop");
+    expect(csvField('-5')).toBe("'-5");
+    expect(csvField('@sum')).toBe("'@sum");
+    expect(csvField('Zomato, Ltd')).toBe('"Zomato, Ltd"');
+  });
+  it('offers only spending categories, and only on payments (F4)', () => {
+    expect(TRANSACTION_CATEGORIES).not.toContain('Income');
+    expect(TRANSACTION_CATEGORIES).not.toContain('Unknown');
+    expect(canRecategorize(txn({ transactionType: 'CREDIT' }))).toBe(false);
+    expect(canRecategorize(txn())).toBe(true);
+  });
+  it('describes the next charge and a price change (A3)', () => {
+    const now = new Date(Date.UTC(2026, 5, 1));
+    expect(nextChargeLabel(new Date(Date.UTC(2026, 5, 5)), now)).toBe('next in 4 days');
+    expect(nextChargeLabel(new Date(Date.UTC(2026, 4, 5)), now)).toBeNull();
+    expect(priceChangeLabel(rec({ lastAmount: 699, amountChange: 50 / 649 }))).toBe('+₹50 on the last charge');
+    expect(priceChangeLabel(rec({ amountChange: 0.01 }))).toBeNull();
+  });
+  it('uses the average month as the recurring share denominator (F6)', () => {
+    const a = analytics({ totalSpend: 6000, averageMonthlySpend: 1000, recurringPayments: [rec({ estimatedMonthlyCost: 250 })] });
+    expect(summarizeRecurring(a).shareOfOutflow).toBe(25);
   });
 });

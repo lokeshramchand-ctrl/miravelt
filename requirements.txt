@@ -104,3 +104,4 @@ redis==5.2.1
 # Testing
 # 8.3.4 has a known advisory (PYSEC-2026-1845) fixed starting in 9.0.3.
 pytest==9.1.1
+hypothesis==6.115.0  # property-based tests (tests/test_parser.py)

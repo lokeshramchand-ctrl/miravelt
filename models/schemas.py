@@ -43,6 +43,10 @@ class User(CoreModel):
     is_active: bool = True
     role: UserRole = UserRole.USER
     devices: list[DeviceSession] = Field(default_factory=list, description="Tracked devices")
+    # Account lifecycle (PROJECT_AUDIT.md D3). `password_changed_at` invalidates
+    # access tokens issued before a password change or reset (core/jwt_auth.py).
+    email_verified: bool = False
+    password_changed_at: datetime | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
@@ -52,7 +56,7 @@ class User(CoreModel):
         # into a response just because someone forgot to also update this.
         return UserPublic(
             id=self.id, email=self.email, full_name=self.full_name,
-            is_active=self.is_active, created_at=self.created_at,
+            is_active=self.is_active, created_at=self.created_at, email_verified=self.email_verified,
         )
 
 
@@ -65,6 +69,7 @@ class UserPublic(BaseModel):
     full_name: str | None
     is_active: bool
     created_at: datetime
+    email_verified: bool = False
 
 
 class UpdateUserRequest(BaseModel):
@@ -143,6 +148,13 @@ class Transaction(CoreModel):
     # defaulted so the existing POST /v1/categorize write path (routers/v1.py),
     # which only ever sets the fields above, needs no changes at all.
     statement_id: str | None = None
+    # Timeline model (PROJECT_AUDIT.md A1): a transaction belongs to its
+    # *user*; statements are sources that vouch for it. Two overlapping
+    # uploads both list themselves here instead of the later one taking the
+    # row over, and deleting a statement only deletes rows no other
+    # statement still vouches for. `statement_id` stays as the first source,
+    # for older clients and the admin dashboard.
+    source_statement_ids: list[str] = Field(default_factory=list)
     transaction_type: TransactionType = TransactionType.DEBIT
     status: TransactionStatus = TransactionStatus.SUCCESS
     counterparty_raw: str | None = None  # the raw "Paid to X" / "Received from X" name, pre-categorization
@@ -155,6 +167,18 @@ class Transaction(CoreModel):
     # correction; None for incoming money and for rows stored before this
     # field existed. Lets the app say *how* a category was decided.
     categorization_confidence: float | None = None
+    # Where the category came from - see engines/categorizer.py. "user" (a
+    # correction; never overwritten by a later upload), "user_memory" (this
+    # user's earlier correction for the same payee), "alias", "community",
+    # "keyword", "suggestion", "none", or "income".
+    categorization_source: str | None = None
+    # "person" or "business" - engines/counterparty.py. People get their own
+    # ledger and are never promoted to a shared alias.
+    counterparty_kind: str | None = None
+    # Free-text note and tags the user attaches (PROJECT_AUDIT.md D8).
+    note: str | None = None
+    tags: list[str] = Field(default_factory=list)
+
 
 class Feedback(CoreModel):
     id: str | None = Field(alias="_id", default=None)
@@ -223,6 +247,10 @@ class TransactionCategory(str, Enum):
     SHOPPING = "Shopping"
     UTILITY = "Utility"
     INCOME = "Income"  # CREDIT transactions (money received) - not run through the expense rule engine, see statements/statement_service.py
+    # The rule engine has always written "Uncategorized"; the app's picker
+    # said "Unknown". Both are accepted, "Uncategorized" is canonical and
+    # feedback normalises "Unknown" to it (PROJECT_AUDIT.md F4).
+    UNCATEGORIZED = "Uncategorized"
     UNKNOWN = "Unknown"
 
 class ConfidenceEvaluation(BaseModel):
@@ -235,6 +263,11 @@ class ConfidenceEvaluation(BaseModel):
 class BehaviorPattern(BaseModel):
     id: str | None = Field(alias="_id", default=None)
     merchant_name: str  # Can be a resolved name or an "Unknown" entity string
+    # Per-user (PROJECT_AUDIT.md A2/F5): profiles were once pooled across
+    # every user who paid a merchant, which both leaked private payees
+    # between accounts and destroyed periodicity (forty monthly payers on
+    # different days look like a daily burst). Unique on (user_id, merchant_name).
+    user_id: str | None = None
 
     # Statistical Amount Metrics
     avg_amount: float
@@ -303,10 +336,25 @@ class DailyTrendItem(BaseModel):
 
 
 class RecurringPaymentItem(BaseModel):
+    """One detected recurring payment - analytics/recurring.py."""
     merchant: str
+    # Monthly equivalent of the typical amount at the detected cadence
+    # (weekly x 4.35, quarterly / 3, ...). Name kept for older clients.
     estimated_monthly_cost: float
+    # Regularity of the payment gaps, 0..1 (share of gaps on cadence).
     periodicity_score: float
     occurrences: int
+    cadence: str = "monthly"  # weekly | fortnightly | monthly | quarterly | yearly
+    cadence_days: float = 30.44
+    typical_amount: float = 0.0  # median of the most recent payments
+    last_amount: float = 0.0
+    last_paid_at: datetime | None = None
+    next_expected_at: datetime | None = None
+    # Change of the latest amount against the typical amount before it, as a
+    # fraction (0.25 = 25% more). None when there is no earlier baseline.
+    amount_change: float | None = None
+    # Monthly equivalent as a share of this period's average monthly spend.
+    share_of_monthly_spend: float | None = None
 
 
 class StatementAnalytics(BaseModel):
@@ -324,6 +372,9 @@ class StatementAnalytics(BaseModel):
     top_merchants: list[MerchantSpendItem] = Field(default_factory=list)
     daily_trend: list[DailyTrendItem] = Field(default_factory=list)
     recurring_payments: list[RecurringPaymentItem] = Field(default_factory=list)
+    # Average spend per month over the period (total_spend / months covered),
+    # the honest denominator for a monthly recurring cost's share.
+    average_monthly_spend: float = 0.0
     generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
@@ -331,6 +382,11 @@ class InsightItem(BaseModel):
     type: str
     message: str
     severity: InsightSeverity = InsightSeverity.INFO
+    # "computed" (read straight off the analytics) or "llm" (generated, and
+    # admitted only after insights/fact_check.py found every figure and name
+    # in the context). Lets a recompute replace computed items and re-verify
+    # generated ones instead of calling the model again.
+    origin: str = "computed"
 
 
 class Statement(CoreModel):
@@ -377,6 +433,19 @@ class Statement(CoreModel):
     # viewed), since viewing a screen otherwise leaves no server-side trace.
     # See repositories/statement_repository.py::mark_first_viewed.
     first_viewed_at: datetime | None = None
+    # sha256 of the uploaded bytes - an identical re-upload is refused with
+    # a pointer to the existing period (PROJECT_AUDIT.md A1).
+    content_sha256: str | None = None
+    # Parser accounting (PROJECT_AUDIT.md A6/F9): lines that start a record
+    # but did not parse. Non-zero is shown in the app and the admin dashboard.
+    record_line_count: int | None = None
+    unparsed_count: int | None = None
+    # Bumped whenever analytics are recomputed (corrections, merges), so the
+    # client can tell a cached copy is stale.
+    analytics_revision: int = 0
+    # A generated demo statement (POST /statements/sample, PROJECT_AUDIT.md E1),
+    # not the user's own money. Labelled in the app, left out of product metrics.
+    is_sample: bool = False
 
 
 class Job(CoreModel):
@@ -412,6 +481,9 @@ class StatementResponse(BaseModel):
     computed_sent_amount: float | None
     computed_received_amount: float | None
     reconciliation_ok: bool | None
+    unparsed_count: int | None = None
+    analytics_revision: int = 0
+    is_sample: bool = False
     transaction_count: int
     processing_status: StatementStatus
     current_job_id: str | None
@@ -445,6 +517,22 @@ class TransactionResponse(BaseModel):
     account_last4: str | None
     payment_method: str
     categorization_confidence: float | None = None
+    categorization_source: str | None = None
+    counterparty_kind: str | None = None
+    note: str | None = None
+    tags: list[str] = Field(default_factory=list)
+
+    @classmethod
+    def from_transaction(cls, t: "Transaction") -> "TransactionResponse":
+        return cls(
+            id=t.id, statement_id=t.statement_id, timestamp=t.timestamp, merchant=t.merchant,
+            category=t.category, amount=t.amount, transaction_type=t.transaction_type, status=t.status,
+            counterparty_raw=t.counterparty_raw, reference_number=t.reference_number, bank=t.bank,
+            account_last4=t.account_last4, payment_method=t.payment_method,
+            categorization_confidence=t.categorization_confidence,
+            categorization_source=t.categorization_source, counterparty_kind=t.counterparty_kind,
+            note=t.note, tags=t.tags,
+        )
 
 
 class TransactionListResponse(BaseModel):

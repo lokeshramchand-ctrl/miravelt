@@ -7,6 +7,7 @@ import { ApiException } from '../api/errors';
 import { UserAvatar } from '../components/Avatars';
 import { DeveloperUnlockGesture } from '../components/DeveloperSettings';
 import { Dialog, PromptDialog } from '../components/Dialog';
+import { FormDialog } from '../components/FormDialog';
 import { PrimaryPillButton } from '../components/Buttons';
 import { RowIcon, SegmentedControl, ScreenBackHeader, ToggleRow } from '../components/Controls';
 import { Card as GlassCard, StatTile } from '../components/Display';
@@ -16,7 +17,10 @@ import { Screen } from '../components/Screen';
 import type { Transaction } from '../domain/types';
 import { userInitials } from '../domain/types';
 import { useCurrentPeriod, usePeriods } from '../hooks/periods';
-import { transactionsToCsv } from '../lib/exportCsv';
+import { errorCode } from '../api/errors';
+import { lockAvailability, authenticate } from '../lib/appLock';
+import { shareCsvFile, shareJsonFile, transactionsToCsv } from '../lib/exportCsv';
+import { validateNewPassword } from './ForgotPasswordScreen';
 import { requestNotificationPermission } from '../lib/notifications';
 import { useAuth } from '../state/auth';
 import { useSettings } from '../state/settings';
@@ -50,6 +54,9 @@ export default function ProfileScreen() {
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportingAll, setExportingAll] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   const periods = periodsQuery.data ?? [];
   const completed = periods.filter((p) => p.processingStatus === 'COMPLETED');
@@ -85,7 +92,7 @@ export default function ProfileScreen() {
     try {
       const transactions = await fetchAllTransactions(period.id);
       setExporting(false);
-      await Share.share({ message: transactionsToCsv(transactions), title: `Miravelt export - ${period.originalFilename}` });
+      await shareCsvFile(transactionsToCsv(transactions), `miravelt-${period.originalFilename}`);
     } catch (e) {
       setExporting(false);
       showToast(e instanceof ApiException ? e.message : 'Something went wrong. Please try again.', 'error');
@@ -95,6 +102,85 @@ export default function ProfileScreen() {
   const signOut = async () => {
     await useAuth.getState().logout();
     router.replace('/login');
+  };
+
+  /** Everything the backend holds about the account, as one JSON file (D3). */
+  const exportEverything = async () => {
+    setExportingAll(true);
+    try {
+      const data = await authRepository.exportAll();
+      setExportingAll(false);
+      await shareJsonFile(data, 'miravelt-all-my-data');
+    } catch (e) {
+      setExportingAll(false);
+      showToast(e instanceof ApiException ? e.message : 'Something went wrong. Please try again.', 'error');
+    }
+  };
+
+  const changePassword = async (values: Record<string, string>): Promise<string | null> => {
+    const current = values.current ?? '';
+    if (!current) return 'Enter your current password';
+    const found = validateNewPassword(values.next ?? '', values.confirm ?? '');
+    if (found.password || found.confirm) return found.password ?? found.confirm ?? null;
+    try {
+      await authRepository.changePassword(current, values.next);
+      setChangingPassword(false);
+      showToast('Password changed. Other devices were signed out.', 'success');
+      return null;
+    } catch (e) {
+      return errorCode(e) === 'wrong_password' ? 'That is not your current password' : e instanceof ApiException ? e.message : 'Something went wrong. Please try again.';
+    }
+  };
+
+  /** Permanent, server-side (F18): the account and every statement, transaction and correction. */
+  const deleteAccount = async (values: Record<string, string>): Promise<string | null> => {
+    if (!values.password) return 'Enter your password to confirm';
+    try {
+      await useAuth.getState().deleteAccount(values.password);
+      setConfirmDelete(false);
+      showToast('Your account and all its data were deleted.', 'success');
+      router.replace('/login');
+      return null;
+    } catch (e) {
+      return errorCode(e) === 'wrong_password' ? 'That password is not right' : e instanceof ApiException ? e.message : 'Something went wrong. Please try again.';
+    }
+  };
+
+  const startEmailVerification = async () => {
+    try {
+      const sent = await authRepository.requestEmailVerification();
+      if (sent) setVerifying(true);
+      else showToast('This server cannot send email yet, so the address cannot be verified.', 'error');
+    } catch (e) {
+      showToast(e instanceof ApiException ? e.message : 'Something went wrong. Please try again.', 'error');
+    }
+  };
+
+  const confirmEmail = async (values: Record<string, string>): Promise<string | null> => {
+    const code = (values.code ?? '').trim();
+    if (!/^\d{6}$/.test(code)) return 'Enter the 6-digit code from the email';
+    try {
+      useAuth.getState().setUser(await authRepository.verifyEmail(code));
+      setVerifying(false);
+      showToast('Email verified.', 'success');
+      return null;
+    } catch (e) {
+      return errorCode(e) === 'invalid_code' ? 'That code is wrong or has expired' : e instanceof ApiException ? e.message : 'Something went wrong. Please try again.';
+    }
+  };
+
+  /** Turning the lock on is proven with the lock itself, so nobody is locked out by a phone with no screen lock. */
+  const setAppLock = async (enabled: boolean) => {
+    if (!enabled) {
+      settings.setAppLockEnabled(false);
+      return;
+    }
+    const availability = await lockAvailability();
+    if (availability !== 'available') {
+      showToast(availability === 'not-enrolled' ? 'Set a screen lock or fingerprint in your phone settings first.' : 'This device has no screen lock to use.', 'error');
+      return;
+    }
+    if (await authenticate('Confirm it is you to turn on app lock')) settings.setAppLockEnabled(true);
   };
 
   return (
@@ -143,7 +229,32 @@ export default function ProfileScreen() {
           <Divider />
           <ToggleRow icon="file-pdf" title="Keep original PDFs" value={settings.keepOriginalPdfs} onChange={settings.setKeepOriginalPdfs} />
           <Divider />
-          <NavRow icon="export" title="Export my data" trailing={exporting ? '' : '›'} busy={exporting} onPress={exportData} />
+          <NavRow icon="user" title="People" trailing="›" onPress={() => router.push('/people')} />
+          <Divider />
+          <NavRow icon="auto-awesome" title="Teach Miravelt" trailing="›" onPress={() => router.push('/teach')} />
+          <Divider />
+          <NavRow icon="export" title="Export this period (CSV)" trailing={exporting ? '' : '›'} busy={exporting} onPress={exportData} />
+          <Divider />
+          <NavRow icon="folder-open" title="Export everything (JSON)" trailing={exportingAll ? '' : '›'} busy={exportingAll} onPress={exportEverything} />
+        </Card>
+
+        <SectionLabel>SECURITY & PRIVACY</SectionLabel>
+        <Card>
+          <NavRow icon="lock" title="Change password" trailing="›" onPress={() => setChangingPassword(true)} />
+          <Divider />
+          <ToggleRow icon="shield-check" title="App lock" subtitle="Fingerprint, face or PIN to open" value={settings.appLockEnabled} onChange={(v) => void setAppLock(v)} />
+          <Divider />
+          {user?.emailVerified ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12 }}>
+              <RowIcon name="envelope" />
+              <Text style={[typography.rowLabel14, { color: colors.text, flex: 1 }]}>Email verified</Text>
+              <Icon name="check-circle" size={16} color={colors.signal} />
+            </View>
+          ) : (
+            <NavRow icon="envelope" title="Verify your email" trailing="›" onPress={() => void startEmailVerification()} />
+          )}
+          <Divider />
+          <ToggleRow icon="pulse" title="Crash reports and usage" subtitle="Sent to Miravelt only. Never your transactions" value={settings.shareDiagnostics} onChange={settings.setShareDiagnostics} />
         </Card>
 
         <SectionLabel>APPEARANCE & ALERTS</SectionLabel>
@@ -186,23 +297,44 @@ export default function ProfileScreen() {
       </ScrollView>
 
       {editing ? <PromptDialog visible title="Edit name" initialValue={user?.fullName ?? ''} placeholder="Your name" onSubmit={saveName} onCancel={() => setEditing(false)} /> : null}
-      <Dialog
-        visible={confirmDelete}
-        title="Delete account?"
-        message="This signs you out and clears this device's local session. Full account and data deletion isn't available from the app yet - contact support to permanently delete your account."
-        onRequestClose={() => setConfirmDelete(false)}
-        actions={[
-          { label: 'Cancel', tone: 'muted', onPress: () => setConfirmDelete(false) },
-          {
-            label: 'Sign out',
-            tone: 'danger',
-            onPress: () => {
-              setConfirmDelete(false);
-              void signOut();
-            },
-          },
-        ]}
-      />
+      {confirmDelete ? (
+        <FormDialog
+          visible
+          danger
+          title="Delete account?"
+          message="This permanently deletes your account and everything in it: every statement, transaction, correction and note, on our servers and on this phone. It cannot be undone."
+          fields={[{ key: 'password', label: 'Your password', placeholder: 'Password', secure: true }]}
+          submitLabel="Delete everything"
+          onSubmit={deleteAccount}
+          onCancel={() => setConfirmDelete(false)}
+        />
+      ) : null}
+      {changingPassword ? (
+        <FormDialog
+          visible
+          title="Change password"
+          message="Other devices are signed out. This one stays signed in."
+          fields={[
+            { key: 'current', label: 'Current password', secure: true },
+            { key: 'next', label: 'New password', placeholder: 'At least 8 characters', secure: true },
+            { key: 'confirm', label: 'Repeat new password', secure: true },
+          ]}
+          submitLabel="Change"
+          onSubmit={changePassword}
+          onCancel={() => setChangingPassword(false)}
+        />
+      ) : null}
+      {verifying ? (
+        <FormDialog
+          visible
+          title="Verify your email"
+          message={`We sent a 6-digit code to ${user?.email ?? 'your email'}.`}
+          fields={[{ key: 'code', label: 'Code', placeholder: '123456', keyboardType: 'number-pad', maxLength: 6 }]}
+          submitLabel="Verify"
+          onSubmit={confirmEmail}
+          onCancel={() => setVerifying(false)}
+        />
+      ) : null}
     </Screen>
   );
 }

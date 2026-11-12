@@ -115,6 +115,18 @@ async def get_current_user(
             detail="Invalid access token",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    # A password change or reset ends every session, including access tokens
+    # already issued (they would otherwise live out their remaining minutes).
+    changed_at = user.password_changed_at
+    if changed_at is not None:
+        if changed_at.tzinfo is None:
+            changed_at = changed_at.replace(tzinfo=UTC)
+        if int(payload.get("iat", 0)) < int(changed_at.timestamp()):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid access token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
     if not user.is_active:
         # 403, not 401: the token itself is genuine and correctly identifies
         # a real user (authentication succeeded) - the account is just

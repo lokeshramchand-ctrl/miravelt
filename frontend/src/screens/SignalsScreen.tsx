@@ -11,7 +11,7 @@ import { SkeletonBox } from '../components/Skeleton';
 import { spendingBreakdown } from '../domain/types';
 import type { Insight, StatementAnalytics } from '../domain/types';
 import { useCurrentPeriod, useCurrentPeriodAnalytics, useCurrentPeriodInsights } from '../hooks/periods';
-import { formatCurrency, monthAbbr } from '../lib/format';
+import { formatCurrency, monthAbbr, zoned } from '../lib/format';
 import { colors } from '../theme/colors';
 import { radius, spacing } from '../theme/tokens';
 import { typography } from '../theme/typography';
@@ -52,7 +52,7 @@ export default function SignalsScreen() {
     <Screen dark>
       <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingTop: 6, paddingBottom: spacing.navClearance + insets.bottom }} showsVerticalScrollIndicator={false}>
         <Text style={[typography.footnote12, { color: colors.muted, marginTop: 14 }]}>
-          {period ? `What stood out · ${monthAbbr(period.periodStart.getMonth() + 1)}–${monthAbbr(period.periodEnd.getMonth() + 1)} ${period.periodEnd.getFullYear()}` : 'What stood out'}
+          {period ? `What stood out · ${monthAbbr(zoned(period.periodStart).month)}–${monthAbbr(zoned(period.periodEnd).month)} ${zoned(period.periodEnd).year}` : 'What stood out'}
         </Text>
         <Text style={[typography.pageTitle, { color: colors.text, marginTop: 4 }]}>Signals</Text>
         <View style={{ height: 18 }} />

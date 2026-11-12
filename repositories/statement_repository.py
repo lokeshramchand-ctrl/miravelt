@@ -61,28 +61,86 @@ class StatementRepository:
         doc["_id"] = str(doc["_id"])
         return Statement(**doc)
 
-    async def get_previous_completed(self, user_id: str, before_statement_id: str) -> Statement | None:
-        """The completed statement immediately before `before_statement_id`
-        for this user, by upload order - the comparison baseline for
-        insights/statement_insights.py's recurring-payment change detection.
-        Returns None for a user's first statement, which is the correct
-        "nothing to compare against yet" signal, not an error."""
-        try:
-            before_oid = ObjectId(before_statement_id)
-        except (InvalidId, TypeError):
-            return None
+    async def get_previous_completed(self, user_id: str, statement: Statement) -> Statement | None:
+        """The completed statement whose period starts most recently before
+        this one's - the comparison baseline for period-over-period insights.
+        Ordered by period, not upload time (F10): backfilling 2025 after
+        2026 must not compare 2025 against 2026. Returns None for a user's
+        earliest period."""
         doc = await db.statements.find_one(
             {
                 "user_id": user_id,
                 "processing_status": StatementStatus.COMPLETED.value,
-                "_id": {"$ne": before_oid},
+                "_id": {"$ne": ObjectId(statement.id)},
+                "period_start": {"$lt": _bsonify_dates(statement.period_start)},
             },
-            sort=[("uploaded_at", -1)],
+            sort=[("period_start", -1), ("uploaded_at", -1)],
         )
         if not doc:
             return None
         doc["_id"] = str(doc["_id"])
         return Statement(**doc)
+
+    async def find_duplicate(self, user_id: str, content_sha256: str) -> Statement | None:
+        """An earlier upload of byte-identical content that did not fail."""
+        doc = await db.statements.find_one({
+            "user_id": user_id,
+            "content_sha256": content_sha256,
+            "processing_status": {"$ne": StatementStatus.FAILED.value},
+        })
+        if not doc:
+            return None
+        doc["_id"] = str(doc["_id"])
+        return Statement(**doc)
+
+    async def list_completed_by_ids(self, user_id: str, statement_ids: list[str]) -> list[Statement]:
+        oids = []
+        for sid in statement_ids:
+            try:
+                oids.append(ObjectId(sid))
+            except (InvalidId, TypeError):
+                continue
+        items = []
+        async for doc in db.statements.find({
+            "_id": {"$in": oids}, "user_id": user_id, "processing_status": StatementStatus.COMPLETED.value,
+        }):
+            doc["_id"] = str(doc["_id"])
+            items.append(Statement(**doc))
+        return items
+
+    async def list_completed_for_user(self, user_id: str) -> list[Statement]:
+        items = []
+        async for doc in db.statements.find(
+            {"user_id": user_id, "processing_status": StatementStatus.COMPLETED.value}
+        ).sort("period_start", 1):
+            doc["_id"] = str(doc["_id"])
+            items.append(Statement(**doc))
+        return items
+
+    async def update_analytics(
+        self, statement_id: str, analytics: StatementAnalytics, insights: list[InsightItem]
+    ) -> None:
+        """A recompute after a correction or merge (A4). Bumps the revision
+        so clients holding a cached copy know it changed."""
+        await db.statements.update_one(
+            {"_id": ObjectId(statement_id)},
+            {
+                "$set": {
+                    "analytics": _bsonify_dates(analytics.model_dump()),
+                    "insights": [i.model_dump() for i in insights],
+                },
+                "$inc": {"analytics_revision": 1},
+            },
+        )
+
+    async def delete_for_user(self, user_id: str) -> int:
+        count = 0
+        async for doc in db.statements.find({"user_id": user_id}, {"gridfs_file_id": 1}):
+            if doc.get("gridfs_file_id"):
+                await self.delete_pdf(doc["gridfs_file_id"])
+            count += 1
+        await db.statements.delete_many({"user_id": user_id})
+        return count
 
     async def mark_first_viewed(self, statement_id: str) -> bool:
         """Idempotent: the `first_viewed_at: None` filter means only the
@@ -155,6 +213,8 @@ class StatementRepository:
         analytics: StatementAnalytics,
         insights: list[InsightItem],
         processing_duration_ms: int,
+        record_line_count: int | None = None,
+        unparsed_count: int | None = None,
     ) -> None:
         await db.statements.update_one(
             {"_id": ObjectId(statement_id)},
@@ -169,6 +229,8 @@ class StatementRepository:
                     "insights": [i.model_dump() for i in insights],
                     "processing_completed_at": datetime.now(UTC),
                     "processing_duration_ms": processing_duration_ms,
+                    "record_line_count": record_line_count,
+                    "unparsed_count": unparsed_count,
                 }
             },
         )

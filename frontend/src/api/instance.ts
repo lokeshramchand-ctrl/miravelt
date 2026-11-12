@@ -3,10 +3,12 @@ import {
   createAnalyticsRepository,
   createAppUpdateRepository,
   createAuthRepository,
+  createEventsRepository,
   createExplainRepository,
   createFeedbackRepository,
   createJobsRepository,
   createStatementsRepository,
+  createTimelineRepository,
 } from './repositories';
 import { tokenStorage } from './tokenStorage';
 import { effectiveApiBaseUrl } from '../state/settings';
@@ -38,3 +40,5 @@ export const feedbackRepository = createFeedbackRepository(api);
 export const explainRepository = createExplainRepository(api);
 export const analyticsRepository = createAnalyticsRepository(api);
 export const appUpdateRepository = createAppUpdateRepository(api);
+export const timelineRepository = createTimelineRepository(api);
+export const eventsRepository = createEventsRepository(api);

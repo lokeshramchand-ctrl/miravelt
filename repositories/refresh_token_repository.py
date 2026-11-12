@@ -51,7 +51,30 @@ class RefreshTokenRepository:
         now = datetime.now(UTC)
         return await db.refresh_tokens.find_one_and_update(
             {"token_hash": token_hash, "revoked_at": None, "expires_at": {"$gt": now}},
-            {"$set": {"revoked_at": now}},
+            {"$set": {"revoked_at": now, "rotated_at": now}},
+        )
+
+    async def link_rotation(self, parent_hash: str, child_hash: str) -> None:
+        """Remembers which token replaced `parent_hash`, for the grace window."""
+        await db.refresh_tokens.update_one({"token_hash": parent_hash}, {"$set": {"rotated_to": child_hash}})
+
+    async def reissue_within_grace(self, stored: dict[str, Any], grace_seconds: int) -> dict[str, Any] | None:
+        """For a token that was *rotated* (not logged out) less than
+        `grace_seconds` ago and whose replacement has not been used yet:
+        atomically revoke that unused replacement and return it, so the
+        caller can issue a fresh pair. None otherwise - the caller then
+        treats the reuse as theft."""
+        rotated_at = stored.get("rotated_at")
+        child_hash = stored.get("rotated_to")
+        if grace_seconds <= 0 or rotated_at is None or child_hash is None:
+            return None
+        if rotated_at.tzinfo is None:
+            rotated_at = rotated_at.replace(tzinfo=UTC)
+        if (datetime.now(UTC) - rotated_at).total_seconds() > grace_seconds:
+            return None
+        return await db.refresh_tokens.find_one_and_update(
+            {"token_hash": child_hash, "revoked_at": None},
+            {"$set": {"revoked_at": datetime.now(UTC), "revoked_reason": "superseded_in_grace"}},
         )
 
     async def revoke_all_for_user(self, user_id: str) -> None:

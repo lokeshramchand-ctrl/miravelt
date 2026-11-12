@@ -78,6 +78,18 @@ class MongoDB:
         cls.statements = cls.db.get_collection("statements")
         cls.jobs = cls.db.get_collection("jobs")
         cls.app_releases = cls.db.get_collection("app_releases")
+        # Learning (PROJECT_AUDIT.md B1/B5) - repositories/memory_repository.py.
+        cls.user_merchant_memory = cls.db.get_collection("user_merchant_memory")
+        cls.community_alias_votes = cls.db.get_collection("community_alias_votes")
+        # Extracted statement text, held only until its job finishes, so the
+        # Celery message carries ids instead of a whole statement (F15d/H-6).
+        cls.statement_texts = cls.db.get_collection("statement_texts")
+        # Expo push tokens per user/device (D1) - repositories/push_repository.py.
+        cls.push_tokens = cls.db.get_collection("push_tokens")
+        # One-time password-reset codes (D3) - routers/account.py.
+        cls.password_resets = cls.db.get_collection("password_resets")
+        # Product analytics events (F26) - routers/events.py.
+        cls.events = cls.db.get_collection("events")
 
         # GridFS: stores the original uploaded PDF (repositories/statement_repository.py).
         # Reuses this same Mongo connection - no new infrastructure - see
@@ -118,7 +130,11 @@ class MongoDB:
             await cls.merchant_profiles.create_index("canonical_name", unique=True, background=True)
             await cls.merchant_profiles.create_index("last_seen", background=True)
             await cls.merchants.create_index("aliases", background=True)
-            await cls.behavior_patterns.create_index("merchant_name", unique=True, background=True)
+            # Per-user profiles (A2). database/migrations.py drops the old
+            # global unique index on merchant_name before this runs.
+            await cls.behavior_patterns.create_index(
+                [("user_id", 1), ("merchant_name", 1)], unique=True, background=True
+            )
             await cls.transactions.create_index([("user_id", 1), ("timestamp", -1)], background=True)
             await cls.transactions.create_index("merchant", background=True)
             await cls.feedback.create_index("merchant_name", background=True)
@@ -156,6 +172,28 @@ class MongoDB:
                 partialFilterExpression={"reference_number": {"$exists": True}},
             )
             await cls.transactions.create_index("statement_id", background=True)
+            await cls.transactions.create_index([("source_statement_ids", 1), ("timestamp", -1)], background=True)
+            await cls.transactions.create_index([("user_id", 1), ("merchant", 1)], background=True)
+            await cls.transactions.create_index([("user_id", 1), ("counterparty_raw", 1)], background=True)
+            await cls.statements.create_index([("user_id", 1), ("content_sha256", 1)], background=True)
+            await cls.statements.create_index([("user_id", 1), ("period_start", -1)], background=True)
+            await cls.user_merchant_memory.create_index(
+                [("user_id", 1), ("payee_key", 1)], unique=True, background=True
+            )
+            await cls.community_alias_votes.create_index(
+                [("payee_key", 1), ("user_id", 1)], unique=True, background=True
+            )
+            await cls.community_alias_votes.create_index("user_id", background=True)
+            await cls.statement_texts.create_index("statement_id", unique=True, background=True)
+            # Safety net: text whose job never finished is gone within a day.
+            await cls.statement_texts.create_index("created_at", expireAfterSeconds=86400, background=True)
+            await cls.push_tokens.create_index("token", unique=True, background=True)
+            await cls.push_tokens.create_index("user_id", background=True)
+            await cls.password_resets.create_index("user_id", background=True)
+            await cls.password_resets.create_index("expires_at", expireAfterSeconds=0, background=True)
+            await cls.events.create_index([("name", 1), ("created_at", -1)], background=True)
+            await cls.events.create_index("user_id", background=True)
+            await cls.events.create_index("created_at", expireAfterSeconds=180 * 86400, background=True)
             await cls.statements.create_index("user_id", background=True)
             await cls.statements.create_index([("user_id", 1), ("processing_status", 1)], background=True)
             await cls.jobs.create_index("user_id", background=True)

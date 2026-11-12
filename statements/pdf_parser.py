@@ -1,10 +1,12 @@
 import io
 import logging
 import re
-from datetime import UTC, date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime
 
 import pdfplumber
 import pypdf
+
+from core.timezone import APP_TZ
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +14,7 @@ logger = logging.getLogger(__name__)
 # offset - the phone number / ₹ currency / HDFC-style bank naming are all
 # India-locale signals, so IST is assumed and converted to UTC for storage
 # (every other timestamp in this app is UTC-aware, see models/schemas.py).
-IST = timezone(timedelta(hours=5, minutes=30))
+IST = APP_TZ
 
 
 class CorruptedPDFError(Exception):
@@ -48,7 +50,14 @@ _RECORD_RE = re.compile(
     r"(?:Paid by|Paid to) (?P<bank_line>.+)"
 )
 _PERIOD_RE = re.compile(r"(\d{2} \w+ \d{4})\s*-\s*(\d{2} \w+ \d{4})")
-_TOTALS_RE = re.compile(r"₹([\d,]+\.?\d*)\s*₹([\d,]+\.?\d*)")
+# The Sent/Received pair printed right after the period on page 1:
+#   01 January 2026 - 30 June 2026 ₹80,634.04 ₹28,975
+# Anchored to the period so the first two ₹ amounts anywhere in the text (a
+# transaction line, if the header ever moves) can't be read as the totals (F9).
+_TOTALS_RE = re.compile(r"\d{2} \w+ \d{4}\s*-\s*\d{2} \w+ \d{4}\s+₹([\d,]+\.?\d*)\s+₹([\d,]+\.?\d*)")
+# The first line of every record, whatever shape the rest of it has. Counting
+# these against parsed records is how a silently skipped record is noticed (A6).
+_RECORD_START_RE = re.compile(r"^\d{2} \w{3}, \d{4} (?:Paid to|Received from) ", re.MULTILINE)
 _BANK_LINE_RE = re.compile(r"^(?P<bank>.*\D)\s*(?P<last4>\d{2,6})$")
 
 # The literal wordmark "Google Pay" never appears in the extracted text layer
@@ -153,6 +162,12 @@ class GooglePayStatementParser:
                 )
             )
         return parsed
+
+    def count_record_lines(self, full_text: str) -> int:
+        """Lines that begin a transaction record. parse_transactions should
+        return exactly this many; the difference is stored on the statement
+        as `unparsed_count` and shown to the user."""
+        return len(_RECORD_START_RE.findall(full_text))
 
     @staticmethod
     def _parse_amount(raw: str) -> float:

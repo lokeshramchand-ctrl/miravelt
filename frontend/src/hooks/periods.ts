@@ -34,13 +34,36 @@ export function pickCurrentPeriod(periods: Statement[] | undefined, selectedId: 
   return periods.find((p) => p.processingStatus === 'COMPLETED') ?? periods[0];
 }
 
-/** The completed period immediately before `current`, chronologically - for real "vs previous period" deltas. */
+/**
+ * The completed period that starts most recently before `current` - for real
+ * "vs previous period" deltas. Ordered by the period's own dates, not upload
+ * order (F10): backfilling last year after this year must not compare them
+ * the wrong way round. Same rule as the backend's get_previous_completed.
+ */
 export function pickPreviousPeriod(periods: Statement[] | undefined, current: Statement | null): Statement | null {
   if (!periods || !current) return null;
-  const completed = periods.filter((p) => p.processingStatus === 'COMPLETED');
-  const index = completed.findIndex((p) => p.id === current.id);
-  if (index === -1 || index + 1 >= completed.length) return null;
-  return completed[index + 1];
+  let best: Statement | null = null;
+  for (const p of periods) {
+    if (p.id === current.id || p.processingStatus !== 'COMPLETED') continue;
+    if (p.periodStart.getTime() >= current.periodStart.getTime()) continue;
+    if (!best || p.periodStart.getTime() > best.periodStart.getTime()) best = p;
+  }
+  return best;
+}
+
+/** Everything that shows a period's numbers - refetched after a correction recomputes them (F3). */
+export function invalidatePeriodData(): Promise<unknown> {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['periods'] }),
+    queryClient.invalidateQueries({ queryKey: ['analytics'] }),
+    queryClient.invalidateQueries({ queryKey: ['insights'] }),
+    queryClient.invalidateQueries({ queryKey: ['activity'] }),
+    queryClient.invalidateQueries({ queryKey: ['category'] }),
+    queryClient.invalidateQueries({ queryKey: ['drilldown'] }),
+    queryClient.invalidateQueries({ queryKey: ['patterns'] }),
+    queryClient.invalidateQueries({ queryKey: ['people'] }),
+    queryClient.invalidateQueries({ queryKey: ['teach'] }),
+  ]);
 }
 
 export function useCurrentPeriod(): Statement | null {
@@ -61,8 +84,11 @@ export function useInProgressPeriod(): Statement | null {
   return useMemo(() => periods?.find((p) => p.processingStatus === 'PENDING' || p.processingStatus === 'PROCESSING') ?? null, [periods]);
 }
 
+// Keyed on the period's analytics revision as well: the backend bumps it on
+// every recompute (a correction, an overlapping upload), so a cached or
+// persisted copy of older numbers is never shown for a newer revision.
 const analyticsQuery = (period: Statement | null) => ({
-  queryKey: ['analytics', period?.id ?? null],
+  queryKey: ['analytics', period?.id ?? null, period?.analyticsRevision ?? 0],
   enabled: period != null && period.processingStatus === 'COMPLETED',
   queryFn: (): Promise<StatementAnalytics> => statementsRepository.analytics(period!.id),
 });
@@ -78,7 +104,7 @@ export function usePreviousPeriodAnalytics() {
 export function useCurrentPeriodInsights() {
   const period = useCurrentPeriod();
   return useQuery({
-    queryKey: ['insights', period?.id ?? null],
+    queryKey: ['insights', period?.id ?? null, period?.analyticsRevision ?? 0],
     enabled: period != null && period.processingStatus === 'COMPLETED',
     queryFn: async (): Promise<Insight[]> => (await statementsRepository.insights(period!.id)).insights,
   });

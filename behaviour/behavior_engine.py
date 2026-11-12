@@ -1,3 +1,5 @@
+import logging
+
 from database.mongo import db
 from features.amount_features import amount_extractor
 from features.frequency_features import frequency_extractor
@@ -5,15 +7,24 @@ from features.periodicity import periodicity_extractor
 from features.temporal_features import temporal_extractor
 from models.schemas import BehaviorPattern
 
+logger = logging.getLogger(__name__)
+
 
 class BehaviorEngine:
-    async def profile_merchant_behavior(self, merchant_name: str) -> BehaviorPattern:
+    async def profile_merchant_behavior(self, user_id: str, merchant_name: str) -> BehaviorPattern:
         """
-        Aggregates all historical entries for a specific merchant name
-        to isolate and model its underlying behavioral signature.
+        Models one user's behaviour toward one merchant from that user's own
+        payments. Never pooled across users (PROJECT_AUDIT.md A2/F5): pooled
+        timestamps make a monthly payee look like a daily burst as soon as a
+        few users pay it on different days, and a pooled profile of a
+        private payee is visible to everyone who pays the same name.
         """
-        # Fetch all transactions matching this target entity
-        cursor = db.transactions.find({"merchant": merchant_name})
+        cursor = db.transactions.find({
+            "user_id": user_id,
+            "merchant": merchant_name,
+            "transaction_type": "DEBIT",
+            "source_statement_ids.0": {"$exists": True},
+        })
         transactions = [doc async for doc in cursor]
 
         if not transactions:
@@ -30,6 +41,7 @@ class BehaviorEngine:
         # Combine into complete Behavior Pattern schema
         pattern = BehaviorPattern(
             merchant_name=merchant_name,
+            user_id=user_id,
             avg_amount=stats["avg_amount"],
             median_amount=stats["median_amount"],
             variance=stats["variance"],
@@ -45,11 +57,29 @@ class BehaviorEngine:
 
         # Persist profile or update existing record
         await db.behavior_patterns.update_one(
-            {"merchant_name": merchant_name},
+            {"user_id": user_id, "merchant_name": merchant_name},
             {"$set": pattern.model_dump(by_alias=True, exclude={"id"})},
             upsert=True
         )
 
         return pattern
+
+    async def profile_user(self, user_id: str, merchant_names: list[str] | None = None) -> int:
+        """Profiles every (or the given) merchant this user has paid.
+        One merchant's failure does not stop the rest."""
+        if merchant_names is None:
+            merchant_names = [
+                m for m in await db.transactions.distinct(
+                    "merchant", {"user_id": user_id, "transaction_type": "DEBIT"}
+                ) if m and m != "Unknown"
+            ]
+        done = 0
+        for name in merchant_names:
+            try:
+                await self.profile_merchant_behavior(user_id, name)
+                done += 1
+            except Exception:
+                logger.warning("Behaviour profiling failed for one merchant - continuing.", exc_info=True)
+        return done
 
 behavior_engine = BehaviorEngine()

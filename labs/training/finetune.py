@@ -9,7 +9,7 @@ from sklearn.metrics import f1_score, roc_auc_score
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, EvalPrediction, Trainer, TrainingArguments
 
 # Reuse the Expected Calibration Error (ECE) metric you defined in Phase 9
-from evaluation.metrics import evaluator
+from labs.evaluation.metrics import evaluator
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

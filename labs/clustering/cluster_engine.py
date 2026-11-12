@@ -4,9 +4,9 @@ from typing import Any
 import numpy as np
 from sklearn.metrics import davies_bouldin_score, silhouette_score
 
-from clustering.hdbscan_cluster import hdbscan_clusterer
-from clustering.umap_projection import umap_projector
 from database.mongo import db
+from labs.clustering.hdbscan_cluster import hdbscan_clusterer
+from labs.clustering.umap_projection import umap_projector
 from milvus.insert_vectors import vector_store
 
 logger = logging.getLogger(__name__)

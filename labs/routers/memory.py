@@ -3,9 +3,9 @@ from pydantic import BaseModel, Field
 
 from core.jwt_auth import get_current_user
 from core.security import validate_admin_key
-from memory.memory_manager import memory_manager
+from labs.memory.memory_manager import memory_manager
+from labs.profile_repository import profile_repo
 from models.schemas import MerchantProfile
-from repositories.profile_repository import profile_repo
 
 router = APIRouter(prefix="/memory", tags=["Memory Engine"], dependencies=[Depends(get_current_user)])
 

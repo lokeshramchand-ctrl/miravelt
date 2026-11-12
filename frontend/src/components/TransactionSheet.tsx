@@ -1,10 +1,12 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { explainRepository, feedbackRepository } from '../api/instance';
 import type { ExplainOutcome, Transaction } from '../domain/types';
-import { useCurrentPeriod } from '../hooks/periods';
+import { invalidatePeriodData, useCurrentPeriod } from '../hooks/periods';
+import { errorMessage } from '../state/auth';
 import { formatCurrency, formatFullTimestamp, formatPeriodRange } from '../lib/format';
-import { TRANSACTION_CATEGORIES, categoryExplanation, explainTransactionText } from '../lib/transactionText';
+import { TRANSACTION_CATEGORIES, canRecategorize, categoryExplanation } from '../lib/transactionText';
 import { categoryColor, colors } from '../theme/colors';
 import { radius } from '../theme/tokens';
 import { typography } from '../theme/typography';
@@ -21,12 +23,12 @@ export function TransactionSheet({ transaction, onClose }: { transaction: Transa
   if (transaction && transaction !== shown) setShown(transaction);
   return (
     <MiraveltSheet visible={transaction != null} onClose={onClose} dark={false}>
-      {shown ? <TransactionSheetBody key={shown.id} transaction={shown} /> : null}
+      {shown ? <TransactionSheetBody key={shown.id} transaction={shown} onClose={onClose} /> : null}
     </MiraveltSheet>
   );
 }
 
-function TransactionSheetBody({ transaction: txn }: { transaction: Transaction }) {
+function TransactionSheetBody({ transaction: txn, onClose }: { transaction: Transaction; onClose: () => void }) {
   const period = useCurrentPeriod();
   const [submitting, setSubmitting] = useState(false);
   const [feedbackResult, setFeedbackResult] = useState<string | null>(null);
@@ -40,7 +42,8 @@ function TransactionSheetBody({ transaction: txn }: { transaction: Transaction }
     setExplainLoading(true);
     setExplainSince(Date.now());
     try {
-      setExplainOutcome(await explainRepository.explain(explainTransactionText(txn)));
+      // By id: the backend explains this row from the user's own history with the payee (F12).
+      setExplainOutcome(await explainRepository.explain(txn.id));
     } catch {
       setExplainOutcome({ available: false, unavailableReason: "Couldn't reach the explanation service." });
     } finally {
@@ -53,13 +56,20 @@ function TransactionSheetBody({ transaction: txn }: { transaction: Transaction }
     try {
       const recorded = await feedbackRepository.submit({
         transactionId: txn.id,
-        originalPrediction: txn.category ?? 'Unknown',
+        originalPrediction: txn.category ?? 'Uncategorized',
         correctedCategory,
         confidence: 1.0,
       });
-      setFeedbackResult(recorded ? "Thanks - your correction trains Miravelt's merchant memory." : 'Thanks for confirming.');
-    } catch {
-      setFeedbackResult("Couldn't record your feedback. Please try again.");
+      if (recorded) {
+        // The backend has already recomputed every affected period; refetch so
+        // Overview, Activity and the drill-downs all show it (F3).
+        await invalidatePeriodData();
+        setFeedbackResult(`Done - every ${txn.merchant ?? 'payment like this'} payment is now ${correctedCategory}, and future statements will remember it.`);
+      } else {
+        setFeedbackResult('Thanks for confirming.');
+      }
+    } catch (e) {
+      setFeedbackResult(errorMessage(e));
     } finally {
       setSubmitting(false);
     }
@@ -123,9 +133,11 @@ function TransactionSheetBody({ transaction: txn }: { transaction: Transaction }
           trailing={
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={[typography.rowLabel14, { color: colors.text }]}>{txn.category ?? 'Uncategorized'}</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="Edit category" disabled={submitting} onPress={() => setPicking(true)} hitSlop={8} style={{ marginLeft: 8 }}>
-                <Text style={[typography.buttonLabel12, { color: colors.signalText }]}>EDIT</Text>
-              </Pressable>
+              {canRecategorize(txn) ? (
+                <Pressable accessibilityRole="button" accessibilityLabel="Edit category" disabled={submitting} onPress={() => setPicking(true)} hitSlop={8} style={{ marginLeft: 8 }}>
+                  <Text style={[typography.buttonLabel12, { color: colors.signalText }]}>EDIT</Text>
+                </Pressable>
+              ) : null}
             </View>
           }
         />
@@ -145,24 +157,38 @@ function TransactionSheetBody({ transaction: txn }: { transaction: Transaction }
       </View>
 
       <View style={{ marginTop: 12 }}>
-        <ExplainPanel loading={explainLoading} loadingSince={explainSince} outcome={explainOutcome} onRequest={txn.transactionType === 'CREDIT' ? undefined : requestExplanation} />
+        <ExplainPanel loading={explainLoading} loadingSince={explainSince} outcome={explainOutcome} onRequest={requestExplanation} />
       </View>
 
+      {txn.merchant && txn.transactionType === 'DEBIT' ? (
+        <Pressable
+          accessibilityRole="link"
+          hitSlop={8}
+          onPress={() => {
+            onClose();
+            router.push({ pathname: '/merchant/[name]', params: { name: txn.merchant! } });
+          }}
+          style={{ alignSelf: 'flex-start', marginTop: 12 }}
+        >
+          <Text style={[typography.buttonLabel12, { color: colors.signalText }]}>See every payment to {txn.merchant}</Text>
+        </Pressable>
+      ) : null}
+
       <View style={{ marginTop: 18 }}>
-        {feedbackResult ? (
+        {!canRecategorize(txn) ? null : feedbackResult ? (
           <Text style={[typography.footnote12, { color: colors.signalText, textAlign: 'center' }]}>{feedbackResult}</Text>
         ) : (
           <>
             <View style={{ flexDirection: 'row' }}>
               <View style={{ flex: 1 }}>
-                <SecondaryPillButton label="Looks right" foreground={colors.text} borderColor={colors.border} onPress={submitting ? undefined : () => void submitFeedback(txn.category ?? 'Unknown')} style={{ paddingVertical: 12 }} />
+                <SecondaryPillButton label="Looks right" foreground={colors.text} borderColor={colors.border} onPress={submitting ? undefined : () => void submitFeedback(txn.category ?? 'Uncategorized')} style={{ paddingVertical: 12 }} />
               </View>
               <View style={{ width: 10 }} />
               <View style={{ flex: 1 }}>
                 <SecondaryPillButton label="Wrong category" foreground={colors.text} borderColor={colors.border} onPress={submitting ? undefined : () => setPicking(true)} style={{ paddingVertical: 12 }} />
               </View>
             </View>
-            <Text style={[typography.microLabel11, { color: colors.faint, textAlign: 'center', marginTop: 12 }]}>Your correction trains Miravelt's merchant memory.</Text>
+            <Text style={[typography.microLabel11, { color: colors.faint, textAlign: 'center', marginTop: 12 }]}>A correction applies to every payment to this payee and is remembered for future statements.</Text>
           </>
         )}
       </View>
@@ -190,10 +216,10 @@ function DetailRow({ label, value, trailing, mono = false, last = false }: { lab
  */
 function ExplainPanel({ loading, loadingSince, outcome, onRequest }: { loading: boolean; loadingSince: number | null; outcome: ExplainOutcome | null; onRequest?: () => void }) {
   if (!outcome) {
-    if (loading) return <ThinkingIndicator label="Checking similar transactions" since={loadingSince} />;
+    if (loading) return <ThinkingIndicator label="Reading your history with this payee" since={loadingSince} />;
     return (
       <Pressable accessibilityRole="button" disabled={!onRequest} onPress={onRequest} hitSlop={8} style={{ alignSelf: 'flex-start', opacity: onRequest ? 1 : 0.4 }}>
-        <Text style={[typography.buttonLabel12, { color: colors.signalText }]}>Ask for a deeper explanation</Text>
+        <Text style={[typography.buttonLabel12, { color: colors.signalText }]}>How does this compare with my history?</Text>
       </Pressable>
     );
   }
@@ -207,7 +233,9 @@ function ExplainPanel({ loading, loadingSince, outcome, onRequest }: { loading: 
   return (
     <FadeInUp distance={8} style={{ padding: 14, backgroundColor: withAlpha(colors.border, 0.35), borderRadius: 14 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Text style={[typography.microLabelTracked105, { color: colors.faint }]}>GROUNDED EXPLANATION</Text>
+        {/* Either way it comes only from this user's own rows; "generated" means the
+            model phrased it and the backend checked every figure in it. */}
+        <Text style={[typography.microLabelTracked105, { color: colors.faint }]}>{outcome.generated ? 'EXPLAINED FROM YOUR HISTORY' : 'FROM YOUR HISTORY'}</Text>
         <View style={{ flex: 1 }} />
         {outcome.confidence ? <Text style={[typography.microLabel11, { color: colors.faint }]}>{outcome.confidence}</Text> : null}
       </View>

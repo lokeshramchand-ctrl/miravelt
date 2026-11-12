@@ -12,7 +12,7 @@ import { Screen } from '../components/Screen';
 import { SkeletonListRow } from '../components/Skeleton';
 import type { Statement, Transaction } from '../domain/types';
 import { useCurrentPeriod, useCurrentPeriodAnalytics, usePreviousPeriodAnalytics } from '../hooks/periods';
-import { formatCompactCurrency, formatCurrency, formatPeriodRange, monthAbbr } from '../lib/format';
+import { formatCompactCurrency, formatCurrency, formatPeriodRange, monthAbbr, zoned } from '../lib/format';
 import { categoryColor, colors } from '../theme/colors';
 import { radius, spacing } from '../theme/tokens';
 import { typography } from '../theme/typography';
@@ -42,7 +42,8 @@ export function aggregateCategory(transactions: Transaction[], period: Pick<Stat
     const name = txn.merchant ?? 'Unknown merchant';
     const existing = merchantTotals.get(name);
     merchantTotals.set(name, { count: (existing?.count ?? 0) + 1, total: (existing?.total ?? 0) + txn.amount });
-    const key = `${txn.timestamp.getFullYear()}-${txn.timestamp.getMonth() + 1}`;
+    const z = zoned(txn.timestamp);
+    const key = `${z.year}-${z.month}`;
     monthlyTotals.set(key, (monthlyTotals.get(key) ?? 0) + txn.amount);
   }
 
@@ -51,10 +52,8 @@ export function aggregateCategory(transactions: Transaction[], period: Pick<Stat
     .sort((a, b) => b.total - a.total);
 
   const monthlyBuckets: MonthlyBucket[] = [];
-  let year = period.periodStart.getFullYear();
-  let month = period.periodStart.getMonth() + 1;
-  const endYear = period.periodEnd.getFullYear();
-  const endMonth = period.periodEnd.getMonth() + 1;
+  let { year, month } = zoned(period.periodStart);
+  const { year: endYear, month: endMonth } = zoned(period.periodEnd);
   while (year < endYear || (year === endYear && month <= endMonth)) {
     monthlyBuckets.push({ year, month, total: monthlyTotals.get(`${year}-${month}`) ?? 0 });
     month += 1;

@@ -81,3 +81,20 @@ describe('revealChunks', () => {
     expect(revealChunks('   ').join('')).toBe('   ');
   });
 });
+
+describe('the app clock is IST, whatever the phone zone (F7)', () => {
+  const { zoned, formatTime12h, toDateOnly, parseApiDate, zonedDayStart } = require('../src/lib/format');
+  it('reads a UTC instant as Indian wall-clock time', () => {
+    // 20:30 UTC on 4 Jan is 02:00 IST on 5 Jan - the statement prints the 5th.
+    const t = new Date(Date.UTC(2026, 0, 4, 20, 30));
+    expect(zoned(t)).toMatchObject({ year: 2026, month: 1, day: 5, hours: 2, minutes: 0 });
+    expect(formatTime12h(t)).toBe('02:00 AM');
+    expect(toDateOnly(t)).toBe('2026-01-05');
+    expect(zonedDayStart(t).toISOString()).toBe('2026-01-04T18:30:00.000Z');
+  });
+  it('treats a bare API date as that IST calendar day', () => {
+    const d = parseApiDate('2026-06-30');
+    expect(toDateOnly(d)).toBe('2026-06-30');
+    expect(d.toISOString()).toBe('2026-06-29T18:30:00.000Z');
+  });
+});

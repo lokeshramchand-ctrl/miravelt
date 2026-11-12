@@ -4,7 +4,9 @@ from typing import Any
 
 import httpx
 
+from core.llm_safety import llm_safety_validator
 from core.ollama_client import LLM_MODEL, get_ollama_host
+from insights.fact_check import FactChecker
 from models.schemas import InsightItem, InsightSeverity, StatementAnalytics
 
 logger = logging.getLogger(__name__)
@@ -44,18 +46,36 @@ RULES:
 5. Output ONLY the JSON array - no surrounding prose, no markdown fences.
 """
 
+    @staticmethod
+    def build_context(
+        analytics: StatementAnalytics, previous_analytics: StatementAnalytics | None = None
+    ) -> dict[str, Any]:
+        """What the model sees, and what its output is checked against.
+        Payee names are third-party text printed on the statement - sanitised
+        exactly as /v1/explain sanitises its input (F11)."""
+        # daily_trend is one row per day - by far the bulk of the payload, and
+        # nothing an insight sentence needs, so it only slows a CPU-bound model.
+        exclude = {"generated_at", "daily_trend"}
+
+        def clean(a: StatementAnalytics) -> dict[str, Any]:
+            data = a.model_dump(exclude=exclude, mode="json")
+            for key in ("top_merchants", "recurring_payments"):
+                for row in data.get(key, []):
+                    row["merchant"] = llm_safety_validator.sanitize_prompt_input(row["merchant"], max_length=80)
+            return data
+
+        context: dict[str, Any] = {"current_statement": clean(analytics)}
+        if previous_analytics is not None:
+            context["previous_statement"] = clean(previous_analytics)
+        return context
+
     async def generate(
         self,
         analytics: StatementAnalytics,
         previous_analytics: StatementAnalytics | None = None,
+        signals: list[InsightItem] | None = None,
     ) -> list[InsightItem]:
-        # daily_trend is one row per day - by far the bulk of the payload, and
-        # nothing an insight sentence needs, so it only slows a CPU-bound model.
-        exclude = {"generated_at", "daily_trend"}
-        context: dict[str, Any] = {"current_statement": analytics.model_dump(exclude=exclude)}
-        if previous_analytics is not None:
-            context["previous_statement"] = previous_analytics.model_dump(exclude=exclude)
-
+        context = self.build_context(analytics, previous_analytics)
         prompt = f"CONTEXT:\n{json.dumps(context, default=str)}\n\nGenerate the insights JSON array now."
 
         payload = {
@@ -66,6 +86,7 @@ RULES:
             "format": "json",
         }
 
+        llm_items: list[InsightItem] = []
         try:
             async with httpx.AsyncClient() as client:
                 api_url = f"{get_ollama_host()}/api/generate"
@@ -79,18 +100,50 @@ RULES:
         except Exception:
             # Insights are additive value on top of already-persisted
             # analytics - an Ollama/network hiccup here is never a reason to
-            # fail the whole statement-processing job (see
-            # statements/statement_service.py).
+            # fail the whole statement-processing job.
             logger.warning("Statement insight generation failed - using computed insights instead.", exc_info=True)
-            base_insights = self._computed_insights(analytics)
         else:
-            base_insights = self._to_insight_items(raw_items) or self._computed_insights(analytics)
+            llm_items = self.verified(self._to_insight_items(raw_items), context)
 
-        # Always appended, regardless of whether the LLM or the deterministic
-        # fallback produced base_insights above: this is a direct diff of two
-        # already-persisted numbers, never something an LLM invents, so the
-        # grounding guarantee holds even when base_insights came from Ollama.
-        return base_insights + self._recurring_change_insights(previous_analytics, analytics)
+        return self.assemble(analytics, previous_analytics, llm_items, signals or [])
+
+    def assemble(
+        self,
+        analytics: StatementAnalytics,
+        previous_analytics: StatementAnalytics | None,
+        llm_items: list[InsightItem],
+        signals: list[InsightItem],
+    ) -> list[InsightItem]:
+        """Generated sentences that passed the fact-check, or the computed
+        observations when none did; then the always-computed diffs and signals."""
+        base = llm_items or self._computed_insights(analytics)
+        return base + self._recurring_change_insights(previous_analytics, analytics) + signals
+
+    def refresh(
+        self,
+        existing: list[InsightItem],
+        analytics: StatementAnalytics,
+        previous_analytics: StatementAnalytics | None,
+        signals: list[InsightItem],
+    ) -> list[InsightItem]:
+        """Recompute after a correction (A4) without calling the model again:
+        generated sentences are re-checked against the new numbers and kept
+        only if they still hold; everything computed is recomputed."""
+        context = self.build_context(analytics, previous_analytics)
+        kept = self.verified([i for i in existing if i.origin == "llm"], context)
+        return self.assemble(analytics, previous_analytics, kept, signals)
+
+    @staticmethod
+    def verified(items: list[InsightItem], context: dict[str, Any]) -> list[InsightItem]:
+        checker = FactChecker(context)
+        admitted = []
+        for item in items:
+            ok, reason = checker.check(item.message)
+            if ok:
+                admitted.append(item.model_copy(update={"origin": "llm"}))
+            else:
+                logger.info("Dropped a generated insight that failed the fact-check: %s", reason)
+        return admitted
 
     @staticmethod
     def _recurring_change_insights(
@@ -106,24 +159,31 @@ RULES:
         if previous is None:
             return []
 
+        def amount(item) -> float:
+            # The per-payment amount when known; older stored analytics only
+            # have the monthly estimate.
+            return item.typical_amount or item.estimated_monthly_cost
+
         previous_by_merchant = {r.merchant: r for r in previous.recurring_payments}
         items: list[InsightItem] = []
         for current_item in current.recurring_payments:
             prior = previous_by_merchant.get(current_item.merchant)
             if prior is None:
+                cadence = f" {current_item.cadence}" if current_item.typical_amount else ""
                 items.append(InsightItem(
                     type="new_recurring",
                     message=(
-                        f"{current_item.merchant} looks like a new recurring payment: "
-                        f"₹{current_item.estimated_monthly_cost:,.0f}."
+                        f"{current_item.merchant} looks like a new{cadence} recurring payment: "
+                        f"₹{amount(current_item):,.0f}."
                     ),
                     severity=InsightSeverity.INFO,
                 ))
                 continue
 
-            if prior.estimated_monthly_cost <= 0:
+            before, now = amount(prior), amount(current_item)
+            if before <= 0:
                 continue
-            change = (current_item.estimated_monthly_cost - prior.estimated_monthly_cost) / prior.estimated_monthly_cost
+            change = (now - before) / before
             if abs(change) < _RECURRING_CHANGE_THRESHOLD:
                 continue
 
@@ -132,8 +192,7 @@ RULES:
                 type="recurring_change",
                 message=(
                     f"Your {current_item.merchant} payment {direction} from "
-                    f"₹{prior.estimated_monthly_cost:,.0f} to ₹{current_item.estimated_monthly_cost:,.0f} "
-                    f"({change * 100:+.0f}%)."
+                    f"₹{before:,.0f} to ₹{now:,.0f} ({change * 100:+.0f}%)."
                 ),
                 severity=InsightSeverity.WARNING if change > 0 else InsightSeverity.POSITIVE,
             ))
@@ -199,7 +258,10 @@ RULES:
         items = []
         for raw in raw_items:
             try:
-                items.append(InsightItem(**raw))
+                item = InsightItem(**raw)
+                if len(item.message) > 300:
+                    raise ValueError("message too long")
+                items.append(item)
             except Exception:
                 logger.warning("Discarding malformed insight item from LLM output: %r", raw)
         return items

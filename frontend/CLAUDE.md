@@ -34,8 +34,8 @@ The backend is a **runtime** choice (`src/config/apiEnvironment.ts`, `src/state/
 
 Switch it from Profile > Developer settings, unlocked by tapping that row (or the version line on
 the login screen) 5 times; it works in release builds. Switching signs out *first* so tokens are
-never sent to the newly chosen host. `usesCleartextTraffic` is on (via `expo-build-properties`) so a
-LAN `http://192.168.x.y:9850/` works. The app never talks to Ollama/Milvus directly.
+never sent to the newly chosen host. `usesCleartextTraffic` is **off** (`app.json`), so the app speaks HTTPS only;
+reach a local backend over `10.0.2.2` on the emulator or through an HTTPS tunnel. The app never talks to Ollama/Milvus directly.
 
 ## Architecture
 

@@ -2,7 +2,7 @@
 
 Welcome to the internal engineering documentation for **Miravelt**. This portal is written for engineers joining the team who need to understand the system deeply enough to operate, extend, or debug it without asking around first.
 
-> **Scope note:** Every statement in these documents is derived directly from the code in this repository as of the current `three` branch. Where the implementation is incomplete, inconsistent, or contains a defect, it is called out explicitly rather than glossed over — see [16 · Known Issues & Tech Debt](./16-known-issues-tech-debt.md). Nothing here describes aspirational or planned behavior unless the source comments themselves describe it as a future phase.
+> **Scope note:** Every statement in these documents is derived directly from the code in this repository as of the `react-native-migration` branch. Where the implementation is incomplete, inconsistent, or contains a defect, it is called out explicitly rather than glossed over — see [16 · Known Issues & Tech Debt](./16-known-issues-tech-debt.md). Nothing here describes aspirational or planned behavior unless the source comments themselves describe it as a future phase.
 
 ## What is Miravelt?
 
@@ -17,6 +17,7 @@ The codebase is organized as a series of **numbered "Phases"** — this isn't a 
 | [01 · Architecture](./01-architecture.md) | Understand the overall system shape, service topology, and how a request moves through the stack |
 | [02 · API Reference](./02-api-reference.md) | Integrate with or call any HTTP endpoint Miravelt exposes |
 | [03 · Data Model](./03-data-model.md) | Understand Pydantic schemas, MongoDB collections, and the Milvus vector schema |
+| [ADRs](./adr/README.md) | Learn why the five load-bearing decisions (credentials, Celery, grounding, timeline, per-user profiles) were made |
 | [04 · Core Infrastructure](./04-core-infrastructure.md) | Understand config, security, rate limiting, the Ollama client, and DB connection lifecycle |
 | [05 · Ingestion, Resolution & Memory (Phases 1–4)](./05-ingestion-resolution-memory.md) | Understand how raw text becomes a merchant identity with a persistent memory state |
 | [06 · Confidence & Behavioral Intelligence (Phases 5–6)](./06-confidence-behavioral-intelligence.md) | Understand the confidence wall and statistical behavior profiling |

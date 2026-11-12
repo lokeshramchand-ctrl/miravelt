@@ -26,7 +26,7 @@ import {
   usePeriods,
   usePreviousPeriodAnalytics,
 } from '../hooks/periods';
-import { formatCompactCurrency, formatCurrency, formatPeriodRange } from '../lib/format';
+import { formatCompactCurrency, formatCurrency, formatPeriodRange, monthsSpanned } from '../lib/format';
 import { startUploadFlow } from '../state/upload';
 import { alertUnusualSpendIfEnabled } from '../lib/unusualSpend';
 import { queryClient } from '../lib/queryClient';
@@ -51,6 +51,20 @@ export function trendCaption(category: string, current: number, previous: Catego
  * in the red than last period, accent+▼ means it improved - matches the mock's
  * "▲12%" rose chip next to a negative net-flow hero.
  */
+/** How much of the period's spending has no category, as an amount and a share of total spend. */
+export function unlabelledSpend(analytics: Pick<StatementAnalytics, 'categoryBreakdown' | 'totalSpend'>): { amount: number; share: number } {
+  const amount = analytics.categoryBreakdown.filter((e) => e.category === 'Uncategorized' || e.category === 'Unknown').reduce((sum, e) => sum + e.totalAmount, 0);
+  return { amount, share: analytics.totalSpend > 0 ? amount / analytics.totalSpend : 0 };
+}
+
+/** The line under "Reconciled" / "Totals differ" - says how many records could not be read when that is the reason (A6). */
+export function reconciliationCaption(period: Pick<Statement, 'reconciliationOk' | 'unparsedCount'>): string {
+  if (period.reconciliationOk) return "Matches the statement's own totals";
+  const unread = period.unparsedCount ?? 0;
+  if (unread > 0) return unread === 1 ? '1 payment in the PDF could not be read, so the totals are short' : `${unread} payments in the PDF could not be read, so the totals are short`;
+  return "Doesn't quite match the statement's declared totals";
+}
+
 export function netFlowDeltaPercent(current: StatementAnalytics, previous: StatementAnalytics | undefined): number | null {
   if (!previous) return null;
   const net = current.totalIncome - current.totalSpend;
@@ -59,7 +73,7 @@ export function netFlowDeltaPercent(current: StatementAnalytics, previous: State
 }
 
 function spanLabel(period: Statement): string {
-  const months = (period.periodEnd.getFullYear() - period.periodStart.getFullYear()) * 12 + (period.periodEnd.getMonth() - period.periodStart.getMonth()) + 1;
+  const months = monthsSpanned(period.periodStart, period.periodEnd);
   return months <= 1 ? '1 MONTH' : `${months} MONTHS`;
 }
 
@@ -147,6 +161,7 @@ export default function OverviewScreen() {
           <View style={{ height: 28 }} />
           <SignalsPreview />
           <View style={{ height: 28 }} />
+          <TeachBanner period={current} />
           <CategoryBreakdown expanded={expanded} onExpand={() => setExpanded(true)} />
         </View>
       </Animated.ScrollView>
@@ -300,14 +315,49 @@ function QuickStats({ period }: { period: Statement }) {
             <IconChip name={period.reconciliationOk ? 'shield-check' : 'info-outline'} tone={period.reconciliationOk ? 'up' : 'warn'} size={34} iconSize={17} style={{ borderRadius: 17 }} />
             <View style={{ flex: 1, marginLeft: 12 }}>
               <Text style={[typography.rowLabel14, { color: colors.text }]}>{period.reconciliationOk ? 'Reconciled' : 'Totals differ'}</Text>
-              <Text style={[typography.footnote1155, { color: colors.muted, marginTop: 1 }]}>
-                {period.reconciliationOk ? "Matches the statement's own totals" : "Doesn't quite match the statement's declared totals"}
-              </Text>
+              <Text style={[typography.footnote1155, { color: colors.muted, marginTop: 1 }]}>{reconciliationCaption(period)}</Text>
+            </View>
+          </Card>
+        </FadeInUp>
+      ) : null}
+      {period.isSample ? (
+        <FadeInUp delay={240} style={{ marginTop: 10 }}>
+          <Card style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14 }}>
+            <IconChip name="auto-awesome" size={34} iconSize={17} style={{ borderRadius: 17 }} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[typography.rowLabel14, { color: colors.text }]}>Sample data</Text>
+              <Text style={[typography.footnote1155, { color: colors.muted, marginTop: 1 }]}>A generated statement, not your money. Remove it in Profile, Manage periods.</Text>
             </View>
           </Card>
         </FadeInUp>
       ) : null}
     </View>
+  );
+}
+
+/**
+ * "Teach Miravelt in 30 seconds" - shown only when there is uncategorised
+ * spend worth a minute of the user's time (PROJECT_AUDIT.md B2).
+ */
+function TeachBanner({ period }: { period: Statement }) {
+  const analytics = useCurrentPeriodAnalytics();
+  const unknown = analytics.data ? unlabelledSpend(analytics.data) : null;
+  if (!unknown || unknown.share < 0.05) return null;
+  return (
+    <FadeInUp delay={120} style={{ marginBottom: 28 }}>
+      <PressableScale accessibilityRole="button" onPress={() => router.push('/teach')}>
+        <Card style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 14 }}>
+          <IconChip name="auto-awesome" tone="up" size={38} iconSize={18} style={{ borderRadius: 19 }} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={[typography.rowLabel14, { color: colors.text }]}>Teach Miravelt in 30 seconds</Text>
+            <Text style={[typography.footnote1155, { color: colors.muted, marginTop: 2 }]}>
+              {formatCurrency(unknown.amount)} ({Math.round(unknown.share * 100)}% of {period.isSample ? 'the sample' : 'your'} spending) has no category yet. A few taps fixes most of it.
+            </Text>
+          </View>
+          <Icon name="chevron-right" size={14} color={colors.faint} />
+        </Card>
+      </PressableScale>
+    </FadeInUp>
   );
 }
 

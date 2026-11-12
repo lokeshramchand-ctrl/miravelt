@@ -15,10 +15,12 @@ ALIASES_FILE = BASE_DIR / "merchant_aliases.json"
 KEYWORD_CATEGORIES = [
     (re.compile(rf"\b(?:{words})\b", re.IGNORECASE), category)
     for words, category in [
-        (r"canteen|cafe|restaurant|hotel|dhaba|bakery|bakers|sweets|tea\s*stall|tiffins?|biryani|juice\s*(?:centre|center|shop)|foods?|kitchen|pizza", "Food"),
-        (r"fashions?|fancy|garments|textiles|clothing|footwear|mart|supermarket|kirana|general\s*stores?|retail|electronics", "Shopping"),
-        (r"pharmacy|medicals?|chemists?|hospital|clinic|diagnostics|dental", "Healthcare"),
-        (r"petrol|fuel|filling\s*station|travels|cabs|taxi|parking", "Travel"),
+        (r"canteen|cafe|restaurant|hotel|dhaba|bakery|bakers|sweets|tea\s*stall|tiffins?|biryani|juice\s*(?:centre|center|shop)|foods?|kitchen|pizza|mess|dairy|chai|coffee|ice\s*cream|caterers|snacks", "Food"),
+        (r"fashions?|fancy|garments|textiles|clothing|footwear|mart|super\s*markets?|hypermarket|kirana|general\s*stores?|retail|electronics|mobiles|silks|sarees|jewellers|jewellery|stationery", "Shopping"),
+        (r"pharmacy|medicals?|chemists?|hospitals?|clinics?|diagnostics|dental|nursing\s*home|opticals?|gym|fitness", "Healthcare"),
+        (r"petrol|fuel|filling\s*station|travels|cabs|taxi|parking|tours|airlines|airways|railways?", "Travel"),
+        (r"schools?|college|university|institute|academy|coaching|tuitions?", "Education"),
+        (r"cinemas?|multiplex|theatres?|theaters?", "Entertainment"),
     ]
 ]
 
@@ -38,11 +40,21 @@ class RuleEngine:
 
     def _compile_patterns(self):
         # Pre-compile regex patterns for performance on startup
+        # Longest alias first, so the most specific one wins: "swiggy instamart"
+        # (groceries) before "swiggy" (food), "amazon prime" before "amazon".
         self.compiled_rules = {}
-        for alias, data in self.rules.items():
-            # \b ensures we only match whole words
-            pattern = re.compile(rf"\b{re.escape(alias)}\b", re.IGNORECASE)
+        for alias, data in sorted(self.rules.items(), key=lambda kv: -len(kv[0])):
+            # Word boundaries on both sides - lookarounds rather than \b so an
+            # alias that starts or ends with a symbol ("h&m", "cult.fit") works.
+            pattern = re.compile(rf"(?<!\w){re.escape(alias)}(?!\w)", re.IGNORECASE)
             self.compiled_rules[pattern] = data
+
+    def match_alias(self, text: str) -> dict | None:
+        """The curated alias entry ({"merchant", "category"}) matching `text`, if any."""
+        for pattern, data in self.compiled_rules.items():
+            if pattern.search(text):
+                return data
+        return None
 
     def categorize(self, text: str) -> dict:
         """

@@ -30,9 +30,18 @@ export class ApiHttpException extends ApiException {
     detail: string,
     public readonly requestId?: string,
     public readonly validationErrors?: ApiValidationError[],
+    /** Stable machine-readable reason (e.g. 'password_required', 'duplicate_statement') - branch on this, not on `message`. */
+    public readonly code?: string,
+    /** Extra fields the backend attached to the error (e.g. `statement_id` on a duplicate upload). */
+    public readonly extra: Record<string, unknown> = {},
   ) {
     super(statusCode, detail);
   }
+}
+
+/** The backend error code of `e`, if it carries one. */
+export function errorCode(e: unknown): string | undefined {
+  return e instanceof ApiHttpException ? e.code : undefined;
 }
 
 /** 413 fast-path: `Content-Length` exceeded `MAX_REQUEST_BODY_BYTES` before the body was read. */
@@ -100,6 +109,7 @@ export function apiExceptionFromResponse(status: number, data: unknown, retryAft
   if (body && isRecord(body.error)) {
     const envelope = body.error;
     const rawErrors = envelope.errors;
+    const { detail: _d, request_id: _r, errors: _e, code: _c, ...extra } = envelope;
     return new ApiHttpException(
       status,
       envelope.detail != null ? String(envelope.detail) : 'Something went wrong.',
@@ -111,6 +121,8 @@ export function apiExceptionFromResponse(status: number, data: unknown, retryAft
             type: e.type != null ? String(e.type) : '',
           }))
         : undefined,
+      typeof envelope.code === 'string' ? envelope.code : undefined,
+      extra,
     );
   }
 

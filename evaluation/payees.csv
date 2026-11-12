@@ -1,0 +1,182 @@
+payee,category,kind
+ZOMATO LIMITED,Food,business
+Zomato Ltd,Food,business
+ETERNAL LIMITED,Food,business
+BUNDL TECHNOLOGIES PRIVATE LIMITED,Food,business
+Swiggy,Food,business
+SWIGGY INSTAMART,Shopping,business
+DOMINOS PIZZA,Food,business
+JUBILANT FOODWORKS LIMITED,Food,business
+McDonalds India,Food,business
+KFC RESTAURANT,Food,business
+BURGER KING INDIA LIMITED,Food,business
+STARBUCKS COFFEE,Food,business
+TATA STARBUCKS PRIVATE LIMITED,Food,business
+HALDIRAMS,Food,business
+KARACHI BAKERY,Food,business
+KARACHI BACKERY BANJARA HILLS,Food,business
+CREAM STONE ICE CREAM,Food,business
+PARADISE BIRYANI,Food,business
+CHAAYOS,Food,business
+THIRD WAVE COFFEE ROASTERS,Food,business
+S.H.S CANTEEN 1,Food,business
+SRI SAI TIFFINS,Food,business
+ANNAPURNA MESS,Food,business
+HOTEL SHADAB,Food,business
+BAWARCHI RESTAURANT,Food,business
+NEW GANGA SWEETS,Food,business
+SHAH GHOUSE CAFE,Food,business
+PISTA HOUSE,Food,business
+MEHFIL BIRYANI,Food,business
+LAKSHMI JUICE CENTRE,Food,business
+MILKY WAY DAIRY PARLOUR,Food,business
+CHAI POINT,Food,business
+A2B ADYAR ANANDA BHAVAN,Food,business
+MTR FOODS,Food,business
+CAFE NILOUFER,Food,business
+THE BIG CHILL,Food,business
+BLINKIT,Shopping,business
+GROFERS INDIA PRIVATE LIMITED,Shopping,business
+ZEPTO,Shopping,business
+KIRANAKART TECHNOLOGIES,Shopping,business
+BIGBASKET,Shopping,business
+AMAZON PAY,Shopping,business
+Amazon India,Shopping,business
+FLIPKART INTERNET PRIVATE LIMITED,Shopping,business
+MYNTRA DESIGNS,Shopping,business
+AJIO,Shopping,business
+NYKAA E RETAIL,Shopping,business
+DMART,Shopping,business
+AVENUE SUPERMARTS LTD,Shopping,business
+RELIANCE RETAIL LIMITED,Shopping,business
+RELIANCE DIGITAL,Shopping,business
+CROMA,Shopping,business
+DECATHLON SPORTS INDIA,Shopping,business
+IKEA INDIA,Shopping,business
+MAX RETAIL,Shopping,business
+VIJETHA SUPER MARKETS,Shopping,business
+RATNADEEP SUPER MARKET,Shopping,business
+KVR FASHION AND FANCY,Shopping,business
+SRI BALAJI GENERAL STORES,Shopping,business
+LAKSHMI KIRANA,Shopping,business
+MORE SUPERMARKET,Shopping,business
+SANGEETHA MOBILES,Shopping,business
+LIFESTYLE INTERNATIONAL,Shopping,business
+TRENDS FOOTWEAR,Shopping,business
+BATA INDIA LIMITED,Shopping,business
+POTHYS,Shopping,business
+CHENNAI SILKS,Shopping,business
+TITAN COMPANY LIMITED,Shopping,business
+MAKE MY CHOICE,Shopping,business
+THE BOOK POINT,Shopping,business
+UBER INDIA SYSTEMS PVT LTD,Travel,business
+OLA CABS,Travel,business
+ANI TECHNOLOGIES PRIVATE LIMITED,Travel,business
+RAPIDO,Travel,business
+ROPPEN TRANSPORTATION SERVICES,Travel,business
+IRCTC,Travel,business
+REDBUS,Travel,business
+MAKEMYTRIP INDIA,Travel,business
+INTERGLOBE AVIATION LIMITED,Travel,business
+AIR INDIA LIMITED,Travel,business
+APSRTC,Travel,business
+TSRTC,Travel,business
+Metro Rail Hyderabad,Travel,business
+L&T METRO RAIL HYDERABAD,Travel,business
+DELHI METRO RAIL CORPORATION,Travel,business
+BHARAT PETROL BUNK,Travel,business
+HP PETROL PUMP,Travel,business
+INDIAN OIL CORPORATION,Travel,business
+SRI VENKATESWARA FILLING STATION,Travel,business
+SAI TRAVELS,Travel,business
+CITY CABS,Travel,business
+GVK PARKING,Travel,business
+NHAI FASTAG,Travel,business
+NETFLIX,Subscription,business
+Netflix Entertainment Services,Subscription,business
+SPOTIFY INDIA,Subscription,business
+YouTube Premium,Subscription,business
+GOOGLE PLAY,Subscription,business
+APPLE MEDIA SERVICES,Subscription,business
+DISNEY HOTSTAR,Subscription,business
+AMAZON PRIME,Subscription,business
+ZEE5,Subscription,business
+SONYLIV,Subscription,business
+OPENAI,Subscription,business
+MICROSOFT INDIA,Subscription,business
+BOOKMYSHOW,Entertainment,business
+BIGTREE ENTERTAINMENT,Entertainment,business
+PVR INOX LIMITED,Entertainment,business
+AMB CINEMAS,Entertainment,business
+PRASADS MULTIPLEX,Entertainment,business
+DREAM11,Entertainment,business
+WONDERLA HOLIDAYS,Entertainment,business
+SMAAASH,Entertainment,business
+AIRTEL,Bills,business
+BHARTI AIRTEL LIMITED,Bills,business
+RELIANCE JIO INFOCOMM,Bills,business
+JIO PREPAID,Bills,business
+VODAFONE IDEA,Bills,business
+BSNL,Bills,business
+ACT FIBERNET,Bills,business
+TATA PLAY,Bills,business
+LIFE INSURANCE CORPORATION OF INDIA,Bills,business
+HDFC ERGO GENERAL INSURANCE,Bills,business
+CRED CLUB,Bills,business
+TSSPDCL,Utility,business
+APSPDCL,Utility,business
+BESCOM,Utility,business
+TATA POWER,Utility,business
+ADANI ELECTRICITY MUMBAI,Utility,business
+HP GAS,Utility,business
+INDANE,Utility,business
+BHARAT GAS,Utility,business
+HMWSSB,Utility,business
+APOLLO PHARMACY,Healthcare,business
+APOLLO HOSPITALS ENTERPRISE,Healthcare,business
+MEDPLUS,Healthcare,business
+PHARMEASY,Healthcare,business
+TATA 1MG,Healthcare,business
+NETMEDS,Healthcare,business
+SRI SAI MEDICALS,Healthcare,business
+CARE HOSPITAL,Healthcare,business
+SMILE DENTAL CLINIC,Healthcare,business
+VIJAYA DIAGNOSTICS,Healthcare,business
+YASHODA HOSPITALS,Healthcare,business
+LENSKART,Shopping,business
+CULT.FIT,Healthcare,business
+GOLDS GYM,Healthcare,business
+UDEMY,Education,business
+COURSERA,Education,business
+UNACADEMY,Education,business
+PHYSICS WALLAH,Education,business
+NARAYANA JUNIOR COLLEGE,Education,business
+SRI CHAITANYA SCHOOL,Education,business
+OSMANIA UNIVERSITY,Education,business
+VIT VELLORE,Education,business
+BYJUS,Education,business
+ACME TECHNOLOGIES PVT LTD,,business
+Toni and Guy,,business
+URBAN COMPANY,,business
+DTDC COURIER,,business
+INDIA POST,,business
+GOOGLE PAY REWARDS,,business
+PAYTM,,business
+PHONEPE,,business
+ZERODHA BROKING,,business
+GROWW,,business
+RAVI KUMAR,,person
+PRIYA SHARMA,,person
+ELURU PRASADA RAO,,person
+DOSAPATI NAGA MUKESH,,person
+ANJALI REDDY,,person
+MOHAMMED IMRAN,,person
+K SRINIVAS,,person
+A RAVI TEJA,,person
+SNEHA IYER,,person
+VENKATA SUBBA RAO GARU,,person
+ARJUN,,person
+LAKSHMI DEVI,,person
+SAI KIRAN REDDY,,person
+FATHIMA BEGUM,,person
+JOHN MATHEW,,person

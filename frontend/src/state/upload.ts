@@ -1,7 +1,8 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { create } from 'zustand';
 import { statementsRepository } from '../api/instance';
-import { ApiException, ApiPayloadTooLargeException } from '../api/errors';
+import { ApiException, ApiPayloadTooLargeException, errorCode } from '../api/errors';
+import type { ApiHttpException } from '../api/errors';
 import type { Statement } from '../domain/types';
 import { invalidatePeriods } from '../hooks/periods';
 import { useSettings } from './settings';
@@ -16,6 +17,10 @@ interface UploadState {
   jobId: string | null;
   statement: Statement | null;
   errorMessage: string | null;
+  /** The backend's error code for a rejection ('password_required', 'duplicate_statement', ...). */
+  errorCode: string | null;
+  /** On a duplicate upload: the period that file already created. */
+  duplicateStatementId: string | null;
   /** Whether the Uploading sheet is on screen (it is hosted once, at the app root). */
   sheetOpen: boolean;
 
@@ -35,20 +40,23 @@ const INITIAL = {
   jobId: null,
   statement: null,
   errorMessage: null,
+  errorCode: null,
+  duplicateStatementId: null,
 };
 
 let abort: AbortController | null = null;
 let last: { uri: string; name: string; size: number } | null = null;
 
-export function looksLikePasswordIssue(message: string | null | undefined): boolean {
-  return (message ?? '').toLowerCase().includes('password');
+/** The backend says why with a code (F15c) - no more matching the word "password" in prose. */
+export function looksLikePasswordIssue(code: string | null | undefined): boolean {
+  return code === 'password_required' || code === 'incorrect_password';
 }
 
 export const useUpload = create<UploadState>((set, get) => {
   async function upload(file: { uri: string; name: string; size: number }, password?: string) {
     abort = new AbortController();
     const signal = abort.signal;
-    set({ stage: 'uploading', fileName: file.name, fileSizeBytes: file.size, progressPercent: 0, errorMessage: null });
+    set({ stage: 'uploading', fileName: file.name, fileSizeBytes: file.size, progressPercent: 0, errorMessage: null, errorCode: null, duplicateStatementId: null });
     try {
       const response = await statementsRepository.upload({
         uri: file.uri,
@@ -60,7 +68,14 @@ export const useUpload = create<UploadState>((set, get) => {
           if (total > 0 && !signal.aborted) set({ progressPercent: (sent / total) * 100 });
         },
       });
-      const statement = await statementsRepository.get(response.statementId);
+      // The upload was accepted and is processing. Reading the summary back is a
+      // nicety: if that one request fails, the upload still succeeded (F15a).
+      let statement: Statement | null = null;
+      try {
+        statement = await statementsRepository.get(response.statementId);
+      } catch {
+        statement = null;
+      }
       if (signal.aborted) return;
       set({ stage: 'recognized', jobId: response.jobId, statement });
       invalidatePeriods();
@@ -69,7 +84,14 @@ export const useUpload = create<UploadState>((set, get) => {
       if (e instanceof ApiPayloadTooLargeException) {
         set({ stage: 'rejected', errorMessage: 'This file is too large - Miravelt accepts statements up to 10MB.' });
       } else if (e instanceof ApiException) {
-        set({ stage: 'rejected', errorMessage: e.message });
+        const code = errorCode(e) ?? null;
+        const duplicateId = code === 'duplicate_statement' ? (e as ApiHttpException).extra.statement_id : undefined;
+        set({
+          stage: 'rejected',
+          errorMessage: e.message,
+          errorCode: code,
+          duplicateStatementId: typeof duplicateId === 'string' ? duplicateId : null,
+        });
       } else {
         set({ stage: 'rejected', errorMessage: 'Something went wrong. Please try again.' });
       }

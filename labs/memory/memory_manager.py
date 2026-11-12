@@ -1,6 +1,6 @@
+from labs.profile_repository import profile_repo
 from memory.state_machine import state_machine
 from models.schemas import MemoryState, MerchantProfile
-from repositories.profile_repository import profile_repo
 
 
 class MemoryManager:

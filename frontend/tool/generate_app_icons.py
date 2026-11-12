@@ -18,7 +18,6 @@ BACKGROUND is ink900 (src/theme/colors.ts), so the icon
 plate matches the app's own dark surface.
 """
 
-import json
 import os
 
 from PIL import Image, ImageDraw

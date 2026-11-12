@@ -18,6 +18,8 @@ export const appConfig = {
    * Pre-fills the login form with a seeded local test account so sign-in during
    * development is one tap. Debug-only: `__DEV__` is false in release builds.
    */
-  devEmail: 'lo@gmail.com',
-  devPassword: '123456789',
+  // From a developer's own untracked .env.local, never from source: this
+  // repository is public (SECURITY_AUDIT / Fable report V3).
+  devEmail: process.env.EXPO_PUBLIC_MIRAVELT_DEV_EMAIL ?? '',
+  devPassword: process.env.EXPO_PUBLIC_MIRAVELT_DEV_PASSWORD ?? '',
 };

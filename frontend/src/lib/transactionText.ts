@@ -1,7 +1,11 @@
 import type { Transaction } from '../domain/types';
 import { formatCurrency, formatFullTimestamp } from './format';
 
-/** The categories offered when a user says "Wrong category" (the backend's full taxonomy). */
+/**
+ * The categories offered when a user says "Wrong category". Spending
+ * categories only (F4): a payment can't be filed as Income (it would vanish
+ * from spending), and "Uncategorized" is the one name for "no category".
+ */
 export const TRANSACTION_CATEGORIES = [
   'Food',
   'Travel',
@@ -13,14 +17,18 @@ export const TRANSACTION_CATEGORIES = [
   'Subscription',
   'Shopping',
   'Utility',
-  'Income',
-  'Unknown',
+  'Uncategorized',
 ] as const;
 
+/** Only payments carry a spending category; money received is always Income. */
+export function canRecategorize(txn: Pick<Transaction, 'transactionType'>): boolean {
+  return txn.transactionType === 'DEBIT';
+}
+
 /**
- * Free-text description POST /v1/explain grounds its retrieval on
- * (`transaction_text`) - not a transaction id, since the endpoint has no
- * per-user scoping and works purely from the text.
+ * A one-line description of a transaction (accessibility labels, sharing).
+ * POST /v1/explain no longer takes this text: it takes the transaction id and
+ * reads the user's own history with the payee.
  */
 export function explainTransactionText(txn: Transaction): string {
   const amount = formatCurrency(Math.abs(txn.amount));
@@ -42,6 +50,18 @@ export function categoryExplanation(txn: Transaction): { label: string; body: st
 
   if (txn.transactionType === 'CREDIT') {
     return { label: 'INCOMING', body: `Money you received from ${payee}. Incoming payments are always filed under Income.` };
+  }
+  if (txn.categorizationSource === 'user') {
+    return { label: 'YOUR CORRECTION', body: `You filed ${payee} under ${category}. Every payment to ${payee}, past and future, follows it.` };
+  }
+  if (txn.categorizationSource === 'user_memory') {
+    return { label: 'REMEMBERED', body: `You corrected ${payee} to ${category} on an earlier statement, so Miravelt filed this one the same way.` };
+  }
+  if (txn.categorizationSource === 'community') {
+    return {
+      label: 'LEARNED',
+      body: `Several Miravelt users filed this business under ${category}, so it is now a shared rule. Only businesses are ever shared - never people.`,
+    };
   }
   if (category === 'Uncategorized' || confidence === 0) {
     return {

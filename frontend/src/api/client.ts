@@ -73,6 +73,9 @@ export class ApiClient {
   patch<T>(path: string, options: RequestOptions = {}): Promise<T> {
     return this.request<T>('PATCH', path, options);
   }
+  put<T>(path: string, options: RequestOptions = {}): Promise<T> {
+    return this.request<T>('PUT', path, options);
+  }
   delete<T>(path: string, options: RequestOptions = {}): Promise<T> {
     return this.request<T>('DELETE', path, options);
   }
@@ -236,11 +239,14 @@ export class ApiClient {
    * Single-flight refresh: if a refresh is already underway, every caller
    * awaits the same result instead of racing the rotating refresh token (the
    * backend revokes it after first use).
+   *
+   * Resolves false only when the server *rejected* the refresh token. A
+   * network failure rejects with ApiNetworkException instead, so being
+   * offline never signs anyone out (F13) - the session is still valid.
    */
   private refreshTokens(): Promise<boolean> {
     if (this.refreshInFlight) return this.refreshInFlight;
     const attempt = this.doRefresh()
-      .catch(() => false)
       .finally(() => {
         this.refreshInFlight = null;
       });
@@ -261,12 +267,15 @@ export class ApiClient {
         },
         DEFAULT_TIMEOUT_MS,
       );
-      if (!response.ok) return false;
+      // Only a 401 means the session is over; a 5xx or a proxy page is an outage.
+      if (response.status === 401) return false;
+      if (!response.ok) throw new ApiNetworkException(UNREACHABLE_MESSAGE);
       const data = (await readJson(response)) as { access_token: string; refresh_token: string };
       await this.deps.tokenStorage.saveTokens({ accessToken: data.access_token, refreshToken: data.refresh_token });
       return true;
-    } catch {
-      return false;
+    } catch (e) {
+      if (e instanceof ApiNetworkException) throw e;
+      throw new ApiNetworkException(UNREACHABLE_MESSAGE);
     }
   }
 }

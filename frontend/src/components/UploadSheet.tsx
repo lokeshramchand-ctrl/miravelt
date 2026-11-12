@@ -2,8 +2,10 @@ import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import { Icon } from './Icon';
-import { monthAbbr } from '../lib/format';
+import { monthAbbr, zoned } from '../lib/format';
 import { looksLikePasswordIssue, useUpload } from '../state/upload';
+import { useSession } from '../state/session';
+import { showToast } from '../state/toast';
 import { colors } from '../theme/colors';
 import { radius } from '../theme/tokens';
 import { typography } from '../theme/typography';
@@ -15,7 +17,9 @@ import type { Statement } from '../domain/types';
 /** `PERIOD JAN 1 - JUN 30 2026 · SENT ₹1,234 · RECEIVED ₹5,678` */
 export function summaryLine(statement: Statement): string {
   const { periodStart: start, periodEnd: end } = statement;
-  const parts = [`PERIOD ${monthAbbr(start.getMonth() + 1)} ${start.getDate()} - ${monthAbbr(end.getMonth() + 1)} ${end.getDate()} ${end.getFullYear()}`];
+  const a = zoned(start);
+  const b = zoned(end);
+  const parts = [`PERIOD ${monthAbbr(a.month)} ${a.day} - ${monthAbbr(b.month)} ${b.day} ${b.year}`];
   if (statement.declaredSentAmount != null) parts.push(`SENT ₹${statement.declaredSentAmount.toFixed(0)}`);
   if (statement.declaredReceivedAmount != null) parts.push(`RECEIVED ₹${statement.declaredReceivedAmount.toFixed(0)}`);
   return parts.join(' · ');
@@ -53,7 +57,7 @@ function UploadSheetBody({ onClose }: { onClose: () => void }) {
       });
   }, [onClose]);
 
-  const needsPassword = state.stage === 'rejected' && looksLikePasswordIssue(state.errorMessage);
+  const needsPassword = state.stage === 'rejected' && looksLikePasswordIssue(state.errorCode);
 
   // Route on resolution transitions.
   useEffect(() => {
@@ -65,11 +69,19 @@ function UploadSheetBody({ onClose }: { onClose: () => void }) {
       }, 700);
       return () => clearTimeout(t);
     }
+    if (state.stage === 'rejected' && state.duplicateStatementId) {
+      // Already added: take them to that period instead of a rejection screen.
+      onClose();
+      useSession.getState().selectPeriod(state.duplicateStatementId);
+      showToast('You already added this statement - here it is.');
+      router.replace('/overview');
+      return;
+    }
     if (state.stage === 'rejected' && !needsPassword) {
       onClose();
-      router.push({ pathname: '/upload/rejected', params: { message: state.errorMessage ?? '' } });
+      router.push({ pathname: '/upload/rejected', params: { message: state.errorMessage ?? '', code: state.errorCode ?? '' } });
     }
-  }, [state.stage, state.jobId, state.errorMessage, needsPassword, onClose]);
+  }, [state.stage, state.jobId, state.errorMessage, state.errorCode, state.duplicateStatementId, needsPassword, onClose]);
 
   const cancel = () => {
     useUpload.getState().cancel();

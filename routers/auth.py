@@ -195,6 +195,24 @@ async def refresh(request: Request, payload: RefreshRequest):
     # Atomic single-use redemption: exactly one concurrent caller wins.
     redeemed = await refresh_token_repo.redeem(token_hash)
     if redeemed is None:
+        # A retry within the grace window, whose replacement was never used,
+        # is a lost response on a flaky network, not theft (F19): swap the
+        # unused replacement for a fresh pair instead of ending every session.
+        retry = await refresh_token_repo.reissue_within_grace(stored, settings.REFRESH_TOKEN_REUSE_GRACE_SECONDS)
+        if retry is not None:
+            user = await user_repo.get_by_id(stored["user_id"])
+            if user is None or not user.is_active:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+            pair = await _issue_token_pair(
+                user.id,
+                device_id=stored.get("device_id"),
+                device_name=stored.get("device_name"),
+                user_agent=stored.get("user_agent"),
+                ip_address=stored.get("ip_address"),
+                scopes=_scopes_for(user),
+            )
+            await refresh_token_repo.link_rotation(token_hash, _hash_refresh_token(pair.refresh_token))
+            return pair
         # Reuse of an already-rotated (or logged-out) token: likely theft.
         logger.warning("Rejected reused/revoked refresh token; revoking all sessions for the associated user.")
         await refresh_token_repo.revoke_all_for_user(stored["user_id"])
@@ -205,7 +223,7 @@ async def refresh(request: Request, payload: RefreshRequest):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
     # Carry the device forward so device revocation keeps working after rotation.
-    return await _issue_token_pair(
+    pair = await _issue_token_pair(
         user.id,
         device_id=redeemed.get("device_id"),
         device_name=redeemed.get("device_name"),
@@ -213,6 +231,8 @@ async def refresh(request: Request, payload: RefreshRequest):
         ip_address=redeemed.get("ip_address"),
         scopes=_scopes_for(user),
     )
+    await refresh_token_repo.link_rotation(token_hash, _hash_refresh_token(pair.refresh_token))
+    return pair
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

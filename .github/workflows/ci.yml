@@ -116,7 +116,46 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Run test suite
-        run: pytest test_api.py -v
+        run: pytest test_api.py tests -v
+
+  # --- Docs must not name files that no longer exist (PROJECT_AUDIT.md E9) ---
+  docs-check:
+    name: Docs reference check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/check_docs.py
+
+  # --- Admin dashboard and landing page (PROJECT_AUDIT.md F22) ---
+  web:
+    name: Web (${{ matrix.app }} lint + build)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [admin-dashboard, landing-page]
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: npm ci || npm install
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+        env:
+          BACKEND_URL: http://localhost:8000
+          MIRAVELT_API_KEY: ci
+          MIRAVELT_ADMIN_KEY: ci
+          SESSION_SECRET: ci_session_secret_at_least_32_characters_long
 
   # --- Frontend (React Native / Expo) ---
   frontend:

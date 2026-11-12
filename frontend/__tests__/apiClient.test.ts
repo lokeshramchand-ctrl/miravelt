@@ -53,6 +53,42 @@ describe('token refresh', () => {
   });
 });
 
+describe('offline is not signed out (F13)', () => {
+  it('keeps the session when the refresh call itself cannot reach the server', async () => {
+    const onSessionExpired = jest.fn();
+    const { fake, tokens, client } = makeClient({ onSessionExpired });
+    await tokens.saveTokens({ accessToken: 'old', refreshToken: 'r1' });
+    fake.queue('GET', '/statements', { status: 401 });
+    // No response queued for /auth/refresh: FakeFetch throws, like a dropped connection.
+    await expect(client.get('/statements')).rejects.toBeInstanceOf(ApiNetworkException);
+    expect(onSessionExpired).not.toHaveBeenCalled();
+    expect(await tokens.readRefreshToken()).toBe('r1');
+  });
+
+  it('treats a 5xx from refresh as an outage, not a rejection', async () => {
+    const onSessionExpired = jest.fn();
+    const { fake, tokens, client } = makeClient({ onSessionExpired });
+    await tokens.saveTokens({ accessToken: 'old', refreshToken: 'r1' });
+    fake.queue('GET', '/statements', { status: 401 });
+    fake.queue('POST', '/auth/refresh', { status: 502 });
+    await expect(client.get('/statements')).rejects.toBeInstanceOf(ApiNetworkException);
+    expect(onSessionExpired).not.toHaveBeenCalled();
+  });
+});
+
+describe('error codes', () => {
+  it('carries the backend code and extra fields', async () => {
+    const { fake, client } = makeClient();
+    fake.queue('GET', '/x', {
+      status: 409,
+      body: { error: { detail: 'You already added this statement.', code: 'duplicate_statement', statement_id: 's9', request_id: 'r' } },
+    });
+    const e = (await caught(client.get('/x'))) as ApiHttpException;
+    expect(e.code).toBe('duplicate_statement');
+    expect(e.extra).toEqual({ statement_id: 's9' });
+  });
+});
+
 describe('error mapping', () => {
   it('reads the standard envelope, request id and validation errors', async () => {
     const { fake, client } = makeClient();

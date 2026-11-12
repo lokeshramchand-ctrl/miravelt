@@ -13,6 +13,8 @@ export interface User {
   fullName: string | null;
   isActive: boolean;
   createdAt: Date;
+  /** The address was confirmed with an emailed code (or by a password reset). */
+  emailVerified: boolean;
 }
 
 /** Up to 2 uppercase initials from the name, falling back to the first letter of the email. */
@@ -47,6 +49,12 @@ export interface Statement {
   uploadedAt: Date;
   processingCompletedAt: Date | null;
   processingDurationMs: number | null;
+  /** Record lines the parser could not read (PROJECT_AUDIT.md A6); null for older statements. */
+  unparsedCount: number | null;
+  /** Bumped whenever the backend recomputes this period's analytics (a correction, an overlapping upload). */
+  analyticsRevision: number;
+  /** A generated demo period ("Try with sample data"), not the user's own money. */
+  isSample: boolean;
 }
 
 export interface Paged<T> {
@@ -83,6 +91,16 @@ export interface Transaction {
    * for incoming money and older rows.
    */
   categorizationConfidence: number | null;
+  /**
+   * Where the category came from: 'user' (your correction), 'user_memory'
+   * (your earlier correction for this payee), 'alias', 'community', 'keyword',
+   * 'none', 'income'. Null on older rows.
+   */
+  categorizationSource: string | null;
+  /** 'person' or 'business' (backend engines/counterparty.py). */
+  counterpartyKind: 'person' | 'business' | null;
+  note: string | null;
+  tags: string[];
 }
 
 export interface Job {
@@ -103,6 +121,8 @@ export interface Insight {
   type: string;
   message: string;
   severity: InsightSeverity;
+  /** 'computed' (arithmetic on stored rows) or 'llm' (generated, admitted only after the backend fact-check). */
+  origin: 'computed' | 'llm';
 }
 
 export interface StatementInsights {
@@ -125,11 +145,26 @@ export interface DailyTrendEntry {
   totalAmount: number;
   count: number;
 }
+export type Cadence = 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly';
+
 export interface RecurringPaymentEntry {
   merchant: string;
+  /** Monthly equivalent of the typical amount at its cadence. */
   estimatedMonthlyCost: number;
+  /** Share of payment gaps on cadence, 0..1. */
   periodicityScore: number;
   occurrences: number;
+  cadence: Cadence;
+  cadenceDays: number;
+  /** Median of the most recent payments - what one charge costs. */
+  typicalAmount: number;
+  lastAmount: number;
+  lastPaidAt: Date | null;
+  nextExpectedAt: Date | null;
+  /** Latest charge against the typical one before it, as a fraction; null without a baseline. */
+  amountChange: number | null;
+  /** Monthly equivalent over the period's average monthly spend. */
+  shareOfMonthlySpend: number | null;
 }
 
 export interface StatementAnalytics {
@@ -144,6 +179,8 @@ export interface StatementAnalytics {
   topMerchants: TopMerchantEntry[];
   dailyTrend: DailyTrendEntry[];
   recurringPayments: RecurringPaymentEntry[];
+  /** Total spend over the months the period covers. */
+  averageMonthlySpend: number;
   generatedAt: Date;
 }
 
@@ -174,6 +211,9 @@ export interface SubscriptionDetail {
   estimatedMonthlyCost: number;
   periodicityScore: number;
   lastBilled: Date | null;
+  cadence: Cadence;
+  typicalAmount: number;
+  nextExpectedAt: Date | null;
 }
 export interface SubscriptionsSummary {
   activeSubscriptions: number;
@@ -197,8 +237,79 @@ export interface AnomalyCheckResult {
  * depending on whether grounded context was found, so this models that union.
  */
 export type ExplainOutcome =
-  | { available: true; explanation: string; confidence: string | null; primarySource: string | null }
+  | {
+      available: true;
+      explanation: string;
+      confidence: string | null;
+      primarySource: string | null;
+      /** Sentences computed from the user's own history - always true, with or without the model. */
+      facts: string[];
+      /** True when the model phrased the answer (and it passed the backend fact check); false when `explanation` is the computed facts. */
+      generated: boolean;
+    }
   | { available: false; unavailableReason: string };
+
+/** One card of the "Teach Miravelt" deck: an uncategorised payee and what it accounts for. */
+export interface TeachCard {
+  merchant: string;
+  totalAmount: number;
+  count: number;
+  payeeNames: string[];
+  counterpartyKind: 'person' | 'business' | null;
+  lastPaidAt: Date | null;
+  /** Share of all uncategorised spend this payee explains, 0..1. */
+  shareOfUnknown: number;
+  /** A hint from similar names the user (or the curated list) already has a category for. */
+  suggestedCategory: string | null;
+  similarNames: string[];
+}
+
+export interface TeachDeck {
+  unknownTotal: number;
+  unknownPayees: number;
+  coveredTotal: number;
+  coveredShare: number;
+  cards: TeachCard[];
+}
+
+export interface TeachAnswer {
+  merchant: string;
+  category?: string;
+  kind?: 'person' | 'business';
+}
+
+/** A person you exchanged money with. `net` > 0: they paid you more than you paid them. */
+export interface PersonLedgerRow {
+  payeeKey: string;
+  name: string;
+  sent: number;
+  received: number;
+  net: number;
+  count: number;
+  firstAt: Date;
+  lastAt: Date;
+}
+
+export interface MerchantPage {
+  merchant: string;
+  category: string | null;
+  counterpartyKind: 'person' | 'business' | null;
+  payeeNames: string[];
+  totalSpent: number;
+  totalReceived: number;
+  paymentCount: number;
+  averagePayment: number;
+  firstAt: Date;
+  lastAt: Date;
+  monthly: { month: string; totalAmount: number }[];
+  cadence: Cadence | null;
+  typicalAmount: number | null;
+  nextExpectedAt: Date | null;
+  /** EPHEMERAL / TEMPORARY / PERMANENT: how settled Miravelt's memory of this payee is. */
+  memoryState: string | null;
+  /** 'user' when the category came from the user's own correction. */
+  categorySource: string | null;
+}
 
 export interface AppUpdateInfo {
   versionCode: number;

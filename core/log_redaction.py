@@ -22,7 +22,7 @@ class RedactionFilter(logging.Filter):
         try:
             record.msg = redact(record.getMessage())
             record.args = ()
-        except Exception:
+        except Exception:  # noqa: S110 - best effort by design
             pass
         return True
 

@@ -7,5 +7,14 @@ import { QueryClient } from '@tanstack/react-query';
  * ErrorRetry the user can act on.
  */
 export const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: Infinity, retry: false, refetchOnWindowFocus: false } },
+  defaultOptions: {
+    queries: {
+      staleTime: Infinity,
+      retry: false,
+      refetchOnWindowFocus: false,
+      // Kept as long as the on-disk copy lives (lib/queryPersistence.ts), or a
+      // restored query would be garbage-collected minutes after launch.
+      gcTime: 14 * 24 * 60 * 60 * 1000,
+    },
+  },
 });

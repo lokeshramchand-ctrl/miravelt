@@ -35,3 +35,4 @@ umap-learn==0.5.7
 networkx==3.4.2
 
 pytest==9.1.1  # patched per pip-audit (PYSEC-2026-1845 affects <9.0.3)
+hypothesis==6.115.0  # property-based tests (tests/test_parser.py)

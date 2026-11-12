@@ -11,13 +11,13 @@ work, and this deliberately doesn't paper over the second one.
 """
 import logging
 
-from feedback.retraining_queue import retraining_manager
+from labs.retraining_queue import retraining_manager
 from tasks.celery_app import celery_app, run_async
 
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(name="tasks.retraining_tasks.check_and_trigger_retraining")
+@celery_app.task(name="labs.retraining_tasks.check_and_trigger_retraining")
 def check_and_trigger_retraining():
     """Runs on RETRAINING_CHECK_INTERVAL_MINUTES - the polling side of what
     feedback/api_router.py already triggers inline via BackgroundTasks on
@@ -26,7 +26,7 @@ def check_and_trigger_retraining():
     return run_async(retraining_manager.trigger_retraining_if_needed())
 
 
-@celery_app.task(name="tasks.retraining_tasks.run_baseline_training", bind=True, max_retries=1)
+@celery_app.task(name="labs.retraining_tasks.run_baseline_training", bind=True, max_retries=1)
 def run_baseline_training(self):
     """
     The actual CPU-heavy, synchronous training run - always executed on a
@@ -40,7 +40,7 @@ def run_baseline_training(self):
     "heavy/optional deps imported inside the function that needs them"
     pattern (routers/pipelines.py::run_clustering).
     """
-    from training.train import BaselineTrainer
+    from labs.training.train import BaselineTrainer
     try:
         return BaselineTrainer().run_benchmarks()
     except Exception:

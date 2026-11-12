@@ -102,7 +102,10 @@ export default function LoginScreen() {
             error={errors.password}
           />
           </Animated.View>
-          <View style={{ height: 28 }} />
+          <Pressable accessibilityRole="link" onPress={() => router.push('/forgot-password')} hitSlop={8} style={{ alignSelf: 'flex-end', paddingVertical: 10 }}>
+            <Text style={[typography.footnote12, { color: colors.signalText }]}>Forgot password?</Text>
+          </Pressable>
+          <View style={{ height: 14 }} />
           <PrimaryPillButton label="Sign in" onPress={submit} loading={loading} />
           <Pressable accessibilityRole="button" onPress={() => router.push('/register')} style={{ alignSelf: 'center', paddingVertical: 14, marginTop: 4 }}>
             <Text style={[typography.footnote12, { color: colors.signalText }]}>Don't have an account? Create one</Text>

@@ -11,8 +11,14 @@ import { typography } from '../theme/typography';
 const DEFAULT_MESSAGE =
   'We look for the "Transaction statement" header and UPI transaction IDs. This file has neither - it may be a bank statement or an invoice.';
 
+const TITLES: Record<string, string> = {
+  corrupted_pdf: "This file couldn't be opened",
+  unsupported_statement: "This PDF isn't a Google Pay statement",
+};
+
 export default function RejectedScreen() {
-  const { message } = useLocalSearchParams<{ message?: string }>();
+  const { message, code } = useLocalSearchParams<{ message?: string; code?: string }>();
+  const title = TITLES[code ?? ''] ?? "This PDF isn't a Google Pay statement";
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/overview'));
 
   return (
@@ -24,7 +30,7 @@ export default function RejectedScreen() {
           <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: colors.downSoft, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={[typography.amountSmall22, { color: colors.down }]}>!</Text>
           </View>
-          <Text style={[typography.bigHeadline26, { color: colors.text, marginTop: 18 }]}>This PDF isn't a Google Pay statement</Text>
+          <Text style={[typography.bigHeadline26, { color: colors.text, marginTop: 18 }]}>{title}</Text>
           <Text style={[typography.body14, { color: colors.muted, lineHeight: 14 * 1.55, marginTop: 10 }]}>{message || DEFAULT_MESSAGE}</Text>
           <View style={{ marginTop: 22, padding: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.card }}>
             <Text style={[typography.microLabelTracked105, { color: colors.faint }]}>HOW TO GET THE RIGHT FILE</Text>

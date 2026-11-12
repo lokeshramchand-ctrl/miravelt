@@ -10,7 +10,9 @@ import { PrimaryPillButton, SecondaryPillButton } from '../components/Buttons';
 import { ProgressRing, PulsingDot } from '../components/Charts';
 import { Screen } from '../components/Screen';
 import { invalidatePeriods, useJobPoll } from '../hooks/periods';
+import { authRepository } from '../api/instance';
 import { requestNotificationPermission, showJobDone } from '../lib/notifications';
+import { isRegisteredForPush, registerForPush } from '../lib/push';
 import { alertUnusualSpendIfEnabled } from '../lib/unusualSpend';
 import { useSession } from '../state/session';
 import { useSettings } from '../state/settings';
@@ -19,11 +21,30 @@ import { colors } from '../theme/colors';
 import { spacing } from '../theme/tokens';
 import { typography } from '../theme/typography';
 
-export const STAGE_LABELS = ['Reading your statement', 'Naming merchants', 'Profiling behaviour', 'Computing analytics', 'Writing your signals'] as const;
+/**
+ * The worker's real stages, in order (backend statements/statement_service.py
+ * reports `job.stage`). The rows follow the stage the worker says it is in,
+ * not a guess from the percentage (F27).
+ */
+export const STAGES = [
+  { key: 'parsing', label: 'Reading your statement', blurb: 'Reading every payment in the PDF and checking it against the totals printed on it.' },
+  { key: 'categorizing', label: 'Naming merchants', blurb: 'Matching each payee to a merchant and a category, starting with what you taught Miravelt before.' },
+  { key: 'persisting_transactions', label: 'Adding to your timeline', blurb: 'Merging these payments with the periods you already have, without duplicating any.' },
+  { key: 'profiling_merchants', label: 'Profiling behaviour', blurb: 'Working out how often you pay each merchant, and how much is normal for you.' },
+  { key: 'generating_insights', label: 'Computing analytics and signals', blurb: 'Adding it all up and looking for what changed, what repeats and what stands out.' },
+] as const;
 
-/** Which of the pipeline stages is "active" at `progress` percent (the rest before it are done). */
-export function activeStageIndex(progress: number): number {
-  return Math.min(STAGE_LABELS.length - 1, Math.max(0, Math.floor((progress / 100) * STAGE_LABELS.length)));
+export const STAGE_LABELS = STAGES.map((s) => s.label);
+
+/**
+ * Which pipeline stage is active (the rows before it are done). Uses the
+ * job's reported `stage`; falls back to the percentage for a stage name this
+ * build does not know (an older or newer backend).
+ */
+export function activeStageIndex(progress: number, stage?: string | null): number {
+  const known = STAGES.findIndex((s) => s.key === stage);
+  if (known >= 0) return known;
+  return Math.min(STAGES.length - 1, Math.max(0, Math.floor((progress / 100) * STAGES.length)));
 }
 
 export default function AnalysingScreen() {
@@ -52,7 +73,9 @@ export default function AnalysingScreen() {
     const granted = await requestNotificationPermission();
     if (granted) {
       setNotifyRequested(true);
-      showToast("We'll notify you when this finishes.", 'success');
+      // With permission just granted, this device can now register for server push.
+      const pushed = await registerForPush({ register: authRepository.registerPushToken, unregister: authRepository.unregisterPushToken });
+      showToast(pushed ? "We'll notify you when this finishes, even if you close the app." : "We'll notify you when this finishes, as long as the app stays open in the background.", 'success');
     } else {
       showToast('Notifications are turned off for Miravelt in system settings.', 'error');
     }
@@ -63,7 +86,10 @@ export default function AnalysingScreen() {
   useEffect(() => {
     if (status !== 'COMPLETED' && status !== 'FAILED') return;
     const failed = status === 'FAILED';
-    if (notifyRequested && !notifiedDone.current) {
+    // A device registered for server push gets the "ready" notification from
+    // the backend worker - also when this screen is long gone (F16). The local
+    // one is only the fallback for a device that could not register.
+    if (notifyRequested && !notifiedDone.current && !isRegisteredForPush()) {
       notifiedDone.current = true;
       void showJobDone(
         failed ? 'Statement processing failed' : 'Your statement is ready',
@@ -84,7 +110,7 @@ export default function AnalysingScreen() {
   }, [status, resourceId, notifyRequested]);
 
   const progress = job?.progressPercent ?? 0;
-  const activeIndex = activeStageIndex(progress);
+  const activeIndex = activeStageIndex(progress, job?.stage);
   // Elapsed since the worker picked the job up (or since it was queued). Device and server
   // clocks can disagree a little; formatElapsed never shows a negative.
   const startedMs = (job?.startedAt ?? job?.createdAt)?.getTime() ?? null;
@@ -120,14 +146,14 @@ export default function AnalysingScreen() {
                       <Text style={[typography.amountMedium20, { color: colors.text }]}>%</Text>
                     </Text>
                   }
-                  centerSubLabel={job.stage?.toUpperCase()}
+                  centerSubLabel={`STEP ${activeIndex + 1} OF ${STAGES.length}`}
                 />
               </View>
               <Text style={[typography.bigHeadline22, { color: colors.text, textAlign: 'center', marginTop: 28 }]}>Finding your patterns</Text>
-              <Text style={[typography.footnote15, { color: colors.muted, textAlign: 'center', marginTop: 10 }]}>Profiling merchant behaviour - how often you pay them, and how much is normal.</Text>
+              <Text style={[typography.footnote15, { color: colors.muted, textAlign: 'center', marginTop: 10 }]}>{STAGES[activeIndex].blurb}</Text>
               <View style={{ height: 26 }} />
-              {STAGE_LABELS.map((label, i) => (
-                <StageRow key={label} index={i} label={label} state={i < activeIndex ? 'done' : i === activeIndex ? 'active' : 'pending'} />
+              {STAGES.map(({ key, label }, i) => (
+                <StageRow key={key} index={i} label={label} state={i < activeIndex ? 'done' : i === activeIndex ? 'active' : 'pending'} />
               ))}
             </ScrollView>
             <View style={{ marginTop: 14, paddingHorizontal: 15, paddingVertical: 13, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 14 }}>

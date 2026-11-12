@@ -6,6 +6,7 @@ export const ROUTES = {
   login: '/login',
   register: '/register',
   welcome: '/welcome',
+  forgotPassword: '/forgot-password',
   onboarding: '/onboarding',
   overview: '/overview',
   signals: '/signals',
@@ -37,7 +38,8 @@ export interface RedirectInput {
  */
 export function computeRedirect({ pathname, authStatus, periods, introSeen = true }: RedirectInput): string | null {
   const onSplash = pathname === ROUTES.splash;
-  const onAuthPages = pathname === ROUTES.login || pathname === ROUTES.register || pathname === ROUTES.welcome;
+  const onAuthPages =
+    pathname === ROUTES.login || pathname === ROUTES.register || pathname === ROUTES.welcome || pathname === ROUTES.forgotPassword;
 
   if (authStatus === 'loading') {
     // Cold start: hold on the splash, so a signed-in user never sees the login form flash up.

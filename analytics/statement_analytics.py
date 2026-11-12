@@ -1,37 +1,48 @@
-from datetime import datetime
+from collections import defaultdict
+from datetime import UTC, datetime
 from typing import Any
 
+from analytics.recurring import Payment, detect, months_covered
+from core.timezone import APP_TZ_NAME, end_of_local_day_exclusive, start_of_local_day
 from database.mongo import db
 from models.schemas import (
     CategoryBreakdownItem,
     DailyTrendItem,
     MerchantSpendItem,
     RecurringPaymentItem,
+    Statement,
     StatementAnalytics,
     TransactionStatus,
     TransactionType,
 )
+from repositories.transaction_repository import transaction_repo
 
 
 class StatementAnalyticsEngine:
-    """Same aggregation style as analytics/spending_patterns.py,
-    analytics/subscriptions.py, etc., but scoped to one statement
-    (user_id + statement_id) instead of an open-ended date range - a
-    statement's transaction set is already exact and bounded, so there's no
-    need to guess a window. Computed once by statements/statement_service.py
-    during job processing and persisted onto the Statement document; GET
-    /statements/{id}/analytics reads that back rather than recomputing."""
+    """Analytics for one statement's period, computed over the rows that
+    statement vouches for (`source_statement_ids`, PROJECT_AUDIT.md A1).
+    Computed during job processing and again whenever a correction touches
+    the period (feedback/feedback_service.py), then persisted on the
+    Statement; GET /statements/{id}/analytics reads that back.
 
-    async def compute(self, user_id: str, statement_id: str) -> StatementAnalytics:
-        base_match = {"user_id": user_id, "statement_id": statement_id}
+    Days are local days (core/timezone.py, F7). Recurring payments come from
+    this user's own history (analytics/recurring.py, F5/F6)."""
+
+    async def compute(self, user_id: str, statement: Statement) -> StatementAnalytics:
+        base_match = {"user_id": user_id, "source_statement_ids": statement.id}
+        period_start = start_of_local_day(statement.period_start)
+        period_end = end_of_local_day_exclusive(statement.period_end)
 
         totals = await self._compute_totals(base_match)
         category_breakdown = await self._category_breakdown(base_match)
         top_merchants = await self._top_merchants(base_match)
         daily_trend = await self._daily_trend(base_match)
-        recurring_payments = await self._recurring_payments(base_match)
         failed_count = await db.transactions.count_documents(
             {**base_match, "status": TransactionStatus.FAILED.value}
+        )
+        average_monthly_spend = round(totals["total_spend"] / months_covered(period_start, period_end), 2)
+        recurring_payments = await self._recurring_payments(
+            user_id, period_start, period_end, average_monthly_spend
         )
 
         return StatementAnalytics(
@@ -45,6 +56,7 @@ class StatementAnalyticsEngine:
             top_merchants=top_merchants,
             daily_trend=daily_trend,
             recurring_payments=recurring_payments,
+            average_monthly_spend=average_monthly_spend,
         )
 
     async def _compute_totals(self, base_match: dict[str, Any]) -> dict[str, Any]:
@@ -106,7 +118,7 @@ class StatementAnalyticsEngine:
             {"$match": {**base_match, "transaction_type": TransactionType.DEBIT.value}},
             {
                 "$group": {
-                    "_id": {"$dateToString": {"format": "%Y-%m-%d", "date": "$timestamp"}},
+                    "_id": {"$dateToString": {"format": "%Y-%m-%d", "date": "$timestamp", "timezone": APP_TZ_NAME}},
                     "total_amount": {"$sum": "$amount"},
                     "count": {"$sum": 1},
                 }
@@ -123,42 +135,44 @@ class StatementAnalyticsEngine:
         ]
 
     async def _recurring_payments(
-        self, base_match: dict[str, Any], min_periodicity: float = 0.85, min_occurrences: int = 3
+        self, user_id: str, period_start: datetime, period_end: datetime, average_monthly_spend: float
     ) -> list[RecurringPaymentItem]:
-        """Same periodicity-score join analytics/subscriptions.py already
-        does, scoped to this statement's transactions. behavior_patterns
-        itself stays a global, cross-statement/cross-user merchant knowledge
-        base (see statements/statement_service.py) - only the transaction
-        side of this join is statement-scoped.
+        """Payees this user pays on a schedule, judged on their whole history
+        up to the end of this period, listed if they were paid within it."""
+        by_merchant: dict[str, list[Payment]] = defaultdict(list)
+        for doc in await transaction_repo.debits_for_user(user_id, until=period_end):
+            if doc.get("merchant") and doc["merchant"] != "Unknown":
+                by_merchant[doc["merchant"]].append(Payment(doc["timestamp"], float(doc["amount"])))
 
-        Because that score is global, it alone can't make a merchant recurring
-        *for this user*: the merchant must also repeat within this statement
-        (min_occurrences), or a single payment to a merchant that is regular
-        for someone else would be listed."""
-        pipeline = [
-            {"$match": {**base_match, "transaction_type": TransactionType.DEBIT.value}},
-            {"$group": {"_id": "$merchant", "last_amount": {"$last": "$amount"}, "occurrences": {"$sum": 1}}},
-            {"$match": {"occurrences": {"$gte": min_occurrences}}},
-            {
-                "$lookup": {
-                    "from": "behavior_patterns",
-                    "localField": "_id",
-                    "foreignField": "merchant_name",
-                    "as": "behavior",
-                }
-            },
-            {"$unwind": "$behavior"},
-            {"$match": {"behavior.periodicity_score": {"$gte": min_periodicity}}},
-        ]
-        return [
-            RecurringPaymentItem(
-                merchant=doc["_id"],
-                estimated_monthly_cost=doc["last_amount"],
-                periodicity_score=doc["behavior"]["periodicity_score"],
-                occurrences=doc["occurrences"],
-            )
-            async for doc in db.transactions.aggregate(pipeline)
-        ]
+        items: list[RecurringPaymentItem] = []
+        for merchant, payments in by_merchant.items():
+            if not any(_aware(p.timestamp) >= period_start for p in payments):
+                continue
+            pattern = detect(payments)
+            if pattern is None:
+                continue
+            items.append(RecurringPaymentItem(
+                merchant=merchant,
+                estimated_monthly_cost=pattern.monthly_equivalent,
+                periodicity_score=pattern.regularity,
+                occurrences=pattern.occurrences,
+                cadence=pattern.cadence,
+                cadence_days=pattern.cadence_days,
+                typical_amount=pattern.typical_amount,
+                last_amount=pattern.last_amount,
+                last_paid_at=pattern.last_paid_at,
+                next_expected_at=pattern.next_expected_at,
+                amount_change=pattern.amount_change,
+                share_of_monthly_spend=(
+                    round(pattern.monthly_equivalent / average_monthly_spend, 4) if average_monthly_spend else None
+                ),
+            ))
+        items.sort(key=lambda r: r.estimated_monthly_cost, reverse=True)
+        return items
+
+
+def _aware(moment: datetime) -> datetime:
+    return moment if moment.tzinfo else moment.replace(tzinfo=UTC)
 
 
 statement_analytics_engine = StatementAnalyticsEngine()

@@ -1,0 +1,8 @@
+{
+  "coverage": 0.9487,
+  "accuracy_when_labelled": 1.0,
+  "end_to_end_accuracy": 0.9487,
+  "kind_accuracy": 0.9779,
+  "people_kept_private": 1.0,
+  "insight_faithfulness": 1.0
+}

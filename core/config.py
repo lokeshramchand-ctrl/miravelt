@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     # only - app.py registers no CORSMiddleware, so this isn't enforced yet
     # (see docs/17-senior-architect-review.md §6; only relevant once/if a
     # browser-based client calls this API directly, since the shipped
-    # client is the Flutter mobile app in frontend/, which CORS doesn't
+    # client is the React Native mobile app in frontend/, which CORS doesn't
     # apply to). Kept unset by default rather than a fake placeholder
     # domain - set to your real web origin(s) plus a localhost dev port if
     # you ever wire CORSMiddleware up.
@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     # backstop for every request body regardless of route.
     MAX_REQUEST_BODY_BYTES: int = 80_000_000  # 80 MB
     MAX_STATEMENT_PDF_BYTES: int = 10_000_000  # 10 MB
-    MAX_APK_UPLOAD_BYTES: int = 80_000_000  # 80 MB - a Flutter release APK is typically 20-50 MB
+    MAX_APK_UPLOAD_BYTES: int = 80_000_000  # 80 MB - a React Native release APK is typically 30-80 MB
     PDF_RETENTION_DAYS: int = 90  # Auto-delete PDFs after 90 days
     MONGODB_SERVER_SELECTION_TIMEOUT_MS: int = 5000
     MONGODB_CONNECT_TIMEOUT_MS: int = 5000
@@ -123,6 +123,42 @@ class Settings(BaseSettings):
     # see tasks/statement_tasks.py::sweep_stale_statement_jobs.
     STATEMENT_STALE_JOB_TIMEOUT_MINUTES: int = 20
     STATEMENT_STALE_JOB_SWEEP_INTERVAL_MINUTES: int = 5
+    # PDF/statement retention sweep (core/retention_manager.py) on the beat
+    # schedule, so "originals are deleted after PDF_RETENTION_DAYS" does not
+    # depend on someone pressing a button (PROJECT_AUDIT.md F20).
+    RETENTION_SWEEP_INTERVAL_MINUTES: int = 1440
+
+    # Learning (PROJECT_AUDIT.md B5): a business payee becomes a shared alias
+    # once this many distinct users corrected it to the same category.
+    COMMUNITY_ALIAS_MIN_USERS: int = 3
+
+    # Refresh-token grace window (PROJECT_AUDIT.md F19): presenting the token
+    # that was rotated away less than this many seconds ago is treated as a
+    # lost-response retry, not theft - it gets a fresh pair instead of
+    # revoking every session. 0 disables the window.
+    REFRESH_TOKEN_REUSE_GRACE_SECONDS: int = 30
+
+    # Server-driven push (PROJECT_AUDIT.md D1). Empty disables sending; the
+    # Expo push service needs no credentials for basic sends.
+    EXPO_PUSH_URL: str = "https://exp.host/--/api/v2/push/send"
+    PUSH_NOTIFICATIONS_ENABLED: bool = True
+
+    # Account recovery (PROJECT_AUDIT.md D3). Without SMTP the reset code is
+    # only logged (dev); with it, it is emailed.
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str | None = None
+    SMTP_PASSWORD: str | None = None
+    SMTP_FROM: str | None = None
+    PASSWORD_RESET_CODE_TTL_MINUTES: int = 30
+
+    # Experiments under labs/ (PROJECT_AUDIT.md E8): clustering, the knowledge
+    # graph, the retraining job, global merchant profiles. Off by default -
+    # their endpoints are not mounted and their jobs are not scheduled.
+    LABS_ENABLED: bool = False
+
+    # Errors (PROJECT_AUDIT.md E5/F26). Unset disables Sentry entirely.
+    SENTRY_DSN: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

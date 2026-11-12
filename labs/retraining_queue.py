@@ -54,7 +54,7 @@ class RetrainingQueueManager:
         # user who happened to submit the correction that crossed the
         # threshold.
         try:
-            from tasks.retraining_tasks import run_baseline_training
+            from labs.retraining_tasks import run_baseline_training
             run_baseline_training.delay()
         except Exception:
             logger.exception(

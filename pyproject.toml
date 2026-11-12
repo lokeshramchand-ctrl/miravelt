@@ -47,4 +47,5 @@ extend-immutable-calls = [
 
 [tool.pytest.ini_options]
 testpaths = ["."]
+pythonpath = ["."]
 python_files = ["test_*.py"]

@@ -395,3 +395,57 @@ async def list_all_releases(
         }
         for r in releases
     ]
+
+@router.get("/events/summary", status_code=status.HTTP_200_OK)
+@limiter.limit("60/minute")
+async def events_summary(
+    request: Request,
+    days: int = Query(30, ge=1, le=180),
+    payload = Depends(require_scope("admin")),
+    current_user = Depends(get_current_user),
+):
+    """Product-event counts by name over the last `days` days, with how many
+    distinct users produced each (routers/events.py writes them)."""
+    from datetime import UTC, datetime, timedelta
+
+    from database.mongo import db
+
+    since = datetime.now(UTC) - timedelta(days=days)
+    rows = [
+        {"name": doc["_id"], "count": doc["count"], "users": len(doc["users"])}
+        async for doc in db.events.aggregate([
+            {"$match": {"created_at": {"$gte": since}}},
+            {"$group": {"_id": "$name", "count": {"$sum": 1}, "users": {"$addToSet": "$user_id"}}},
+            {"$sort": {"count": -1}},
+        ])
+    ]
+    return {"days": days, "events": rows}
+
+
+@router.get("/client-errors", status_code=status.HTTP_200_OK)
+@limiter.limit("60/minute")
+async def list_client_errors(
+    request: Request,
+    limit: int = Query(50, ge=1, le=200),
+    payload = Depends(require_scope("admin")),
+    current_user = Depends(get_current_user),
+):
+    """The most recent crashes the app reported (its error boundary and
+    global handler post `client_error` events)."""
+    from database.mongo import db
+
+    cursor = db.events.find({"name": "client_error"}).sort("created_at", -1).limit(limit)
+    return [
+        {
+            "id": str(doc["_id"]),
+            "user_id": doc.get("user_id"),
+            "occurred_at": doc.get("occurred_at"),
+            "app_version": doc.get("app_version"),
+            "platform": doc.get("platform"),
+            "message": doc.get("properties", {}).get("message"),
+            "screen": doc.get("properties", {}).get("screen"),
+            "fatal": doc.get("properties", {}).get("fatal"),
+            "stack": doc.get("properties", {}).get("stack"),
+        }
+        async for doc in cursor
+    ]

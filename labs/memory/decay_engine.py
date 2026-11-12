@@ -1,8 +1,8 @@
 import logging
 from datetime import UTC, datetime, timedelta
 
+from labs.profile_repository import profile_repo
 from models.schemas import MemoryState
-from repositories.profile_repository import profile_repo
 
 logger = logging.getLogger(__name__)
 

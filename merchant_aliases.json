@@ -1,24 +1,846 @@
 {
-  "swiggy": { "merchant": "Swiggy", "category": "Food" },
-  "zomato": { "merchant": "Zomato", "category": "Food" },
-  "uber": { "merchant": "Uber", "category": "Travel" },
-  "ola": { "merchant": "Ola", "category": "Travel" },
-  "netflix": { "merchant": "Netflix", "category": "Subscription" },
-  "spotify": { "merchant": "Spotify", "category": "Subscription" },
-  "amazon": { "merchant": "Amazon", "category": "Shopping" },
-  "starbucks": { "merchant": "Starbucks", "category": "Food" },
-  "bundl": { "merchant": "Swiggy", "category": "Food" },
-  "blinkit": { "merchant": "Blinkit", "category": "Shopping" },
-  "bookmyshow": { "merchant": "BookMyShow", "category": "Entertainment" },
-  "youtube": { "merchant": "YouTube", "category": "Subscription" },
-  "ikea": { "merchant": "IKEA", "category": "Shopping" },
-  "apollo pharmacy": { "merchant": "Apollo Pharmacy", "category": "Healthcare" },
-  "decathlon": { "merchant": "Decathlon", "category": "Shopping" },
-  "apsrtc": { "merchant": "APSRTC", "category": "Travel" },
-  "karachi bakery": { "merchant": "Karachi Bakery", "category": "Food" },
-  "karachi backery": { "merchant": "Karachi Bakery", "category": "Food" },
-  "cream stone": { "merchant": "Cream Stone", "category": "Food" },
-  "metro rail": { "merchant": "Metro Rail", "category": "Travel" },
-  "max retail": { "merchant": "Max Retail", "category": "Shopping" },
-  "vijetha": { "merchant": "Vijetha Super Markets", "category": "Shopping" }
+  "swiggy": {
+    "merchant": "Swiggy",
+    "category": "Food"
+  },
+  "zomato": {
+    "merchant": "Zomato",
+    "category": "Food"
+  },
+  "uber": {
+    "merchant": "Uber",
+    "category": "Travel"
+  },
+  "ola": {
+    "merchant": "Ola",
+    "category": "Travel"
+  },
+  "netflix": {
+    "merchant": "Netflix",
+    "category": "Subscription"
+  },
+  "spotify": {
+    "merchant": "Spotify",
+    "category": "Subscription"
+  },
+  "amazon": {
+    "merchant": "Amazon",
+    "category": "Shopping"
+  },
+  "starbucks": {
+    "merchant": "Starbucks",
+    "category": "Food"
+  },
+  "bundl": {
+    "merchant": "Swiggy",
+    "category": "Food"
+  },
+  "blinkit": {
+    "merchant": "Blinkit",
+    "category": "Shopping"
+  },
+  "bookmyshow": {
+    "merchant": "BookMyShow",
+    "category": "Entertainment"
+  },
+  "youtube": {
+    "merchant": "YouTube",
+    "category": "Subscription"
+  },
+  "ikea": {
+    "merchant": "IKEA",
+    "category": "Shopping"
+  },
+  "apollo pharmacy": {
+    "merchant": "Apollo Pharmacy",
+    "category": "Healthcare"
+  },
+  "decathlon": {
+    "merchant": "Decathlon",
+    "category": "Shopping"
+  },
+  "apsrtc": {
+    "merchant": "APSRTC",
+    "category": "Travel"
+  },
+  "karachi bakery": {
+    "merchant": "Karachi Bakery",
+    "category": "Food"
+  },
+  "karachi backery": {
+    "merchant": "Karachi Bakery",
+    "category": "Food"
+  },
+  "cream stone": {
+    "merchant": "Cream Stone",
+    "category": "Food"
+  },
+  "metro rail": {
+    "merchant": "Metro Rail",
+    "category": "Travel"
+  },
+  "max retail": {
+    "merchant": "Max Retail",
+    "category": "Shopping"
+  },
+  "vijetha": {
+    "merchant": "Vijetha Super Markets",
+    "category": "Shopping"
+  },
+  "swiggy instamart": {
+    "merchant": "Swiggy Instamart",
+    "category": "Shopping"
+  },
+  "dominos": {
+    "merchant": "Domino's",
+    "category": "Food"
+  },
+  "domino's": {
+    "merchant": "Domino's",
+    "category": "Food"
+  },
+  "jubilant foodworks": {
+    "merchant": "Domino's",
+    "category": "Food"
+  },
+  "mcdonald": {
+    "merchant": "McDonald's",
+    "category": "Food"
+  },
+  "mcdonalds": {
+    "merchant": "McDonald's",
+    "category": "Food"
+  },
+  "kfc": {
+    "merchant": "KFC",
+    "category": "Food"
+  },
+  "pizza hut": {
+    "merchant": "Pizza Hut",
+    "category": "Food"
+  },
+  "burger king": {
+    "merchant": "Burger King",
+    "category": "Food"
+  },
+  "haldiram": {
+    "merchant": "Haldiram's",
+    "category": "Food"
+  },
+  "haldirams": {
+    "merchant": "Haldiram's",
+    "category": "Food"
+  },
+  "chaayos": {
+    "merchant": "Chaayos",
+    "category": "Food"
+  },
+  "cafe coffee day": {
+    "merchant": "Cafe Coffee Day",
+    "category": "Food"
+  },
+  "barbeque nation": {
+    "merchant": "Barbeque Nation",
+    "category": "Food"
+  },
+  "faasos": {
+    "merchant": "Faasos",
+    "category": "Food"
+  },
+  "eatclub": {
+    "merchant": "EatClub",
+    "category": "Food"
+  },
+  "licious": {
+    "merchant": "Licious",
+    "category": "Food"
+  },
+  "country delight": {
+    "merchant": "Country Delight",
+    "category": "Food"
+  },
+  "wow momo": {
+    "merchant": "Wow! Momo",
+    "category": "Food"
+  },
+  "eternal limited": {
+    "merchant": "Zomato",
+    "category": "Food"
+  },
+  "paradise biryani": {
+    "merchant": "Paradise Biryani",
+    "category": "Food"
+  },
+  "third wave coffee": {
+    "merchant": "Third Wave Coffee",
+    "category": "Food"
+  },
+  "blue tokai": {
+    "merchant": "Blue Tokai",
+    "category": "Food"
+  },
+  "baskin robbins": {
+    "merchant": "Baskin Robbins",
+    "category": "Food"
+  },
+  "naturals ice cream": {
+    "merchant": "Naturals",
+    "category": "Food"
+  },
+  "zepto": {
+    "merchant": "Zepto",
+    "category": "Shopping"
+  },
+  "bigbasket": {
+    "merchant": "BigBasket",
+    "category": "Shopping"
+  },
+  "big basket": {
+    "merchant": "BigBasket",
+    "category": "Shopping"
+  },
+  "dunzo": {
+    "merchant": "Dunzo",
+    "category": "Shopping"
+  },
+  "flipkart": {
+    "merchant": "Flipkart",
+    "category": "Shopping"
+  },
+  "myntra": {
+    "merchant": "Myntra",
+    "category": "Shopping"
+  },
+  "ajio": {
+    "merchant": "AJIO",
+    "category": "Shopping"
+  },
+  "meesho": {
+    "merchant": "Meesho",
+    "category": "Shopping"
+  },
+  "nykaa": {
+    "merchant": "Nykaa",
+    "category": "Shopping"
+  },
+  "dmart": {
+    "merchant": "DMart",
+    "category": "Shopping"
+  },
+  "avenue supermarts": {
+    "merchant": "DMart",
+    "category": "Shopping"
+  },
+  "jiomart": {
+    "merchant": "JioMart",
+    "category": "Shopping"
+  },
+  "reliance retail": {
+    "merchant": "Reliance Retail",
+    "category": "Shopping"
+  },
+  "reliance digital": {
+    "merchant": "Reliance Digital",
+    "category": "Shopping"
+  },
+  "reliance trends": {
+    "merchant": "Reliance Trends",
+    "category": "Shopping"
+  },
+  "reliance smart": {
+    "merchant": "Reliance Smart",
+    "category": "Shopping"
+  },
+  "croma": {
+    "merchant": "Croma",
+    "category": "Shopping"
+  },
+  "pantaloons": {
+    "merchant": "Pantaloons",
+    "category": "Shopping"
+  },
+  "westside": {
+    "merchant": "Westside",
+    "category": "Shopping"
+  },
+  "shoppers stop": {
+    "merchant": "Shoppers Stop",
+    "category": "Shopping"
+  },
+  "lenskart": {
+    "merchant": "Lenskart",
+    "category": "Shopping"
+  },
+  "firstcry": {
+    "merchant": "FirstCry",
+    "category": "Shopping"
+  },
+  "pepperfry": {
+    "merchant": "Pepperfry",
+    "category": "Shopping"
+  },
+  "tanishq": {
+    "merchant": "Tanishq",
+    "category": "Shopping"
+  },
+  "ratnadeep": {
+    "merchant": "Ratnadeep",
+    "category": "Shopping"
+  },
+  "heritage fresh": {
+    "merchant": "Heritage Fresh",
+    "category": "Shopping"
+  },
+  "spencers": {
+    "merchant": "Spencer's",
+    "category": "Shopping"
+  },
+  "lulu hypermarket": {
+    "merchant": "Lulu Hypermarket",
+    "category": "Shopping"
+  },
+  "tata cliq": {
+    "merchant": "Tata CLiQ",
+    "category": "Shopping"
+  },
+  "snapdeal": {
+    "merchant": "Snapdeal",
+    "category": "Shopping"
+  },
+  "purplle": {
+    "merchant": "Purplle",
+    "category": "Shopping"
+  },
+  "h&m": {
+    "merchant": "H&M",
+    "category": "Shopping"
+  },
+  "zara": {
+    "merchant": "Zara",
+    "category": "Shopping"
+  },
+  "uniqlo": {
+    "merchant": "Uniqlo",
+    "category": "Shopping"
+  },
+  "rapido": {
+    "merchant": "Rapido",
+    "category": "Travel"
+  },
+  "irctc": {
+    "merchant": "IRCTC",
+    "category": "Travel"
+  },
+  "redbus": {
+    "merchant": "redBus",
+    "category": "Travel"
+  },
+  "makemytrip": {
+    "merchant": "MakeMyTrip",
+    "category": "Travel"
+  },
+  "goibibo": {
+    "merchant": "Goibibo",
+    "category": "Travel"
+  },
+  "cleartrip": {
+    "merchant": "Cleartrip",
+    "category": "Travel"
+  },
+  "ixigo": {
+    "merchant": "ixigo",
+    "category": "Travel"
+  },
+  "interglobe aviation": {
+    "merchant": "IndiGo",
+    "category": "Travel"
+  },
+  "air india": {
+    "merchant": "Air India",
+    "category": "Travel"
+  },
+  "akasa air": {
+    "merchant": "Akasa Air",
+    "category": "Travel"
+  },
+  "spicejet": {
+    "merchant": "SpiceJet",
+    "category": "Travel"
+  },
+  "yulu": {
+    "merchant": "Yulu",
+    "category": "Travel"
+  },
+  "tsrtc": {
+    "merchant": "TSRTC",
+    "category": "Travel"
+  },
+  "ksrtc": {
+    "merchant": "KSRTC",
+    "category": "Travel"
+  },
+  "msrtc": {
+    "merchant": "MSRTC",
+    "category": "Travel"
+  },
+  "hindustan petroleum": {
+    "merchant": "HPCL",
+    "category": "Travel"
+  },
+  "hpcl": {
+    "merchant": "HPCL",
+    "category": "Travel"
+  },
+  "indian oil": {
+    "merchant": "Indian Oil",
+    "category": "Travel"
+  },
+  "iocl": {
+    "merchant": "Indian Oil",
+    "category": "Travel"
+  },
+  "bharat petroleum": {
+    "merchant": "BPCL",
+    "category": "Travel"
+  },
+  "bpcl": {
+    "merchant": "BPCL",
+    "category": "Travel"
+  },
+  "fastag": {
+    "merchant": "FASTag",
+    "category": "Travel"
+  },
+  "namma metro": {
+    "merchant": "Namma Metro",
+    "category": "Travel"
+  },
+  "delhi metro": {
+    "merchant": "Delhi Metro",
+    "category": "Travel"
+  },
+  "dmrc": {
+    "merchant": "Delhi Metro",
+    "category": "Travel"
+  },
+  "hyderabad metro": {
+    "merchant": "Hyderabad Metro",
+    "category": "Travel"
+  },
+  "bmtc": {
+    "merchant": "BMTC",
+    "category": "Travel"
+  },
+  "pvr": {
+    "merchant": "PVR INOX",
+    "category": "Entertainment"
+  },
+  "inox": {
+    "merchant": "PVR INOX",
+    "category": "Entertainment"
+  },
+  "dream11": {
+    "merchant": "Dream11",
+    "category": "Entertainment"
+  },
+  "playstation": {
+    "merchant": "PlayStation",
+    "category": "Entertainment"
+  },
+  "steam games": {
+    "merchant": "Steam",
+    "category": "Entertainment"
+  },
+  "wonderla": {
+    "merchant": "Wonderla",
+    "category": "Entertainment"
+  },
+  "hotstar": {
+    "merchant": "Disney+ Hotstar",
+    "category": "Subscription"
+  },
+  "jiohotstar": {
+    "merchant": "JioHotstar",
+    "category": "Subscription"
+  },
+  "zee5": {
+    "merchant": "ZEE5",
+    "category": "Subscription"
+  },
+  "sonyliv": {
+    "merchant": "SonyLIV",
+    "category": "Subscription"
+  },
+  "sony liv": {
+    "merchant": "SonyLIV",
+    "category": "Subscription"
+  },
+  "jiocinema": {
+    "merchant": "JioCinema",
+    "category": "Subscription"
+  },
+  "amazon prime": {
+    "merchant": "Amazon Prime",
+    "category": "Subscription"
+  },
+  "prime video": {
+    "merchant": "Amazon Prime",
+    "category": "Subscription"
+  },
+  "apple media services": {
+    "merchant": "Apple",
+    "category": "Subscription"
+  },
+  "apple services": {
+    "merchant": "Apple",
+    "category": "Subscription"
+  },
+  "google play": {
+    "merchant": "Google Play",
+    "category": "Subscription"
+  },
+  "google one": {
+    "merchant": "Google One",
+    "category": "Subscription"
+  },
+  "microsoft": {
+    "merchant": "Microsoft",
+    "category": "Subscription"
+  },
+  "adobe": {
+    "merchant": "Adobe",
+    "category": "Subscription"
+  },
+  "linkedin": {
+    "merchant": "LinkedIn",
+    "category": "Subscription"
+  },
+  "openai": {
+    "merchant": "OpenAI",
+    "category": "Subscription"
+  },
+  "chatgpt": {
+    "merchant": "OpenAI",
+    "category": "Subscription"
+  },
+  "audible": {
+    "merchant": "Audible",
+    "category": "Subscription"
+  },
+  "gaana": {
+    "merchant": "Gaana",
+    "category": "Subscription"
+  },
+  "jiosaavn": {
+    "merchant": "JioSaavn",
+    "category": "Subscription"
+  },
+  "times prime": {
+    "merchant": "Times Prime",
+    "category": "Subscription"
+  },
+  "airtel": {
+    "merchant": "Airtel",
+    "category": "Bills"
+  },
+  "reliance jio": {
+    "merchant": "Jio",
+    "category": "Bills"
+  },
+  "jio prepaid": {
+    "merchant": "Jio",
+    "category": "Bills"
+  },
+  "jio recharge": {
+    "merchant": "Jio",
+    "category": "Bills"
+  },
+  "jio fiber": {
+    "merchant": "JioFiber",
+    "category": "Bills"
+  },
+  "vodafone idea": {
+    "merchant": "Vi",
+    "category": "Bills"
+  },
+  "bsnl": {
+    "merchant": "BSNL",
+    "category": "Bills"
+  },
+  "act fibernet": {
+    "merchant": "ACT Fibernet",
+    "category": "Bills"
+  },
+  "atria convergence": {
+    "merchant": "ACT Fibernet",
+    "category": "Bills"
+  },
+  "tata play": {
+    "merchant": "Tata Play",
+    "category": "Bills"
+  },
+  "tata sky": {
+    "merchant": "Tata Play",
+    "category": "Bills"
+  },
+  "dish tv": {
+    "merchant": "Dish TV",
+    "category": "Bills"
+  },
+  "sun direct": {
+    "merchant": "Sun Direct",
+    "category": "Bills"
+  },
+  "life insurance corporation": {
+    "merchant": "LIC",
+    "category": "Bills"
+  },
+  "hdfc ergo": {
+    "merchant": "HDFC ERGO",
+    "category": "Bills"
+  },
+  "star health": {
+    "merchant": "Star Health",
+    "category": "Bills"
+  },
+  "icici lombard": {
+    "merchant": "ICICI Lombard",
+    "category": "Bills"
+  },
+  "cred club": {
+    "merchant": "CRED",
+    "category": "Bills"
+  },
+  "hathway": {
+    "merchant": "Hathway",
+    "category": "Bills"
+  },
+  "bescom": {
+    "merchant": "BESCOM",
+    "category": "Utility"
+  },
+  "tsspdcl": {
+    "merchant": "TSSPDCL",
+    "category": "Utility"
+  },
+  "tgspdcl": {
+    "merchant": "TGSPDCL",
+    "category": "Utility"
+  },
+  "apspdcl": {
+    "merchant": "APSPDCL",
+    "category": "Utility"
+  },
+  "apcpdcl": {
+    "merchant": "APCPDCL",
+    "category": "Utility"
+  },
+  "tneb": {
+    "merchant": "TNEB",
+    "category": "Utility"
+  },
+  "tangedco": {
+    "merchant": "TANGEDCO",
+    "category": "Utility"
+  },
+  "mahadiscom": {
+    "merchant": "MSEDCL",
+    "category": "Utility"
+  },
+  "msedcl": {
+    "merchant": "MSEDCL",
+    "category": "Utility"
+  },
+  "adani electricity": {
+    "merchant": "Adani Electricity",
+    "category": "Utility"
+  },
+  "tata power": {
+    "merchant": "Tata Power",
+    "category": "Utility"
+  },
+  "bses": {
+    "merchant": "BSES",
+    "category": "Utility"
+  },
+  "indane": {
+    "merchant": "Indane Gas",
+    "category": "Utility"
+  },
+  "hp gas": {
+    "merchant": "HP Gas",
+    "category": "Utility"
+  },
+  "bharat gas": {
+    "merchant": "Bharat Gas",
+    "category": "Utility"
+  },
+  "mahanagar gas": {
+    "merchant": "Mahanagar Gas",
+    "category": "Utility"
+  },
+  "indraprastha gas": {
+    "merchant": "Indraprastha Gas",
+    "category": "Utility"
+  },
+  "hmwssb": {
+    "merchant": "HMWSSB",
+    "category": "Utility"
+  },
+  "bwssb": {
+    "merchant": "BWSSB",
+    "category": "Utility"
+  },
+  "pharmeasy": {
+    "merchant": "PharmEasy",
+    "category": "Healthcare"
+  },
+  "1mg": {
+    "merchant": "Tata 1mg",
+    "category": "Healthcare"
+  },
+  "netmeds": {
+    "merchant": "Netmeds",
+    "category": "Healthcare"
+  },
+  "medplus": {
+    "merchant": "MedPlus",
+    "category": "Healthcare"
+  },
+  "practo": {
+    "merchant": "Practo",
+    "category": "Healthcare"
+  },
+  "apollo hospitals": {
+    "merchant": "Apollo Hospitals",
+    "category": "Healthcare"
+  },
+  "apollo 247": {
+    "merchant": "Apollo 24|7",
+    "category": "Healthcare"
+  },
+  "cult.fit": {
+    "merchant": "cult.fit",
+    "category": "Healthcare"
+  },
+  "curefit": {
+    "merchant": "cult.fit",
+    "category": "Healthcare"
+  },
+  "dr lal pathlabs": {
+    "merchant": "Dr Lal PathLabs",
+    "category": "Healthcare"
+  },
+  "thyrocare": {
+    "merchant": "Thyrocare",
+    "category": "Healthcare"
+  },
+  "byju": {
+    "merchant": "BYJU'S",
+    "category": "Education"
+  },
+  "byjus": {
+    "merchant": "BYJU'S",
+    "category": "Education"
+  },
+  "unacademy": {
+    "merchant": "Unacademy",
+    "category": "Education"
+  },
+  "udemy": {
+    "merchant": "Udemy",
+    "category": "Education"
+  },
+  "coursera": {
+    "merchant": "Coursera",
+    "category": "Education"
+  },
+  "physics wallah": {
+    "merchant": "Physics Wallah",
+    "category": "Education"
+  },
+  "physicswallah": {
+    "merchant": "Physics Wallah",
+    "category": "Education"
+  },
+  "vedantu": {
+    "merchant": "Vedantu",
+    "category": "Education"
+  },
+  "upgrad": {
+    "merchant": "upGrad",
+    "category": "Education"
+  },
+  "duolingo": {
+    "merchant": "Duolingo",
+    "category": "Education"
+  },
+  "ani technologies": {
+    "merchant": "Ola",
+    "category": "Travel"
+  },
+  "roppen transportation": {
+    "merchant": "Rapido",
+    "category": "Travel"
+  },
+  "grofers": {
+    "merchant": "Blinkit",
+    "category": "Shopping"
+  },
+  "blink commerce": {
+    "merchant": "Blinkit",
+    "category": "Shopping"
+  },
+  "kiranakart": {
+    "merchant": "Zepto",
+    "category": "Shopping"
+  },
+  "bigtree entertainment": {
+    "merchant": "BookMyShow",
+    "category": "Entertainment"
+  },
+  "innovative retail concepts": {
+    "merchant": "BigBasket",
+    "category": "Shopping"
+  },
+  "supermarket grocery supplies": {
+    "merchant": "BigBasket",
+    "category": "Shopping"
+  },
+  "bata india": {
+    "merchant": "Bata",
+    "category": "Shopping"
+  },
+  "titan company": {
+    "merchant": "Titan",
+    "category": "Shopping"
+  },
+  "lifestyle international": {
+    "merchant": "Lifestyle",
+    "category": "Shopping"
+  },
+  "sangeetha mobiles": {
+    "merchant": "Sangeetha Mobiles",
+    "category": "Shopping"
+  },
+  "one97 communications": {
+    "merchant": "Paytm",
+    "category": "Bills"
+  },
+  "zomato hyperpure": {
+    "merchant": "Zomato",
+    "category": "Food"
+  },
+  "fsn e commerce": {
+    "merchant": "Nykaa",
+    "category": "Shopping"
+  },
+  "think and learn": {
+    "merchant": "BYJU'S",
+    "category": "Education"
+  },
+  "sorting hat technologies": {
+    "merchant": "Unacademy",
+    "category": "Education"
+  }
 }

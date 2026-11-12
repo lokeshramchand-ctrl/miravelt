@@ -37,7 +37,9 @@ logger = logging.getLogger(__name__)
     soft_time_limit=600,
     time_limit=900,
 )
-def process_statement_task(statement_id: str, job_id: str, full_text: str):
+def process_statement_task(statement_id: str, job_id: str, full_text: str | None = None):
+    # full_text is only passed by messages enqueued before the text moved to
+    # the statement_texts collection; new uploads send ids only (F15d).
     return run_async(statement_service.process_statement(statement_id, job_id, full_text))
 
 

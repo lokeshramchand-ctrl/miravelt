@@ -23,16 +23,31 @@ from core.middleware import (
 from core.ollama_client import get_ollama_host
 from core.rate_limiter import setup_rate_limiting
 from core.security import validate_admin_key, validate_api_key
-from database.milvus import vector_db
 
 # Databases
+from database.migrations import run_migrations
+from database.milvus import vector_db
 from database.mongo import db
 from feedback.api_router import router as feedback_router
 from milvus.insert_vectors import vector_store
 
 # Routers
-from routers import admin, analytics, app_updates, auth, devices, jobs, memory, pipelines, rag, statements, users, v1
-from routers.observability import router as observability_router
+from routers import (
+    account,
+    admin,
+    analytics,
+    app_updates,
+    auth,
+    devices,
+    events,
+    jobs,
+    pipelines,
+    rag,
+    statements,
+    timeline,
+    users,
+    v1,
+)
 
 # Logging
 # LOG_LEVEL defaults to INFO (never DEBUG by default): at DEBUG, pymongo/motor
@@ -44,6 +59,32 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+
+def _init_error_reporting() -> None:
+    """Server-side error reporting (PROJECT_AUDIT.md E5/F26). Off unless
+    SENTRY_DSN is set; the SDK is an optional install (`pip install
+    sentry-sdk`), so its absence is a logged warning, not a crash. Request
+    bodies and user identifiers are never attached - this API carries
+    people's payment history."""
+    if not settings.SENTRY_DSN:
+        return
+    try:
+        import sentry_sdk
+    except ImportError:
+        logger.warning("SENTRY_DSN is set but sentry-sdk is not installed - error reporting is off.")
+        return
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.ENVIRONMENT,
+        send_default_pii=False,
+        max_request_body_size="never",
+        traces_sample_rate=0.0,
+    )
+    logger.info("Error reporting enabled.")
+
+
+_init_error_reporting()
 
 
 # Shared client for outbound health-check calls to Ollama. Built once at
@@ -81,6 +122,7 @@ async def lifespan(app: FastAPI):
 
     # MongoDB
     await db.connect(uri=settings.MONGODB_URI, db_name=settings.MONGODB_DB_NAME)
+    await run_migrations()
     await db.ensure_indexes()
     # Statement processing no longer runs in this process (see
     # tasks/statement_tasks.py), so a restart here no longer orphans any
@@ -187,15 +229,16 @@ Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 app.include_router(auth.router, dependencies=[Depends(validate_api_key)])
 app.include_router(devices.router, dependencies=[Depends(validate_api_key)])
 app.include_router(users.router, dependencies=[Depends(validate_api_key)])
+app.include_router(account.router, dependencies=[Depends(validate_api_key)])
 app.include_router(v1.router, dependencies=[Depends(validate_api_key)])
-app.include_router(memory.router, dependencies=[Depends(validate_api_key)])
 app.include_router(analytics.router, dependencies=[Depends(validate_api_key)])
 app.include_router(rag.router, dependencies=[Depends(validate_api_key)])
-app.include_router(observability_router, dependencies=[Depends(validate_api_key)])
 app.include_router(feedback_router, dependencies=[Depends(validate_api_key)])
 app.include_router(pipelines.router, dependencies=[Depends(validate_api_key), Depends(validate_admin_key)])
 app.include_router(statements.router, dependencies=[Depends(validate_api_key)])
+app.include_router(timeline.router, dependencies=[Depends(validate_api_key)])
 app.include_router(jobs.router, dependencies=[Depends(validate_api_key)])
+app.include_router(events.router, dependencies=[Depends(validate_api_key)])
 # routers/app_updates.py: GET routes need only MIRAVELT_API_KEY (read-only
 # version metadata + the APK bytes); POST /app/releases layers
 # validate_admin_key on top of that at the route level (see the router
@@ -204,6 +247,21 @@ app.include_router(jobs.router, dependencies=[Depends(validate_api_key)])
 # of per-router because most of this router's endpoints are meant to be
 # reachable by the app itself, unlike pipelines.router's.
 app.include_router(app_updates.router, dependencies=[Depends(validate_api_key)])
+
+# Experiments (labs/README.md): mounted only when LABS_ENABLED, with the
+# same gates their endpoints had in the main tree.
+if settings.LABS_ENABLED:
+    from labs.routers import experiments as labs_experiments
+    from labs.routers import memory as labs_memory
+    from labs.routers import observability as labs_observability
+
+    app.include_router(labs_memory.router, dependencies=[Depends(validate_api_key)])
+    app.include_router(labs_observability.router, dependencies=[Depends(validate_api_key)])
+    app.include_router(labs_experiments.router, dependencies=[Depends(validate_api_key)])
+    app.include_router(
+        labs_experiments.pipelines_router,
+        dependencies=[Depends(validate_api_key), Depends(validate_admin_key)],
+    )
 
 # Admin API - stricter rate limits, requires ADMIN_API_KEY + admin scope
 # In production, can be deployed on a separate internal port/network (see docker-compose.yml)

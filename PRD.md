@@ -59,7 +59,7 @@ with a known limitation. **Open** = not built.
 | Session persists across launches; access token (15 min) refreshes automatically from a rotating refresh token (30 days); a reused or expired refresh token forces sign-in | Shipped |
 | A signed-in user never sees the login form on launch (splash while the session is checked) | Shipped |
 | Edit display name | Shipped |
-| Delete account and all data from the app | **Open** - the button signs out and tells the user to contact support |
+| Delete account and all data from the app | Shipped - `DELETE /users/me` cascades through every store |
 
 ### 5.2 Statement ingestion
 
@@ -96,7 +96,7 @@ with a known limitation. **Open** = not built.
 | **Activity**: all transactions grouped by day with day totals; search by merchant; filter by direction, category and amount | Shipped |
 | **Transaction sheet**: details, UPI reference, paying bank account, and "Why this category" worded from how the category was decided (known merchant / best guess / not matched / incoming) | Shipped |
 | Correct a category; the correction applies to every transaction from that merchant and feeds the retraining queue | Shipped |
-| Grounded natural-language explanation per transaction via `/v1/explain` | **Open** - the endpoint exists; the app does not call it yet |
+| Grounded natural-language explanation per transaction via `/v1/explain` | Shipped - the transaction sheet calls it by id and explains from the user's own history |
 | Export a period's transactions as CSV through the share sheet | Shipped |
 
 ### 5.5 Settings and support
@@ -135,7 +135,7 @@ with a known limitation. **Open** = not built.
 | Sign-in | Backend time for login + profile + periods < 1 s | ~0.8 s (0.35 + 0.21 + 0.25) |
 | Upload | Accepted (202) in seconds; the server stays responsive during processing | Parsing now runs off the event loop; on the constrained local Docker VM, acceptance was 30–40 s before this fix |
 | Processing | A six-month statement fully processed in about a minute | ~70 s locally, dominated by LLM insights on CPU |
-| Availability | MongoDB is the only hard dependency; Milvus and Ollama outages degrade features, never fail the app | Verified |
+| Availability | MongoDB and Redis are the hard dependencies; Milvus and Ollama outages degrade features, never fail the app | Verified |
 | Security | Every route requires the app API key; user routes also require a JWT; operator routes require a separate admin key; switching backends never sends the session to the new host | Verified |
 | Privacy | No bank or card access; PDF storage optional; PDFs auto-deleted after 90 days (`PDF_RETENTION_DAYS`) | Configured |
 | Accessibility | 4.5:1 text contrast, 44px tap targets, colour never the only signal | Per `DESIGN_SYSTEM.md` §8 |

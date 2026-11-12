@@ -9,7 +9,7 @@ This repo holds three separate deployables sharing one backend contract:
 ```
 frontend/           React Native (Expo) mobile client (the product surface end users touch)
 admin-dashboard/     Next.js BFF (server-only) for operator/admin use
-<repo root>          FastAPI backend (app.py) - single process, MongoDB + Milvus + Ollama
+<repo root>          FastAPI backend (app.py) - API process + Celery workers, MongoDB + Redis (hard) + Milvus + Ollama (degrade)
 ```
 
 `ARCHITECTURE.md` at the repo root is the authoritative one-level-up map: service boundaries,
@@ -98,16 +98,16 @@ safe default.
 ### CI (`.github/workflows/ci.yml`)
 
 Runs, in parallel: `gitleaks` secret scan, `ruff check .`, `pip-audit` against
-`requirements.txt`/`requirements-training.txt`, `pytest test_api.py -v` (against a real `mongo:6.0`
-service container), and `tsc` + `jest` in `frontend/`. A Docker job
+`requirements.txt`/`requirements-training.txt`, `pytest test_api.py tests -v` (against real `mongo:6.0`
+and `redis:7` service containers), `tsc` + `jest` in `frontend/`, and lint + build of `admin-dashboard/` and `landing-page/`. A Docker job
 (hadolint + `docker build` + Trivy scan) runs after lint/test pass. Match these locally before
 opening a PR.
 
 ## Backend architecture
 
-`app.py` is a single FastAPI process (one uvicorn worker) - routers, ML engines, and statement
-processing all run in-process (`fastapi.BackgroundTasks`). Celery + Redis only schedule the batch
-pipelines, and only when `REDIS_URI` is set. Each router in `routers/*.py`
+`app.py` is a FastAPI API process; statement processing and the batch pipelines run as Celery tasks
+against Redis (`tasks/statement_tasks.py`, `tasks/pipeline_tasks.py`), so `REDIS_URI` is required and
+more than one API replica is safe. ML engines and RAG still run in the worker/API process that needs them. Each router in `routers/*.py`
 should stay thin (parse → delegate to a service/engine → return); business logic belongs in
 `engines/`, `services/`, or the domain's own top-level package.
 
@@ -116,7 +116,7 @@ should stay thin (parse → delegate to a service/engine → return); business l
 | Area | Lives in |
 |---|---|
 | Ingestion (raw text/PDF → categorized transaction) | `routers/v1.py`, `statements/`, `engines/rule_engine.py` |
-| Merchant resolution (noisy text → canonical merchant) | `services/merchant_resolver.py` |
+| Merchant categorisation (payee text → category, per-user memory first) | `engines/categorizer.py`, `engines/counterparty.py`, `repositories/memory_repository.py` |
 | Memory/trust state machine (EPHEMERAL→TEMPORARY→PERMANENT→ARCHIVED) | `memory/` |
 | Behavioral features, clustering, anomaly/subscription detection | `behaviour/`, `features/`, `clustering/`, `analytics/` |
 | Grounded explainability (RAG) | `rag/` (`retriever` → `context_builder` → `generator`) |
@@ -140,15 +140,20 @@ exceptions):
 **Hard invariants** (see `ARCHITECTURE.md` §3/§6/§8 for the full list and what to do if a task
 seems to require crossing one):
 - `POST /v1/explain` never calls Ollama without grounded retrieved context
-  (`rag/retriever.py`'s `NO_CONTEXT_AVAILABLE` short-circuit) - this is the hallucination-prevention
+  (`rag/context_builder.py`'s `NO_CONTEXT` and the check in `rag/generator.py`) - this is the hallucination-prevention
   guarantee, don't route around it.
-- No CORS middleware unless `CORS_ORIGINS` is set; only MongoDB gates `/ready`, Milvus/Ollama are
+- No CORS middleware unless `CORS_ORIGINS` is set; MongoDB and Redis gate `/ready`; Milvus/Ollama are
   designed to degrade rather than crash the app.
-- Batch pipelines (`behaviour`, `clustering`, `memory/decay_engine`, `graphs`) run manually via
-  `/v1/pipelines/*` (admin-key gated) and, with `REDIS_URI` set, on the Celery beat schedule in
-  `tasks/celery_app.py` - that is the only scheduler; don't add a second one.
-- One backend process per database: startup fails every still-running statement job
-  (`app.py::_fail_interrupted_statement_jobs`), which is only safe with a single process.
+- Batch pipelines run manually via `/v1/pipelines/*` (admin-key gated) and on the Celery beat
+  schedule in `tasks/celery_app.py` - that is the only scheduler; don't add a second one. Celery
+  `beat` must stay a singleton. Clustering, graphs and the decay sweep live in `labs/` and run only
+  when `LABS_ENABLED=true`.
+- Statement jobs survive worker crashes: `acks_late` plus the atomic `QUEUED -> RUNNING` claim, and
+  `sweep_stale_statement_jobs` fails orphans. Never process a statement in the API process.
+- A transaction belongs to the user's timeline, not to one statement (`source_statement_ids`,
+  `repositories/transaction_repository.py::bulk_upsert`). Never `$set` `statement_id` over an
+  existing row, and never delete a row another statement still vouches for.
+- Dates are aggregated in `core/timezone.py`'s `APP_TZ`, never in UTC.
 - No blocking or CPU-heavy work on the event loop - PDF parsing and pymilvus calls go through
   `asyncio.to_thread`.
 - Spending views exclude `Income` from `category_breakdown` (it covers credits too).

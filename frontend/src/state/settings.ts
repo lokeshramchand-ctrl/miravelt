@@ -16,6 +16,8 @@ const KEYS = {
   developerModeUnlocked: 'miravelt.developer_mode_unlocked',
   introSeen: 'miravelt.intro_seen',
   goals: 'miravelt.goals',
+  appLockEnabled: 'miravelt.app_lock_enabled',
+  shareDiagnostics: 'miravelt.share_diagnostics',
 } as const;
 
 /** What someone said they want help with on the welcome tour - personalises onboarding copy and presets alerts. */
@@ -43,6 +45,13 @@ export interface SettingsState {
   /** The pre-sign-in welcome tour was finished or skipped; signed-out launches then go straight to sign in. */
   introSeen: boolean;
   goals: Goal[];
+  /** Ask for fingerprint, face or device PIN whenever the app opens (lib/appLock.ts). */
+  appLockEnabled: boolean;
+  /**
+   * Send crash reports and usage events to the Miravelt backend (lib/telemetry.ts).
+   * Off unless the user turns it on: private by default. Never includes transactions.
+   */
+  shareDiagnostics: boolean;
 
   hydrate(): Promise<void>;
   setThemeMode(mode: ThemeMode): void;
@@ -54,6 +63,8 @@ export interface SettingsState {
   setDeveloperModeUnlocked(value: boolean): void;
   setIntroSeen(value: boolean): void;
   setGoals(goals: Goal[]): void;
+  setAppLockEnabled(value: boolean): void;
+  setShareDiagnostics(value: boolean): void;
 }
 
 function persist(key: string, value: string): void {
@@ -65,7 +76,8 @@ function persist(key: string, value: string): void {
 export const useSettings = create<SettingsState>((set) => ({
   hydrated: false,
   themeMode: 'system',
-  keepOriginalPdfs: true,
+  // Private by default (PRD principle, F17): only the extracted transactions are kept unless asked.
+  keepOriginalPdfs: false,
   notifyAnalysisFinished: true,
   notifyUnusualSpend: false,
   apiEnvironment: 'production',
@@ -73,6 +85,8 @@ export const useSettings = create<SettingsState>((set) => ({
   developerModeUnlocked: false,
   introSeen: false,
   goals: [],
+  appLockEnabled: false,
+  shareDiagnostics: false,
 
   async hydrate() {
     try {
@@ -82,7 +96,7 @@ export const useSettings = create<SettingsState>((set) => ({
       const theme = stored[KEYS.themeMode];
       set({
         themeMode: theme === 'light' || theme === 'dark' ? theme : 'system',
-        keepOriginalPdfs: bool(KEYS.keepOriginalPdfs, true),
+        keepOriginalPdfs: bool(KEYS.keepOriginalPdfs, false),
         notifyAnalysisFinished: bool(KEYS.notifyAnalysisFinished, true),
         notifyUnusualSpend: bool(KEYS.notifyUnusualSpend, false),
         apiEnvironment: parseApiEnvironment(stored[KEYS.apiEnvironment]),
@@ -90,6 +104,8 @@ export const useSettings = create<SettingsState>((set) => ({
         developerModeUnlocked: bool(KEYS.developerModeUnlocked, false),
         introSeen: bool(KEYS.introSeen, false),
         goals: parseGoals(stored[KEYS.goals]),
+        appLockEnabled: bool(KEYS.appLockEnabled, false),
+        shareDiagnostics: bool(KEYS.shareDiagnostics, false),
       });
     } finally {
       set({ hydrated: true });
@@ -131,6 +147,14 @@ export const useSettings = create<SettingsState>((set) => ({
   setGoals(goals) {
     set({ goals });
     persist(KEYS.goals, JSON.stringify(goals));
+  },
+  setAppLockEnabled(value) {
+    set({ appLockEnabled: value });
+    persist(KEYS.appLockEnabled, String(value));
+  },
+  setShareDiagnostics(value) {
+    set({ shareDiagnostics: value });
+    persist(KEYS.shareDiagnostics, String(value));
   },
 }));
 

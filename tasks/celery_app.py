@@ -42,7 +42,11 @@ celery_app = Celery(
     "miravelt",
     broker=settings.REDIS_URI,
     backend=settings.REDIS_URI,
-    include=["tasks.pipeline_tasks", "tasks.retraining_tasks", "tasks.statement_tasks"],
+    include=[
+        "tasks.pipeline_tasks", "tasks.statement_tasks", "tasks.maintenance_tasks",
+        # Experiments are loaded (and scheduled, below) only when asked for.
+        *(["labs.schedule", "labs.retraining_tasks"] if settings.LABS_ENABLED else []),
+    ],
 )
 
 celery_app.conf.update(
@@ -76,31 +80,44 @@ celery_app.conf.beat_schedule = {
         "task": "tasks.pipeline_tasks.run_behavior_profiling_all",
         "schedule": timedelta(minutes=settings.PIPELINE_BEHAVIOR_INTERVAL_MINUTES),
     },
-    "pipeline-embeddings-sync": {
-        "task": "tasks.pipeline_tasks.sync_embeddings",
-        "schedule": timedelta(minutes=settings.PIPELINE_EMBEDDINGS_INTERVAL_MINUTES),
-    },
-    "pipeline-decay-sweep": {
-        "task": "tasks.pipeline_tasks.run_decay_sweep",
-        "schedule": timedelta(minutes=settings.PIPELINE_DECAY_INTERVAL_MINUTES),
-    },
-    "pipeline-graph-build": {
-        "task": "tasks.pipeline_tasks.build_knowledge_graph",
-        "schedule": timedelta(minutes=settings.PIPELINE_GRAPH_INTERVAL_MINUTES),
-    },
-    "pipeline-clustering-run": {
-        "task": "tasks.pipeline_tasks.run_clustering",
-        "schedule": timedelta(minutes=settings.PIPELINE_CLUSTERING_INTERVAL_MINUTES),
-    },
-    "retraining-queue-check": {
-        "task": "tasks.retraining_tasks.check_and_trigger_retraining",
-        "schedule": timedelta(minutes=settings.RETRAINING_CHECK_INTERVAL_MINUTES),
+    "retention-cleanup": {
+        "task": "tasks.maintenance_tasks.run_retention_cleanup",
+        "schedule": timedelta(minutes=settings.RETENTION_SWEEP_INTERVAL_MINUTES),
     },
     "statement-stale-job-sweep": {
         "task": "tasks.statement_tasks.sweep_stale_statement_jobs",
         "schedule": timedelta(minutes=settings.STATEMENT_STALE_JOB_SWEEP_INTERVAL_MINUTES),
     },
 }
+
+
+# Jobs for code under labs/ - nothing on the product path reads their
+# output, so they do not run unless LABS_ENABLED (labs/README.md). The task
+# bodies live in labs/schedule.py and labs/retraining_tasks.py, loaded by
+# `include` above; only their names are needed here.
+if settings.LABS_ENABLED:
+    celery_app.conf.beat_schedule.update({
+        "labs-embeddings-sync": {
+            "task": "tasks.pipeline_tasks.sync_embeddings",
+            "schedule": timedelta(minutes=settings.PIPELINE_EMBEDDINGS_INTERVAL_MINUTES),
+        },
+        "labs-decay-sweep": {
+            "task": "labs.schedule.run_decay_sweep",
+            "schedule": timedelta(minutes=settings.PIPELINE_DECAY_INTERVAL_MINUTES),
+        },
+        "labs-graph-build": {
+            "task": "labs.schedule.build_knowledge_graph",
+            "schedule": timedelta(minutes=settings.PIPELINE_GRAPH_INTERVAL_MINUTES),
+        },
+        "labs-clustering-run": {
+            "task": "labs.schedule.run_clustering",
+            "schedule": timedelta(minutes=settings.PIPELINE_CLUSTERING_INTERVAL_MINUTES),
+        },
+        "labs-retraining-check": {
+            "task": "labs.retraining_tasks.check_and_trigger_retraining",
+            "schedule": timedelta(minutes=settings.RETRAINING_CHECK_INTERVAL_MINUTES),
+        },
+    })
 
 
 def run_async(coro):

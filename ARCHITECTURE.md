@@ -24,7 +24,7 @@ Next.js admin-dashboard   ─┘  (BFF, server-only)                  │       
 | Area | Owns | Lives in |
 |---|---|---|
 | Ingestion | Raw text/PDF → categorized transaction | `routers/v1.py`, `statements/`, `engines/rule_engine.py`, `tasks/statement_tasks.py` (Celery dispatch) |
-| Merchant resolution | Noisy bank/UPI text → canonical merchant | `services/merchant_resolver.py` |
+| Merchant categorisation | Payee text → category; this user's corrections, then aliases | `engines/categorizer.py`, `repositories/memory_repository.py` |
 | Memory / trust | Merchant familiarity state (EPHEMERAL→TEMPORARY→PERMANENT→ARCHIVED) | `memory/` |
 | Behavioral intelligence | Feature extraction, clustering, anomaly/subscription detection | `behaviour/`, `features/`, `clustering/`, `analytics/` |
 | Explainability | Grounded RAG over a transaction's history — never freeform LLM guessing | `rag/` (`retriever` → `context_builder` → `generator`) |
@@ -85,7 +85,7 @@ Explicitly banned:
 ## 5. How data actually moves (representative flows)
 
 **Statement ingestion (the primary product surface):**
-`POST /statements/upload` → `statements/pdf_parser.py` validates/decrypts on a worker thread (fails fast, 422) → PDF stored in GridFS unless `keep_original_pdf=false` → `Statement(PENDING)` + `Job(QUEUED)` created, `202` returned → `BackgroundTasks` runs `statements/statement_service.py`: parse → categorize (`engines/rule_engine.py`: merchant alias, else business keyword, else Uncategorized) → persist transactions → refresh merchant behaviour profiles (`behaviour/behavior_engine.py`) → embed + write to Milvus → compute analytics → generate insights (Ollama, else computed) → mark `Job` `COMPLETED`. Client polls `GET /jobs/{id}`; a restart fails the job cleanly (§3).
+`POST /statements/upload` → `statements/pdf_parser.py` validates/decrypts on a worker thread (fails fast, 422) → PDF stored in GridFS unless `keep_original_pdf=false` → `Statement(PENDING)` + `Job(QUEUED)` created, `202` returned → a Celery worker (`tasks/statement_tasks.py`) runs `statements/statement_service.py`: parse (counting record lines it could not read: `unparsed_count`) → categorize (`engines/categorizer.py`: this user's corrections, then curated alias, community alias, business keyword, else Uncategorized) → merge into the user's timeline (`transaction_repository.bulk_upsert`, `source_statement_ids`) → refresh this user's merchant behaviour (`behaviour/behavior_engine.py`) → compute analytics and insights (`insights/`, fact-checked by `insights/fact_check.py`; Ollama, else computed) → reconcile against the printed totals → mark `Job` `COMPLETED` and recompute any overlapping or later period. Client polls `GET /jobs/{id}`; a restart fails the job cleanly (§3).
 
 **Mobile app launch and sign-in:**
 The router starts on `/splash` and holds there while `AuthController` checks the stored session. `periodsProvider` is keyed on the signed-in user id, so each sign-in fetches that user's periods, and the router waits for that result before choosing Overview (has periods) or onboarding (none). Onboarding only redirects to Overview once a period has *completed*, so a first upload can reach the Analysing screen. Switching backend in Developer settings signs out against the old backend first, so a session is never sent to the new host.

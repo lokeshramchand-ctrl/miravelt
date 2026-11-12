@@ -13,7 +13,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler
 from xgboost import XGBClassifier
 
-from evaluation.metrics import evaluator
+from labs.evaluation.metrics import evaluator
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

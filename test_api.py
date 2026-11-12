@@ -1,3 +1,4 @@
+import contextlib
 import hashlib
 import io
 import logging
@@ -57,6 +58,28 @@ def client():
     with TestClient(app) as c:
         yield c
     logger.info("TestClient teardown complete.")
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    """Rate-limit counters live in Redis and outlive a test: without this,
+    registering a sixth user inside one minute (or rerunning the suite)
+    fails tests that have nothing to do with rate limiting."""
+    from core.rate_limiter import limiter
+    with contextlib.suppress(Exception):
+        limiter.reset()
+    yield
+
+
+@pytest.fixture
+def fresh_user(client):
+    """A brand-new user per test, for tests that upload the shared mock
+    statement: an identical re-upload by the same user is refused with 409."""
+    email = f"fresh_{uuid.uuid4().hex[:10]}@example.com"
+    response = client.post("/auth/register", json={"email": email, "password": "StrongPassword123!"}, headers=HEADERS)
+    assert response.status_code == 201, response.text
+    token, _ = create_access_token(response.json()["id"])
+    return {"id": response.json()["id"], "email": email, "access_token": token}
+
 
 @pytest.fixture(scope="module")
 def auth_user(client):
@@ -281,10 +304,10 @@ def test_recurring_change_insights_detect_price_change_and_new_subscription():
 # PHASE 4: MEMORY ENGINE (STATE PROMOTION)
 # =====================================================================
 
-def test_memory_engine_lifecycle(client, monkeypatch):
+def test_memory_engine_lifecycle(client, auth_headers, monkeypatch):
     """Tests the entire lifecycle from EPHEMERAL to TEMPORARY state in one flow."""
     monkeypatch.setattr(settings, "ADMIN_API_KEY", "test-admin-key-for-memory")
-    admin_headers = {**HEADERS, "X-Miravelt-Admin-Key": "test-admin-key-for-memory"}
+    admin_headers = {**auth_headers, "X-Miravelt-Admin-Key": "test-admin-key-for-memory"}
     unique_merchant = f"Target_{uuid.uuid4().hex[:6]}"
     payload = {"canonical_name": unique_merchant, "raw_text": f"paid {unique_merchant}"}
 
@@ -373,7 +396,9 @@ def test_observability_endpoints(client):
 # PHASE 16: JWT AUTHENTICATION
 # =====================================================================
 
-def test_auth_full_lifecycle(client):
+def test_auth_full_lifecycle(client, monkeypatch):
+    # Strict single use; the grace-window retry has its own test below.
+    monkeypatch.setattr(settings, "REFRESH_TOKEN_REUSE_GRACE_SECONDS", 0)
     """End-to-end: register -> login -> authenticated /me -> refresh
     (rotation) -> reuse of the rotated-out token rejected -> logout ->
     the logged-out token rejected. Uses its own user (not the shared
@@ -606,9 +631,9 @@ def processed_statement(client, auth_user):
 
     return {"statement_id": statement_id, "job_id": job_id}
 
-def test_statement_upload_returns_202(client, auth_user):
+def test_statement_upload_returns_202(client, fresh_user):
     logger.info("Testing statement upload accepts the real mock PDF and returns 202.")
-    response = _upload_mock_statement(client, auth_user)
+    response = _upload_mock_statement(client, fresh_user)
     assert response.status_code == 202
     body = response.json()
     assert "statement_id" in body
@@ -705,7 +730,9 @@ def test_feedback_correction_updates_the_transaction(client, auth_user, auth_hea
     headers = _auth_headers_no_content_type(auth_user)
     statement_id = processed_statement["statement_id"]
 
-    txns = client.get(f"/statements/{statement_id}/transactions?page=1&page_size=1", headers=headers)
+    txns = client.get(
+        f"/statements/{statement_id}/transactions?page=1&page_size=1&transaction_type=DEBIT", headers=headers
+    )
     assert txns.status_code == 200
     transaction = txns.json()["items"][0]
     original_category = transaction["category"]
@@ -741,7 +768,9 @@ def test_feedback_correction_propagates_to_same_merchant(client, auth_user, auth
     # merchant-filtered endpoint for the *authoritative* full count for that
     # merchant - the sample page alone may be truncated (page_size caps at
     # 100, this mock statement has 184 transactions).
-    sample = client.get(f"/statements/{statement_id}/transactions?page=1&page_size=100", headers=headers).json()["items"]
+    sample = client.get(
+        f"/statements/{statement_id}/transactions?page=1&page_size=100&transaction_type=DEBIT", headers=headers
+    ).json()["items"]
     counts: dict[str, int] = {}
     for txn in sample:
         if txn["merchant"]:
@@ -751,7 +780,9 @@ def test_feedback_correction_propagates_to_same_merchant(client, auth_user, auth
 
     merchant = candidate_merchant
     siblings = client.get(
-        f"/statements/{statement_id}/transactions?merchant={urllib.parse.quote(merchant)}&page_size=100", headers=headers
+        f"/statements/{statement_id}/transactions?merchant={urllib.parse.quote(merchant)}"
+        "&transaction_type=DEBIT&page_size=100",
+        headers=headers,
     ).json()["items"]
     logger.info(f"Using merchant '{merchant}' with {len(siblings)} transactions.")
 
@@ -773,7 +804,9 @@ def test_feedback_correction_propagates_to_same_merchant(client, auth_user, auth
     assert feedback.json()["feedback_recorded"] is True
 
     refreshed = client.get(
-        f"/statements/{statement_id}/transactions?merchant={urllib.parse.quote(merchant)}&page_size=100", headers=headers
+        f"/statements/{statement_id}/transactions?merchant={urllib.parse.quote(merchant)}"
+        "&transaction_type=DEBIT&page_size=100",
+        headers=headers,
     ).json()["items"]
     assert len(refreshed) == len(siblings)
     assert all(t["category"] == corrected_category for t in refreshed)
@@ -907,7 +940,7 @@ def test_statement_requires_auth(client, processed_statement):
     response = client.get(f"/statements/{processed_statement['statement_id']}", headers=HEADERS)
     assert response.status_code == 401
 
-def test_statement_upload_can_skip_storing_the_pdf(client, auth_user):
+def test_statement_upload_can_skip_storing_the_pdf(client, fresh_user):
     """keep_original_pdf=false (the app's "Keep original PDFs" switch) keeps
     the parsed statement but never writes the file itself to GridFS."""
     with open(MOCK_STATEMENT_PATH, "rb") as f:
@@ -916,7 +949,7 @@ def test_statement_upload_can_skip_storing_the_pdf(client, auth_user):
             "/statements/upload",
             files=files,
             data={"keep_original_pdf": "false"},
-            headers=_auth_headers_no_content_type(auth_user),
+            headers=_auth_headers_no_content_type(fresh_user),
         )
     assert response.status_code == 202, response.text
     statement_id = response.json()["statement_id"]
@@ -1063,13 +1096,13 @@ def test_statement_upload_rejects_unsupported_statement(client, auth_user):
     response = client.post("/statements/upload", files=files, headers=_auth_headers_no_content_type(auth_user))
     assert response.status_code == 422
 
-def test_statement_delete_cascades(client, auth_user):
-    """Uses its own upload (not the shared processed_statement fixture, which
-    other tests still depend on) since this test destroys its statement."""
+def test_statement_delete_cascades(client, fresh_user):
+    """Uses its own user and upload (not the shared processed_statement
+    fixture, which other tests still depend on) since this test destroys its statement."""
     logger.info("Testing DELETE /statements/{id} cascades to transactions and the job.")
-    upload_res = _upload_mock_statement(client, auth_user)
+    upload_res = _upload_mock_statement(client, fresh_user)
     statement_id = upload_res.json()["statement_id"]
-    headers = _auth_headers_no_content_type(auth_user)
+    headers = _auth_headers_no_content_type(fresh_user)
 
     delete_res = client.delete(f"/statements/{statement_id}", headers=headers)
     assert delete_res.status_code == 204
@@ -1239,8 +1272,31 @@ def test_refresh_token_is_single_use(client):
     login = client.post("/auth/login", json={"email": email, "password": password}, headers=HEADERS)
     assert login.status_code == 200
     token = login.json()["refresh_token"]
-    assert client.post("/auth/refresh", json={"refresh_token": token}, headers=HEADERS).status_code == 200
+    first = client.post("/auth/refresh", json={"refresh_token": token}, headers=HEADERS)
+    assert first.status_code == 200
+    # Replaying the old token *after* its replacement was used is theft:
+    # rejected, and every session of the user is revoked.
+    second = client.post("/auth/refresh", json={"refresh_token": first.json()["refresh_token"]}, headers=HEADERS)
+    assert second.status_code == 200
     assert client.post("/auth/refresh", json={"refresh_token": token}, headers=HEADERS).status_code == 401
+    assert client.post(
+        "/auth/refresh", json={"refresh_token": second.json()["refresh_token"]}, headers=HEADERS
+    ).status_code == 401
+
+
+def test_refresh_retry_within_grace_window_is_not_treated_as_theft(client):
+    """F19: the server rotated the token but the reply was lost; the client
+    retries with the old one. That must not log the user out everywhere."""
+    email = f"grace_{uuid.uuid4().hex[:10]}@example.com"
+    password = "StrongPassword123!"
+    assert client.post("/auth/register", json={"email": email, "password": password}, headers=HEADERS).status_code == 201
+    token = client.post("/auth/login", json={"email": email, "password": password}, headers=HEADERS).json()["refresh_token"]
+    lost = client.post("/auth/refresh", json={"refresh_token": token}, headers=HEADERS)
+    assert lost.status_code == 200
+    retry = client.post("/auth/refresh", json={"refresh_token": token}, headers=HEADERS)
+    assert retry.status_code == 200
+    # The reply that was lost is dead; the retry's token works.
+    assert client.post("/auth/refresh", json={"refresh_token": lost.json()["refresh_token"]}, headers=HEADERS).status_code == 401
 
 
 def test_invalid_request_id_is_replaced(client):

@@ -36,6 +36,7 @@ async def get_category_patterns(
     days: int = Query(30, description="Lookback window in days"),
     current_user: User = Depends(get_current_user),
 ):
+    days = max(1, min(days, 3650))
     end_date = datetime.now(UTC)
     start_date = end_date - timedelta(days=days)
 
@@ -71,8 +72,6 @@ async def get_mom_trends(current_user: User = Depends(get_current_user)):
 
 @router.post("/anomaly/check")
 async def check_anomaly(merchant: str, amount: float, current_user: User = Depends(get_current_user)):
-    """Real-time evaluation for the transaction ingestion pipeline. Not
-    user-scoped (a merchant/amount pair is evaluated against that merchant's
-    global behavioral profile, not any one user's history) - API-key auth
-    only, like /v1/resolve and /v1/confidence/evaluate."""
-    return await anomaly_detector.flag_transaction(merchant, amount)
+    """Is this amount unusual for the caller at this merchant? Judged on the
+    caller's own history only."""
+    return await anomaly_detector.flag_transaction(current_user.id, merchant, amount)

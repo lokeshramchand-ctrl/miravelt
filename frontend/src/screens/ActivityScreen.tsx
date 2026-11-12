@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { Icon } from '../components/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,23 +12,43 @@ import { SkeletonListRow } from '../components/Skeleton';
 import { TransactionSheet } from '../components/TransactionSheet';
 import type { Statement, Transaction, TransactionType } from '../domain/types';
 import { useCurrentPeriod, useCurrentPeriodAnalytics } from '../hooks/periods';
-import { formatCurrency, formatDayHeader, formatTime12h } from '../lib/format';
+import { formatCurrency, formatDayHeader, formatDayMonth, formatTime12h, zonedDayStart } from '../lib/format';
 import { categoryColor, categoryIcon, colors } from '../theme/colors';
 import { radius, spacing } from '../theme/tokens';
 import { typography } from '../theme/typography';
 
 export interface DayGroup {
-  day: Date;
+  /** The app-zone day, or null for the single "largest first" group of an amount sort. */
+  day: Date | null;
   transactions: Transaction[];
+}
+
+/**
+ * Day sections for a time-ordered list; one flat section for an amount sort -
+ * grouping an amount-ordered list by day repeats the same day many times (F14).
+ */
+export function sectionsFor(transactions: Transaction[], sortByAmount: boolean): DayGroup[] {
+  if (sortByAmount) return transactions.length ? [{ day: null, transactions }] : [];
+  return groupByDay(transactions);
+}
+
+/** Waits for typing to pause before searching. */
+export function useDebounced<T>(value: T, ms = 350): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return debounced;
 }
 
 /** Consecutive transactions on the same calendar day (the list arrives sorted, so same-day rows are adjacent). */
 export function groupByDay(transactions: Transaction[]): DayGroup[] {
   const groups: DayGroup[] = [];
   for (const txn of transactions) {
-    const day = new Date(txn.timestamp.getFullYear(), txn.timestamp.getMonth(), txn.timestamp.getDate());
+    const day = zonedDayStart(txn.timestamp);
     const last = groups[groups.length - 1];
-    if (last && last.day.getTime() === day.getTime()) last.transactions.push(txn);
+    if (last && last.day && last.day.getTime() === day.getTime()) last.transactions.push(txn);
     else groups.push({ day, transactions: [txn] });
   }
   return groups;
@@ -60,7 +80,7 @@ function useActivity(period: Statement | null, filters: Filters) {
         pageSize: PAGE_SIZE,
         category: filters.category ?? undefined,
         transactionType: filters.typeFilter ?? undefined,
-        merchant: filters.merchantQuery || undefined,
+        q: filters.merchantQuery || undefined,
         sortBy: filters.sortByAmount ? 'amount' : 'timestamp',
         sortOrder: 'desc',
       }),
@@ -77,10 +97,10 @@ export default function ActivityScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const transactions = useMemo(() => activity.data?.pages.flatMap((p) => p.items) ?? [], [activity.data]);
-  const groups = useMemo(() => groupByDay(transactions), [transactions]);
+  const groups = useMemo(() => sectionsFor(transactions, filters.sortByAmount), [transactions, filters.sortByAmount]);
   const total = activity.data?.pages[0]?.total;
 
-  const patch = (change: Partial<Filters>) => setFilters((f) => ({ ...f, ...change }));
+  const patch = useCallback((change: Partial<Filters>) => setFilters((f) => ({ ...f, ...change })), []);
   const bottomPad = spacing.navClearance + insets.bottom;
 
   return (
@@ -100,7 +120,7 @@ export default function ActivityScreen() {
         ) : (
           <FlatList
             data={groups}
-            keyExtractor={(g) => g.day.toISOString()}
+            keyExtractor={(g) => (g.day ? g.day.toISOString() : 'by-amount')}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingTop: 8, paddingBottom: bottomPad }}
             onEndReachedThreshold={0.6}
@@ -134,8 +154,10 @@ function DaySection({ group, index, onSelect }: { group: DayGroup; index: number
   return (
     <FadeInUpCard delay={Math.min(6, index) * 40}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10 }}>
-        <Text style={[typography.microLabelTracked11, { color: colors.faint }]}>{formatDayHeader(group.day)}</Text>
-        <Text style={[typography.microLabelTracked11, { color: net > 0 ? colors.signalText : colors.faint }]}>{formatCurrency(net, net > 0)}</Text>
+        <Text style={[typography.microLabelTracked11, { color: colors.faint }]}>{group.day ? formatDayHeader(group.day) : 'LARGEST FIRST'}</Text>
+        {group.day ? (
+          <Text style={[typography.microLabelTracked11, { color: net > 0 ? colors.signalText : colors.faint }]}>{formatCurrency(net, net > 0)}</Text>
+        ) : null}
       </View>
       {group.transactions.map((txn) => {
         const color = categoryColor(txn.category ?? '');
@@ -147,7 +169,7 @@ function DaySection({ group, index, onSelect }: { group: DayGroup; index: number
             avatarInk={color}
             icon={categoryIcon(txn.category ?? '')}
             title={txn.merchant ?? 'Unknown merchant'}
-            subtitle={`${formatTime12h(txn.timestamp)} · ${txn.category ?? 'Uncategorized'}`}
+            subtitle={`${group.day ? formatTime12h(txn.timestamp) : formatDayMonth(txn.timestamp)} · ${txn.category ?? 'Uncategorized'}`}
             trailingAmount={`${txn.transactionType === 'DEBIT' ? '−' : '+'}${formatCurrency(Math.abs(txn.amount))}`}
             trailingAmountColor={txn.transactionType === 'CREDIT' ? colors.signalText : undefined}
             badgeLabel={txn.status !== 'SUCCESS' ? txn.status : undefined}
@@ -161,8 +183,13 @@ function DaySection({ group, index, onSelect }: { group: DayGroup; index: number
 
 function Header({ total, period, filters, onChange }: { total: number | undefined; period: Statement | null; filters: Filters; onChange: (change: Partial<Filters>) => void }) {
   const analytics = useCurrentPeriodAnalytics();
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(filters.merchantQuery);
   const [picking, setPicking] = useState(false);
+  // Search as you type (debounced), not only on submit (F14).
+  const debounced = useDebounced(query.trim());
+  useEffect(() => {
+    if (debounced !== filters.merchantQuery) onChange({ merchantQuery: debounced });
+  }, [debounced, filters.merchantQuery, onChange]);
   const categories = analytics.data?.categoryBreakdown.map((e) => e.category) ?? [];
 
   return (
@@ -187,6 +214,19 @@ function Header({ total, period, filters, onChange }: { total: number | undefine
           autoCorrect={false}
           style={[typography.body14, { flex: 1, fontSize: 13, color: colors.text, paddingVertical: 11, marginLeft: 8 }]}
         />
+        {query ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Clear search"
+            hitSlop={10}
+            onPress={() => {
+              setQuery('');
+              onChange({ merchantQuery: '' });
+            }}
+          >
+            <Icon name="close" size={16} color={colors.faint} />
+          </Pressable>
+        ) : null}
       </View>
       <View style={{ height: 10 }} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ alignItems: 'center' }}>

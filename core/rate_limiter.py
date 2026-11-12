@@ -6,6 +6,7 @@ from slowapi.util import get_remote_address
 
 from core.config import settings
 
+
 # Backed by Redis when REDIS_URI is configured so limits are shared across
 # every backend replica behind a load balancer. SlowAPI's in-memory default
 # counts requests per-process - harmless with exactly one instance, but it
@@ -25,7 +26,7 @@ def rate_limit_key(request) -> str:
             claims = decode_access_token(auth[7:])
             if claims.get("sub"):
                 return f"user:{claims['sub']}"
-        except Exception:
+        except Exception:  # noqa: S110 - best effort by design
             pass
     return get_remote_address(request)
 

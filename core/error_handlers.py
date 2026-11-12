@@ -10,6 +10,16 @@ from core.middleware import request_id_ctx
 logger = logging.getLogger(__name__)
 
 
+class CodedHTTPException(StarletteHTTPException):
+    """An HTTPException that also carries a stable error `code` (and optional
+    extra fields) into the JSON envelope."""
+
+    def __init__(self, status_code: int, detail: str, code: str, **extra):
+        super().__init__(status_code=status_code, detail=detail)
+        self.code = code
+        self.extra = extra
+
+
 def _request_id(request: Request) -> str:
     # Prefer the value RequestIDMiddleware attached to ASGI scope state; fall
     # back to the contextvar for code paths that don't have a Request handy.
@@ -30,9 +40,16 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         request_id = _request_id(request)
+        error: dict = {"detail": exc.detail, "request_id": request_id}
+        # A stable, machine-readable reason the client can branch on instead
+        # of matching words in `detail` (PROJECT_AUDIT.md F15c).
+        if getattr(exc, "code", None):
+            error["code"] = exc.code
+        if getattr(exc, "extra", None):
+            error.update(exc.extra)
         return JSONResponse(
             status_code=exc.status_code,
-            content={"error": {"detail": exc.detail, "request_id": request_id}},
+            content={"error": error},
             headers=getattr(exc, "headers", None),
         )
 

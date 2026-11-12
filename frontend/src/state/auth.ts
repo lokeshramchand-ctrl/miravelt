@@ -1,8 +1,11 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { authRepository, onSessionExpired } from '../api/instance';
-import { ApiException } from '../api/errors';
+import { ApiException, ApiSessionExpiredException } from '../api/errors';
 import type { User } from '../domain/types';
 import { queryClient } from '../lib/queryClient';
+import { clearPersistedQueries } from '../lib/queryPersistence';
+import { unregisterFromPush } from '../lib/push';
 import { useSession } from './session';
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
@@ -17,6 +20,8 @@ interface AuthState {
   login(email: string, password: string): Promise<void>;
   registerAndLogin(email: string, password: string): Promise<void>;
   logout(): Promise<void>;
+  /** Permanently deletes the account and all its data, then drops to signed out. */
+  deleteAccount(password: string): Promise<void>;
   refreshUser(): Promise<void>;
   /** Replaces the cached user (after a profile edit). */
   setUser(user: User): void;
@@ -26,9 +31,36 @@ export function errorMessage(error: unknown): string {
   return error instanceof ApiException ? error.message : 'Something went wrong. Please try again.';
 }
 
+const CACHED_USER_KEY = 'miravelt.cached_user';
+
+/** The last signed-in user, so an offline cold start can still show the app (F13). */
+async function readCachedUser(): Promise<User | null> {
+  try {
+    const raw = await AsyncStorage.getItem(CACHED_USER_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Omit<User, 'createdAt'> & { createdAt: string };
+    return { ...parsed, createdAt: new Date(parsed.createdAt) };
+  } catch {
+    return null;
+  }
+}
+
+function cacheUser(user: User | null): void {
+  (user ? AsyncStorage.setItem(CACHED_USER_KEY, JSON.stringify(user)) : AsyncStorage.removeItem(CACHED_USER_KEY)).catch(() => {});
+}
+
+/** Only a rejected session ends one. Offline, a timeout or a 5xx is not a reason to sign out. */
+export function isSessionRejection(e: unknown): boolean {
+  return e instanceof ApiSessionExpiredException || (e instanceof ApiException && e.statusCode === 401);
+}
+
 function clearUserScopedState() {
   useSession.getState().reset();
   queryClient.clear();
+  // The on-disk copy too: the next account on this phone must never be
+  // served the last one's periods.
+  void clearPersistedQueries();
+  cacheUser(null);
 }
 
 export const useAuth = create<AuthState>((set, get) => ({
@@ -42,9 +74,18 @@ export const useAuth = create<AuthState>((set, get) => ({
       return;
     }
     try {
-      set({ status: 'authenticated', user: await authRepository.fetchCurrentUser() });
-    } catch {
-      set({ status: 'unauthenticated', user: null });
+      const user = await authRepository.fetchCurrentUser();
+      cacheUser(user);
+      set({ status: 'authenticated', user });
+    } catch (e) {
+      if (isSessionRejection(e)) {
+        clearUserScopedState();
+        set({ status: 'unauthenticated', user: null });
+        return;
+      }
+      // Tokens are stored and nothing said they are invalid: we are just
+      // offline. Open the app on the cached user and cached data.
+      set({ status: 'authenticated', user: await readCachedUser() });
     }
   },
 
@@ -52,6 +93,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     set({ busy: true });
     try {
       const user = await authRepository.login(email, password);
+      cacheUser(user);
       set({ status: 'authenticated', user });
     } finally {
       set({ busy: false });
@@ -63,6 +105,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     try {
       await authRepository.register(email, password);
       const user = await authRepository.login(email, password);
+      cacheUser(user);
       set({ status: 'authenticated', user });
     } finally {
       set({ busy: false });
@@ -70,7 +113,16 @@ export const useAuth = create<AuthState>((set, get) => ({
   },
 
   async logout() {
+    // While the session is still valid: stop this device receiving the account's alerts.
+    await unregisterFromPush({ register: authRepository.registerPushToken, unregister: authRepository.unregisterPushToken });
     await authRepository.logout();
+    clearUserScopedState();
+    set({ status: 'unauthenticated', user: null });
+  },
+
+  async deleteAccount(password) {
+    // Throws on a wrong password or a network failure - nothing is cleared then.
+    await authRepository.deleteAccount(password);
     clearUserScopedState();
     set({ status: 'unauthenticated', user: null });
   },
@@ -78,13 +130,16 @@ export const useAuth = create<AuthState>((set, get) => ({
   async refreshUser() {
     if (get().status !== 'authenticated') return;
     try {
-      set({ user: await authRepository.fetchCurrentUser() });
+      const user = await authRepository.fetchCurrentUser();
+      cacheUser(user);
+      set({ user });
     } catch {
       // Keep the cached user on a transient refresh failure.
     }
   },
 
   setUser(user) {
+    cacheUser(user);
     set({ user });
   },
 }));

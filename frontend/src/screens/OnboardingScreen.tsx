@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,7 +7,12 @@ import { Icon } from '../components/Icon';
 import type { IconName } from '../components/Icon';
 import { nativeDriver } from '../components/motion';
 import { Screen } from '../components/Screen';
+import { statementsRepository } from '../api/instance';
+import { invalidatePeriods } from '../hooks/periods';
 import { haptics } from '../lib/haptics';
+import { track } from '../lib/telemetry';
+import { errorMessage } from '../state/auth';
+import { showToast } from '../state/toast';
 import { useSettings } from '../state/settings';
 import type { Goal } from '../state/settings';
 import { startUploadFlow } from '../state/upload';
@@ -46,6 +52,21 @@ export default function OnboardingScreen() {
   const [hop, setHop] = useState(0);
   const [confetti, setConfetti] = useState(0);
   const [nudge, setNudge] = useState<string | null>(null);
+  const [addingSample, setAddingSample] = useState(false);
+
+  const trySample = async () => {
+    setAddingSample(true);
+    try {
+      const { jobId } = await statementsRepository.addSample();
+      track('sample_statement_added');
+      await invalidatePeriods();
+      router.push({ pathname: '/upload/analysing/[jobId]', params: { jobId } });
+    } catch (e) {
+      showToast(errorMessage(e), 'error');
+    } finally {
+      setAddingSample(false);
+    }
+  };
 
   const complete = (i: number) => {
     setOpen(null);
@@ -116,7 +137,13 @@ export default function OnboardingScreen() {
 
       <View style={{ paddingHorizontal: spacing.gutter, paddingTop: 10, paddingBottom: 12 + insets.bottom, borderTopWidth: 1, borderTopColor: colors.border }}>
         <Button3D label="Add your first statement" icon="plus" onPress={startUploadFlow} />
-        <Text style={[typography.footnote1155, { color: colors.faint, textAlign: 'center', marginTop: 10 }]}>Stays on your account. Never shared, never sold.</Text>
+        {/* Most people will not hand over their bank data to something they have
+            not seen working. The sample runs the real pipeline on a generated
+            statement (E1). */}
+        <Pressable accessibilityRole="button" disabled={addingSample} onPress={() => void trySample()} hitSlop={6} style={{ alignSelf: 'center', paddingVertical: 12, opacity: addingSample ? 0.5 : 1 }} testID="try-sample">
+          <Text style={[typography.buttonLabel12, { color: colors.signalText }]}>{addingSample ? 'Preparing the sample' : 'Not ready? Try with sample data first'}</Text>
+        </Pressable>
+        <Text style={[typography.footnote1155, { color: colors.faint, textAlign: 'center' }]}>Stays on your account. Never shared, never sold.</Text>
       </View>
       <Confetti fire={confetti} />
     </Screen>

@@ -7,12 +7,15 @@ import {
   mapExplain,
   mapInsights,
   mapJob,
+  mapMerchantPage,
   mapMerchantPattern,
   mapMoM,
   mapPaged,
+  mapPerson,
   mapStatement,
   mapStatementAnalytics,
   mapSubscriptions,
+  mapTeachDeck,
   mapTransaction,
   mapUploadResponse,
   mapUser,
@@ -25,15 +28,19 @@ import type {
   CategoryPatternEntry,
   ExplainOutcome,
   Job,
+  MerchantPage,
   MerchantPatternEntry,
   MoMTrend,
   Paged,
+  PersonLedgerRow,
   ProcessingStatus,
   Statement,
   StatementAnalytics,
   StatementInsights,
   StatementUploadResponse,
   SubscriptionsSummary,
+  TeachAnswer,
+  TeachDeck,
   Transaction,
   TransactionType,
   User,
@@ -69,6 +76,43 @@ export function createAuthRepository(api: ApiClient, tokens: TokenStorage) {
     async updateProfile(fullName: string | null): Promise<User> {
       return mapUser(await api.patch<Json>('/users/me', { body: { full_name: fullName } }));
     },
+    /** Ends every other session; this device stays signed in on the pair the backend returns. */
+    async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+      const data = await api.post<{ access_token: string; refresh_token: string }>('/auth/password/change', {
+        body: { current_password: currentPassword, new_password: newPassword },
+      });
+      await tokens.saveTokens({ accessToken: data.access_token, refreshToken: data.refresh_token });
+    },
+    /** Always resolves the same way, whether or not the address has an account. */
+    async requestPasswordReset(email: string): Promise<void> {
+      await api.post('/auth/password/forgot', { body: { email } });
+    },
+    async resetPassword(email: string, code: string, newPassword: string): Promise<void> {
+      await api.post('/auth/password/reset', { body: { email, code, new_password: newPassword } });
+    },
+    /** Resolves to whether an email was actually sent (false when the server has no mail configured). */
+    async requestEmailVerification(): Promise<boolean> {
+      const data = await api.post<Json>('/auth/email/verify/request');
+      return data.sent === true;
+    },
+    async verifyEmail(code: string): Promise<User> {
+      return mapUser(await api.post<Json>('/auth/email/verify', { body: { code } }));
+    },
+    /** Everything the backend holds about this account, as one JSON document. */
+    async exportAll(): Promise<unknown> {
+      return api.get<unknown>('/users/me/export', { timeoutMs: 60_000 });
+    },
+    /** Permanent: the account and every statement, transaction and correction. Clears this device's tokens. */
+    async deleteAccount(password: string): Promise<void> {
+      await api.delete('/users/me', { body: { password } });
+      await tokens.clear();
+    },
+    async registerPushToken(token: string, platform: 'android' | 'ios' | null): Promise<void> {
+      await api.post('/users/me/push-tokens', { body: { token, platform } });
+    },
+    async unregisterPushToken(token: string): Promise<void> {
+      await api.delete('/users/me/push-tokens', { body: { token } });
+    },
   };
 }
 
@@ -88,6 +132,8 @@ export interface TransactionQuery {
   category?: string;
   transactionType?: TransactionType;
   merchant?: string;
+  /** Free-text search: merchant, payee name, UPI reference or an amount. */
+  q?: string;
   startDate?: Date;
   endDate?: Date;
   sortBy?: string;
@@ -97,7 +143,7 @@ export interface TransactionQuery {
 export function createStatementsRepository(api: ApiClient) {
   return {
     async upload(p: UploadParams): Promise<StatementUploadResponse> {
-      const fields: Record<string, string> = { keep_original_pdf: String(p.keepOriginalPdf ?? true) };
+      const fields: Record<string, string> = { keep_original_pdf: String(p.keepOriginalPdf ?? false) };
       if (p.password) fields.password = p.password;
       const data = await api.upload<Json>('/statements/upload', {
         file: { uri: p.uri, name: p.filename, type: 'application/pdf' },
@@ -123,6 +169,11 @@ export function createStatementsRepository(api: ApiClient) {
       return mapPaged(data, mapStatement);
     },
 
+    /** Adds the generated demo period; processed by the same pipeline as an upload. */
+    async addSample(): Promise<StatementUploadResponse> {
+      return mapUploadResponse(await api.post<Json>('/statements/sample'));
+    },
+
     async get(id: string): Promise<Statement> {
       return mapStatement(await api.get<Json>(`/statements/${id}`));
     },
@@ -139,6 +190,7 @@ export function createStatementsRepository(api: ApiClient) {
           category: q.category,
           transaction_type: q.transactionType,
           merchant: q.merchant,
+          q: q.q,
           start_date: q.startDate ? toDateOnly(q.startDate) : undefined,
           end_date: q.endDate ? toDateOnly(q.endDate) : undefined,
           sort_by: q.sortBy ?? 'timestamp',
@@ -252,11 +304,75 @@ export function createExplainRepository(api: ApiClient) {
      * user's own merchant history. Rate-limited 20/min, so this is a deliberate
      * on-demand action, never an auto-fetch-on-open call.
      */
-    async explain(transactionText: string, targetQuestion?: string): Promise<ExplainOutcome> {
+    async explain(transactionId: string, targetQuestion?: string): Promise<ExplainOutcome> {
       const data = await api.post<Json>('/v1/explain', {
-        body: { transaction_text: transactionText, ...(targetQuestion ? { target_question: targetQuestion } : {}) },
+        body: { transaction_id: transactionId, ...(targetQuestion ? { target_question: targetQuestion } : {}) },
+        // The model, when it is up, can take a while on a CPU-only host.
+        timeoutMs: 45_000,
       });
       return mapExplain(data);
+    },
+  };
+}
+
+/** User-wide views over every period: teach deck, people, merchant page, search, notes. */
+export function createTimelineRepository(api: ApiClient) {
+  return {
+    async teachDeck(statementId?: string, limit = 8): Promise<TeachDeck> {
+      return mapTeachDeck(await api.get<Json>('/v1/teach', { query: { statement_id: statementId, limit } }));
+    },
+    /** Applies a batch of answers; the backend recomputes every affected period once. */
+    async answerTeachDeck(answers: TeachAnswer[]): Promise<number> {
+      const data = await api.post<Json>('/v1/teach', { body: { answers } });
+      return typeof data.applied === 'number' ? data.applied : 0;
+    },
+    async people(): Promise<PersonLedgerRow[]> {
+      const data = await api.get<Json>('/v1/people');
+      return Array.isArray(data.people) ? (data.people as Json[]).map(mapPerson) : [];
+    },
+    async personTransactions(payeeKey: string): Promise<Transaction[]> {
+      const data = await api.get<unknown>(`/v1/people/${encodeURIComponent(payeeKey)}/transactions`);
+      return Array.isArray(data) ? (data as Json[]).map(mapTransaction) : [];
+    },
+    async setPayeeKind(payeeName: string, kind: 'person' | 'business'): Promise<void> {
+      await api.put('/v1/payees/kind', { body: { payee_name: payeeName, kind } });
+    },
+    async merchantPage(merchant: string): Promise<MerchantPage> {
+      return mapMerchantPage(await api.get<Json>(`/v1/merchants/${encodeURIComponent(merchant)}`));
+    },
+    /** Search across every period, not just the selected one. */
+    async search(q: TransactionQuery = {}): Promise<Paged<Transaction>> {
+      const data = await api.get<Json>('/v1/transactions', {
+        query: {
+          page: q.page ?? 1,
+          page_size: q.pageSize ?? 20,
+          category: q.category,
+          transaction_type: q.transactionType,
+          q: q.q,
+          start_date: q.startDate ? toDateOnly(q.startDate) : undefined,
+          end_date: q.endDate ? toDateOnly(q.endDate) : undefined,
+          sort_by: q.sortBy ?? 'timestamp',
+          sort_order: q.sortOrder ?? 'desc',
+        },
+      });
+      return mapPaged(data, mapTransaction);
+    },
+    async annotate(transactionId: string, patch: { note?: string | null; tags?: string[] }): Promise<Transaction> {
+      return mapTransaction(await api.patch<Json>(`/v1/transactions/${transactionId}`, { body: patch }));
+    },
+  };
+}
+
+export interface ClientEventPayload {
+  name: string;
+  occurred_at: string;
+  properties: Record<string, string | number | boolean | null>;
+}
+
+export function createEventsRepository(api: ApiClient) {
+  return {
+    async send(events: ClientEventPayload[], appVersion: string | null, platform: string): Promise<void> {
+      await api.post('/v1/events', { body: { events, app_version: appVersion, platform }, timeoutMs: 8000 });
     },
   };
 }

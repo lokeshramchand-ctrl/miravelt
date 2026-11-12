@@ -47,3 +47,6 @@ celerybeat-schedule*
 
 # Private security audit (lists open weaknesses; repo is public)
 SECURITY_AUDIT.md
+
+# Audit notes describing open defects: keep out of the public repo (like SECURITY_AUDIT.md)
+PROJECT_AUDIT.md
